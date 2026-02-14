@@ -2,12 +2,12 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { Diamond, X, Zap, ZapOff } from 'lucide-react-native';
 import React from 'react';
 import {
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ScannerHeaderProps {
     onBack: () => void;
@@ -22,10 +22,11 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
     onFlashToggle,
     isDark = false,
 }) => {
+    const insets = useSafeAreaInsets();
     const iconColor = isDark ? '#1e293b' : Colors.white;
 
     return (
-        <SafeAreaView style={styles.cameraHeader}>
+        <View style={[styles.cameraHeader, { paddingTop: Math.max(insets.top, 16) }]}>
             <View style={styles.headerLeft}>
                 <TouchableOpacity
                     style={[styles.iconBtn, styles.backBtn]}
@@ -50,7 +51,7 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
                     )}
                 </TouchableOpacity>
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

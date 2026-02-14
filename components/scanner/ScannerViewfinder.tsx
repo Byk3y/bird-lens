@@ -11,7 +11,7 @@ import {
 interface ScannerViewfinderProps {
     zoom: number;
     onZoomChange: (value: number) => void;
-    onTrackInteraction: (event: GestureResponderEvent) => void;
+    onTrackInteraction: (event: GestureResponderEvent, trackHeight: number) => void;
 }
 
 export const ScannerViewfinder: React.FC<ScannerViewfinderProps> = ({
@@ -19,6 +19,7 @@ export const ScannerViewfinder: React.FC<ScannerViewfinderProps> = ({
     onZoomChange,
     onTrackInteraction,
 }) => {
+    const [trackHeight, setTrackHeight] = React.useState(0);
     return (
         <View style={styles.content}>
             {/* Viewfinder Corners */}
@@ -37,9 +38,10 @@ export const ScannerViewfinder: React.FC<ScannerViewfinderProps> = ({
                     </TouchableOpacity>
                     <View
                         style={styles.zoomTrackContainer}
+                        onLayout={(e) => setTrackHeight(e.nativeEvent.layout.height)}
                         onStartShouldSetResponder={() => true}
-                        onResponderGrant={onTrackInteraction}
-                        onResponderMove={onTrackInteraction}
+                        onResponderGrant={(e) => onTrackInteraction(e, trackHeight)}
+                        onResponderMove={(e) => onTrackInteraction(e, trackHeight)}
                     >
                         <View style={styles.zoomTrack}>
                             <View style={[styles.zoomIndicator, { bottom: `${zoom * 100}%` }]} />
@@ -63,8 +65,9 @@ export const ScannerViewfinder: React.FC<ScannerViewfinderProps> = ({
 const styles = StyleSheet.create({
     content: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
         alignItems: 'center',
+        paddingBottom: 20,
     },
     viewfinderContainer: {
         width: '100%',
@@ -127,9 +130,9 @@ const styles = StyleSheet.create({
         borderColor: Colors.primary,
     },
     viewfinderInfo: {
-        marginTop: 40,
+        marginBottom: 180,
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
     },
     infoLine: {
         ...Typography.body,

@@ -1,13 +1,14 @@
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, Spacing, Typography } from '@/constants/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -22,6 +23,7 @@ import { ScannerHeader } from '@/components/scanner/ScannerHeader';
 import { ScannerViewfinder } from '@/components/scanner/ScannerViewfinder';
 import { SnapTipsModal } from '@/components/scanner/SnapTipsModal';
 import { SoundScanner } from '@/components/scanner/SoundScanner';
+import { StatusBar } from 'expo-status-bar';
 
 // Types
 import { ScanMode } from '@/types/scanner';
@@ -29,8 +31,9 @@ import { ScanMode } from '@/types/scanner';
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [activeMode, setActiveMode] = useState<ScanMode>('photo');
-  const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
+  const [flash, setFlash] = useState<'off' | 'on'>('off');
   const [showSnapTips, setShowSnapTips] = useState(false);
+
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
   const params = useLocalSearchParams<{ mode: ScanMode }>();
@@ -60,15 +63,22 @@ export default function ScannerScreen() {
   const handleIdentify = async () => {
     if (!cameraRef.current || isProcessing) return;
 
-    const photo = await cameraRef.current.takePictureAsync({
-      base64: true,
-      quality: 0.5,
-    });
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: true,
+        exif: false,
+      });
 
-    if (photo?.base64) {
-      await identifyBird(photo.base64);
+      if (photo?.base64) {
+        await identifyBird(photo.base64);
+      }
+    } catch (error) {
+      console.error('Capture error:', error);
     }
   };
+
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
   if (!permission) return <View style={[styles.container, { backgroundColor: '#000' }]} />;
 
@@ -89,51 +99,51 @@ export default function ScannerScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" translucent />
       <View style={styles.container}>
         {!result ? (
           <View style={styles.scannerWrapper}>
             {activeMode === 'photo' ? (
               <GestureDetector gesture={pinchGesture}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.fullScreenCamera}>
                   <CameraView
-                    style={styles.camera}
+                    style={StyleSheet.absoluteFill}
                     ref={cameraRef}
                     facing="back"
-                    zoom={zoom}
+                    flash={flash}
                     enableTorch={flash === 'on'}
-                  >
-                    <View style={styles.overlay}>
-                      <ScannerHeader
-                        onBack={() => router.back()}
-                        flash={flash}
-                        onFlashToggle={() => setFlash(flash === 'off' ? 'on' : 'off')}
-                      />
-                      <ScannerViewfinder
-                        zoom={zoom}
-                        onZoomChange={setZoom}
-                        onTrackInteraction={handleTrackInteraction}
-                      />
-                    </View>
-                  </CameraView>
+                    zoom={zoom}
+                  />
+                  <View style={styles.overlay}>
+                    <ScannerHeader
+                      onBack={() => router.back()}
+                      flash={flash}
+                      onFlashToggle={() => setFlash(flash === 'off' ? 'on' : 'off')}
+                    />
+                    <ScannerViewfinder
+                      zoom={zoom}
+                      onZoomChange={setZoom}
+                      onTrackInteraction={handleTrackInteraction}
+                    />
+                    <ScannerControls
+                      activeMode={activeMode}
+                      onModeChange={setActiveMode}
+                      onCapture={handleIdentify}
+                      isProcessing={isProcessing}
+                      onShowTips={() => setShowSnapTips(true)}
+                    />
+                  </View>
                 </View>
               </GestureDetector>
             ) : (
               <SoundScanner onBack={() => router.back()} />
             )}
-
-            <ScannerControls
-              activeMode={activeMode}
-              onModeChange={setActiveMode}
-              onCapture={activeMode === 'photo' ? handleIdentify : () => { }} // TODO: Sound ID logic
-              isProcessing={isProcessing}
-              onShowTips={() => setShowSnapTips(true)}
-            />
           </View>
         ) : (
           <IdentificationResult
             result={result}
             isSaving={isSaving}
-            onSave={() => saveSighting(result)}
+            onSave={() => result && saveSighting(result)}
             onReset={resetResult}
           />
         )}
@@ -154,13 +164,16 @@ const styles = StyleSheet.create({
   },
   scannerWrapper: {
     flex: 1,
+    backgroundColor: '#000',
   },
-  camera: {
+  fullScreenCamera: {
     flex: 1,
+    backgroundColor: '#000',
   },
   overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    justifyContent: 'space-between',
   },
   permissionContainer: {
     flex: 1,
