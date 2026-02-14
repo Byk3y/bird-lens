@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     },
     premiumCard: {
         backgroundColor: '#1e293b',
-        borderRadius: 20,
+        borderRadius: 16,
         padding: 20,
         marginBottom: 24,
         shadowColor: '#000',
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     upgradeBtn: {
         backgroundColor: '#fbbf24',
         height: 48,
-        borderRadius: 14,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     },
     section: {
         backgroundColor: Colors.white,
-        borderRadius: 20,
+        borderRadius: 16,
         paddingHorizontal: 16,
         marginBottom: 24,
         borderWidth: 1,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     iconContainer: {
         width: 36,
         height: 36,
-        borderRadius: 10,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
