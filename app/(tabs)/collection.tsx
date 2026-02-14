@@ -1,15 +1,61 @@
+import { SkeletonScreen } from '@/components/common/SkeletonScreen';
 import { Colors, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+import { BirdResult } from '@/types/scanner';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Forward, Gem, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { user } = useAuth();
+    const [sightings, setSightings] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchCollections() {
+            if (!user) return;
+            try {
+                setLoading(true);
+                const { data, error } = await supabase
+                    .from('sightings')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                setSightings(data || []);
+            } catch (err) {
+                console.error('Error fetching sightings:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchCollections();
+    }, [user]);
+
+    const handleBirdPress = (sighting: any) => {
+        // Map database record to BirdResult structure
+        const birdData: BirdResult = {
+            name: sighting.species_name,
+            scientific_name: sighting.scientific_name,
+            rarity: sighting.rarity,
+            fact: sighting.fact,
+            confidence: sighting.confidence,
+            ...sighting.metadata
+        };
+
+        router.push({
+            pathname: '/bird-detail',
+            params: { birdData: JSON.stringify(birdData) }
+        });
+    };
 
     return (
         <ScrollView style={styles.container} bounces={false} showsVerticalScrollIndicator={false}>
@@ -45,22 +91,47 @@ export default function MeScreen() {
             {/* Main Content Area */}
             <View style={styles.content}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>My Collections (0)</Text>
+                    <Text style={styles.sectionTitle}>My Collections ({sightings.length})</Text>
                 </View>
 
                 <View style={styles.grid}>
-                    {/* Collection Cards would go here */}
+                    {loading ? (
+                        <SkeletonScreen items={4} />
+                    ) : (
+                        <>
+                            {sightings.map((sighting, index) => (
+                                <MotiView
+                                    key={sighting.id}
+                                    from={{ opacity: 0, translateY: 20 }}
+                                    animate={{ opacity: 1, translateY: 0 }}
+                                    transition={{ delay: index * 100 }}
+                                >
+                                    <Pressable
+                                        style={styles.collectionCard}
+                                        onPress={() => handleBirdPress(sighting)}
+                                    >
+                                        <View style={styles.cardInfo}>
+                                            <Text style={styles.cardName}>{sighting.species_name}</Text>
+                                            <Text style={styles.cardSciName}>{sighting.scientific_name}</Text>
+                                        </View>
+                                        <View style={styles.rarityBadge}>
+                                            <Text style={styles.rarityText}>{sighting.rarity}</Text>
+                                        </View>
+                                    </Pressable>
+                                </MotiView>
+                            ))}
 
-                    {/* Plus Button Card - Empty state requirement */}
-                    <MotiView
-                        from={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: 'spring', damping: 15 }}
-                    >
-                        <Pressable style={styles.plusCard}>
-                            <Plus color="#94a3b8" size={48} strokeWidth={1.5} />
-                        </Pressable>
-                    </MotiView>
+                            <MotiView
+                                from={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', damping: 15 }}
+                            >
+                                <Pressable style={styles.plusCard} onPress={() => router.push('/scanner')}>
+                                    <Plus color="#94a3b8" size={48} strokeWidth={1.5} />
+                                </Pressable>
+                            </MotiView>
+                        </>
+                    )}
                 </View>
             </View>
         </ScrollView>
@@ -136,6 +207,47 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: Spacing.md,
+    },
+    collectionCard: {
+        width: (Platform.OS === 'web' ? 180 : 165),
+        aspectRatio: 0.85,
+        borderRadius: 24,
+        backgroundColor: '#f8fafc',
+        padding: 16,
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    cardInfo: {
+        gap: 4,
+    },
+    cardName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: Colors.text,
+    },
+    cardSciName: {
+        fontSize: 12,
+        fontStyle: 'italic',
+        color: Colors.textSecondary,
+    },
+    rarityBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: Colors.primary + '15',
+    },
+    rarityText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: Colors.primary,
+        textTransform: 'uppercase',
     },
     plusCard: {
         width: (Platform.OS === 'web' ? 180 : 165),

@@ -85,8 +85,8 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
 const styles = StyleSheet.create({
     bottomArea: {
         backgroundColor: Colors.white,
-        paddingTop: 20,
-        paddingBottom: 60,
+        paddingTop: 24,
+        paddingBottom: 70,
         position: 'absolute',
         bottom: 0,
         left: 0,
