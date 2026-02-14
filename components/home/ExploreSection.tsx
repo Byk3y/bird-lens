@@ -1,5 +1,4 @@
 import { Colors, Spacing } from '@/constants/theme';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Compass } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -13,8 +12,37 @@ import {
 
 const EXPLORE_TAGS = ['Poultry', 'Attracting Birds', 'Hummingbirds', 'Annual C...'];
 
+const EXPLORE_ITEMS = [
+    {
+        id: '1',
+        title: 'How to Identify Different Breeds of Chickens',
+        tag: 'Poultry',
+        image: require('@/assets/images/explore_bird.jpg'),
+    },
+    {
+        id: '2',
+        title: 'The Secret Life of Golden Pheasants',
+        tag: 'Attracting Birds',
+        image: require('@/assets/images/golden_pheasant.webp'),
+    },
+    {
+        id: '3',
+        title: 'Perfect Shots: Bird Photography Tips',
+        tag: 'Hummingbirds',
+        image: require('@/assets/images/tip_good.jpg'),
+    },
+    {
+        id: '4',
+        title: 'Essential Gear for Bird Watching',
+        tag: 'Annual C...',
+        image: require('@/assets/images/tip_far.jpg'),
+    }
+];
+
 export const ExploreSection: React.FC = () => {
     const [selectedTag, setSelectedTag] = useState('Poultry');
+
+    const filteredItems = EXPLORE_ITEMS.filter(item => item.tag === selectedTag);
 
     return (
         <View style={styles.section}>
@@ -27,6 +55,7 @@ export const ExploreSection: React.FC = () => {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.tagsContainer}
+                style={styles.tagsScroll}
             >
                 {EXPLORE_TAGS.map((tag) => (
                     <Pressable
@@ -45,20 +74,19 @@ export const ExploreSection: React.FC = () => {
                 ))}
             </ScrollView>
 
-            <View style={styles.exploreCard}>
-                <Image
-                    source={require('@/assets/images/explore_bird.jpg')}
-                    style={styles.exploreImage}
-                    resizeMode="cover"
-                />
-                <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.4)']}
-                    style={styles.exploreGradient}
-                />
-                <View style={styles.exploreContent}>
-                    <Text style={styles.exploreTitle}>Capturing the Beauty of Early Birds</Text>
-                    <Text style={styles.exploreSubtitle}>5 min read • Photography</Text>
-                </View>
+            <View style={styles.cardsContainer}>
+                {filteredItems.map((item) => (
+                    <Pressable key={item.id} style={styles.exploreCard}>
+                        <Image
+                            source={item.image}
+                            style={styles.exploreImage}
+                            resizeMode="cover"
+                        />
+                        <View style={styles.exploreContent}>
+                            <Text style={styles.exploreTitle} numberOfLines={1}>{item.title}</Text>
+                        </View>
+                    </Pressable>
+                ))}
             </View>
         </View>
     );
@@ -71,7 +99,7 @@ const styles = StyleSheet.create({
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: 13,
         marginBottom: Spacing.md,
     },
     sectionIcon: {
@@ -80,25 +108,30 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#334155',
+        color: Colors.text,
+    },
+    tagsScroll: {
+        marginBottom: Spacing.md,
     },
     tagsContainer: {
-        paddingHorizontal: Spacing.md,
-        marginBottom: Spacing.lg,
+        paddingHorizontal: 13,
         gap: 8,
+    },
+    cardsContainer: {
+        paddingHorizontal: 13,
+        gap: Spacing.lg,
     },
     tag: {
         paddingHorizontal: 20,
         paddingVertical: 7,
         borderRadius: 20,
         backgroundColor: Colors.white,
-        marginRight: 4,
         borderWidth: 1,
         borderColor: '#f1f5f9',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
         elevation: 2,
     },
     tagSelected: {
@@ -111,49 +144,39 @@ const styles = StyleSheet.create({
     },
     tagText: {
         fontSize: 13,
-        fontWeight: '800',
-        color: '#64748b',
+        fontWeight: '700',
+        color: Colors.textSecondary,
         letterSpacing: -0.2,
     },
     tagTextSelected: {
         color: Colors.white,
     },
     exploreCard: {
-        marginHorizontal: Spacing.md,
-        borderRadius: 24,
+        width: '100%',
+        borderRadius: 12,
         overflow: 'hidden',
-        height: 320,
-        backgroundColor: '#f1f5f9',
-        position: 'relative',
+        backgroundColor: Colors.white,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.12,
-        shadowRadius: 24,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 12,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
     },
     exploreImage: {
         width: '100%',
-        height: '100%',
-    },
-    exploreGradient: {
-        ...StyleSheet.absoluteFillObject,
+        height: 205,
     },
     exploreContent: {
-        position: 'absolute',
-        bottom: Spacing.lg,
-        left: Spacing.lg,
-        right: Spacing.lg,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
     exploreTitle: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: Colors.white,
-        marginBottom: 6,
-        letterSpacing: -0.5,
-    },
-    exploreSubtitle: {
-        fontSize: 13,
+        fontSize: 17,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.8)',
+        color: '#334155',
+        letterSpacing: -0.3,
+        lineHeight: 22,
     },
 });
