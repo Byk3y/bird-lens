@@ -1,59 +1,90 @@
+import { Colors } from '@/constants/theme';
+import { Tabs } from 'expo-router';
+import { Camera, Home, User } from 'lucide-react-native';
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        headerShown: false,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: '#94a3b8',
+        tabBarStyle: {
+          backgroundColor: Colors.white,
+          borderTopWidth: 0,
+          height: Platform.OS === 'ios' ? 88 : 68,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginBottom: Platform.OS === 'ios' ? 0 : 10,
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          title: 'Home',
+          tabBarIcon: ({ color }) => <Home color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="scanner"
+        options={{
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+          title: '',
+          tabBarIcon: () => (
+            <View style={[styles.fabContainer, { bottom: Platform.OS === 'ios' ? 10 : 15 }]}>
+              <View style={styles.fabGradient}>
+                <Camera color={Colors.white} size={32} strokeWidth={2.5} />
+              </View>
+            </View>
           ),
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="collection"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Me',
+          tabBarIcon: ({ color }) => <User color={color} size={24} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  fabContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.white,
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+    backgroundColor: Colors.primary, // Could be a LinearGradient but standard color for now
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

@@ -31,7 +31,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# project context
+antigravity.md
 
 # typescript
 *.tsbuildinfo

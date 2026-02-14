@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "bird-identifier",
+    "name": "Bird Lens - Bird Identifier",
     "slug": "bird-identifier",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.francis.dev.bird-identifier"
     },
     "android": {
       "adaptiveIcon": {
