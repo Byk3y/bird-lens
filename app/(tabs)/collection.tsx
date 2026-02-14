@@ -3,13 +3,16 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { BirdResult } from '@/types/scanner';
+import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Forward, Gem, Plus, Settings } from 'lucide-react-native';
+import { Forward, Gem, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const { width } = Dimensions.get('window');
 
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
@@ -53,13 +56,17 @@ export default function MeScreen() {
 
         router.push({
             pathname: '/bird-detail',
-            params: { birdData: JSON.stringify(birdData) }
+            params: {
+                birdData: JSON.stringify(birdData),
+                sightingDate: sighting.created_at,
+                imageUrl: sighting.image_url
+            }
         });
     };
 
     return (
-        <ScrollView style={styles.container} bounces={false} showsVerticalScrollIndicator={false}>
-            {/* Header with Cardinal Gradient */}
+        <View style={styles.container}>
+            {/* Header with Cardinal Gradient (Now Fixed) */}
             <LinearGradient
                 colors={['#f97316', '#D4202C', '#D4202C']}
                 start={{ x: 0, y: 0 }}
@@ -88,13 +95,17 @@ export default function MeScreen() {
                 </View>
             </LinearGradient>
 
-            {/* Main Content Area */}
+            {/* Main Content Area (Now Scrollable) */}
             <View style={styles.content}>
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>My Collections ({sightings.length})</Text>
                 </View>
 
-                <View style={styles.grid}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.grid}
+                    bounces={true}
+                >
                     {loading ? (
                         <SkeletonScreen items={4} />
                     ) : (
@@ -110,12 +121,30 @@ export default function MeScreen() {
                                         style={styles.collectionCard}
                                         onPress={() => handleBirdPress(sighting)}
                                     >
-                                        <View style={styles.cardInfo}>
-                                            <Text style={styles.cardName}>{sighting.species_name}</Text>
-                                            <Text style={styles.cardSciName}>{sighting.scientific_name}</Text>
+                                        <View style={styles.cardImageContainer}>
+                                            {sighting.image_url ? (
+                                                <Image
+                                                    source={{ uri: sighting.image_url }}
+                                                    style={styles.cardImage}
+                                                />
+                                            ) : (
+                                                <View style={styles.imagePlaceholder}>
+                                                    <Gem color="#e2e8f0" size={32} />
+                                                </View>
+                                            )}
                                         </View>
-                                        <View style={styles.rarityBadge}>
-                                            <Text style={styles.rarityText}>{sighting.rarity}</Text>
+
+                                        <Text style={styles.cardName} numberOfLines={1}>
+                                            {sighting.species_name}
+                                        </Text>
+
+                                        <View style={styles.cardFooter}>
+                                            <Text style={styles.cardDate}>
+                                                {format(new Date(sighting.created_at), 'yy-MM-dd')}
+                                            </Text>
+                                            <Pressable style={styles.moreBtn}>
+                                                <MoreHorizontal color="#94a3b8" size={18} />
+                                            </Pressable>
                                         </View>
                                     </Pressable>
                                 </MotiView>
@@ -127,14 +156,14 @@ export default function MeScreen() {
                                 transition={{ type: 'spring', damping: 15 }}
                             >
                                 <Pressable style={styles.plusCard} onPress={() => router.push('/scanner')}>
-                                    <Plus color="#94a3b8" size={48} strokeWidth={1.5} />
+                                    <Plus color="#94a3b8" size={40} strokeWidth={1.5} />
                                 </Pressable>
                             </MotiView>
                         </>
                     )}
-                </View>
+                </ScrollView>
             </View>
-        </ScrollView>
+        </View>
     );
 }
 
@@ -187,12 +216,11 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        marginTop: -80,
-        backgroundColor: Colors.white,
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        minHeight: 600,
-        paddingHorizontal: Spacing.lg,
+        marginTop: -60,
+        backgroundColor: Colors.background,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        paddingHorizontal: Spacing.md,
         paddingTop: Spacing.xl,
     },
     sectionHeader: {
@@ -206,58 +234,72 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: Spacing.md,
+        justifyContent: 'space-between',
+        paddingBottom: 40,
     },
     collectionCard: {
-        width: (Platform.OS === 'web' ? 180 : 165),
-        aspectRatio: 0.85,
-        borderRadius: 24,
-        backgroundColor: '#f8fafc',
-        padding: 16,
-        justifyContent: 'space-between',
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
+        width: (width - Spacing.md * 3) / 2,
+        borderRadius: 16,
+        backgroundColor: Colors.white, // Pure white cards
+        padding: 8,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    cardInfo: {
-        gap: 4,
+    cardImageContainer: {
+        width: '100%',
+        aspectRatio: 0.82, // Taller aspect ratio
+        borderRadius: 12,
+        backgroundColor: '#f1f5f9',
+        overflow: 'hidden',
+        marginBottom: 12,
+    },
+    cardImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    imagePlaceholder: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f1f5f9',
     },
     cardName: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '700',
         color: Colors.text,
+        paddingHorizontal: 4,
+        marginBottom: 4,
     },
-    cardSciName: {
+    cardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        paddingBottom: 4,
+    },
+    cardDate: {
         fontSize: 12,
-        fontStyle: 'italic',
-        color: Colors.textSecondary,
+        color: '#94a3b8',
+        fontWeight: '500',
     },
-    rarityBadge: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        backgroundColor: Colors.primary + '15',
-    },
-    rarityText: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: Colors.primary,
-        textTransform: 'uppercase',
+    moreBtn: {
+        padding: 2,
     },
     plusCard: {
-        width: (Platform.OS === 'web' ? 180 : 165),
-        aspectRatio: 0.85,
-        borderRadius: 24,
+        width: (width - Spacing.md * 3) / 2,
+        height: ((width - Spacing.md * 3) / 2) * 1.4,
+        borderRadius: 16,
         borderWidth: 2,
-        borderColor: '#cbd5e1',
+        borderColor: '#e2e8f0',
         borderStyle: 'dashed',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f8fafc',
+        backgroundColor: Colors.white,
+        marginVertical: 4,
     },
 });

@@ -8,6 +8,7 @@ import { Alert } from 'react-native';
 export const useBirdIdentification = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [candidates, setCandidates] = useState<BirdResult[]>([]);
     const [result, setResult] = useState<BirdResult | null>(null);
     const { user } = useAuth();
 
@@ -18,15 +19,56 @@ export const useBirdIdentification = () => {
             setIsProcessing(true);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+            // Real API Call
             const { data, error } = await supabase.functions.invoke('identify-bird', {
                 body: { image: imageB64, audio: audioB64 },
             });
 
             if (error) throw error;
 
-            setResult(data as BirdResult);
+            const primaryResult = data as BirdResult;
+
+            // Mocking additional candidates for the "Masterpiece" UI
+            // In a real scenario, the backend should return this list.
+            const mockCandidates: BirdResult[] = [
+                {
+                    ...primaryResult,
+                    confidence: primaryResult.confidence,
+                    images: [
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Rufous_Hummingbird_%28Selasphorus_rufus%29_-_01.jpg/440px-Rufous_Hummingbird_%28Selasphorus_rufus%29_-_01.jpg',
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Rufous_Hummingbird_-_02.jpg/440px-Rufous_Hummingbird_-_02.jpg',
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Selasphorus_rufus_mp.jpg/440px-Selasphorus_rufus_mp.jpg'
+                    ]
+                },
+                {
+                    ...primaryResult,
+                    name: "Allen's Hummingbird",
+                    scientific_name: "Selasphorus sasin",
+                    confidence: 0.85,
+                    description: "Similar to the Rufous Hummingbird but with a green back.",
+                    images: [
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Allen%27s_Hummingbird_-_01.jpg/440px-Allen%27s_Hummingbird_-_01.jpg',
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Selasphorus_sasin_mp.jpg/440px-Selasphorus_sasin_mp.jpg'
+                    ]
+                },
+                {
+                    ...primaryResult,
+                    name: "Broad-tailed Hummingbird",
+                    scientific_name: "Selasphorus platycercus",
+                    confidence: 0.65,
+                    description: "Known for the metallic trill produced by its wings during flight.",
+                    images: [
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Broad-tailed_Hummingbird_-_01.jpg/440px-Broad-tailed_Hummingbird_-_01.jpg',
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Selasphorus_platycercus_mp.jpg/440px-Selasphorus_platycercus_mp.jpg'
+                    ]
+                }
+            ];
+
+            setResult(primaryResult); // Keep primary result for backward compatibility if needed
+            setCandidates(mockCandidates);
+
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            return data as BirdResult;
+            return primaryResult;
         } catch (error: any) {
             Alert.alert('Identification Failed', error.message);
             return null;
@@ -35,11 +77,38 @@ export const useBirdIdentification = () => {
         }
     };
 
-    const saveSighting = async (bird: BirdResult) => {
+    const saveSighting = async (bird: BirdResult, capturedImage?: string | null) => {
         if (isSaving) return;
 
         try {
             setIsSaving(true);
+            let imageUrl = null;
+
+            // Upload image if provided
+            if (capturedImage) {
+                const fileName = `${user?.id}/${Date.now()}.jpg`;
+
+                // Convert base64 to binary using Buffer (more reliable for images)
+                const { Buffer } = require('buffer');
+                const bytes = Buffer.from(capturedImage, 'base64');
+
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('sightings')
+                    .upload(fileName, bytes, {
+                        contentType: 'image/jpeg',
+                        upsert: true
+                    });
+
+                if (uploadError) throw uploadError;
+
+                // Get public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('sightings')
+                    .getPublicUrl(fileName);
+
+                imageUrl = publicUrl;
+            }
+
             const { error } = await supabase.from('sightings').insert({
                 user_id: user?.id,
                 species_name: bird.name,
@@ -47,6 +116,7 @@ export const useBirdIdentification = () => {
                 rarity: bird.rarity,
                 fact: bird.fact,
                 confidence: bird.confidence,
+                image_url: imageUrl,
                 metadata: {
                     also_known_as: bird.also_known_as,
                     taxonomy: bird.taxonomy,
@@ -59,16 +129,16 @@ export const useBirdIdentification = () => {
                     nesting_info: bird.nesting_info,
                     feeder_info: bird.feeder_info,
                     behavior: bird.behavior,
+                    images: bird.images
                 }
             });
 
             if (error) throw error;
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('Saved!', `${bird.name} added to your collection.`);
-            setResult(null);
             return true;
         } catch (error: any) {
+            console.error('Save error:', error);
             Alert.alert('Error', error.message);
             return false;
         } finally {
@@ -76,12 +146,16 @@ export const useBirdIdentification = () => {
         }
     };
 
-    const resetResult = () => setResult(null);
+    const resetResult = () => {
+        setResult(null);
+        setCandidates([]);
+    };
 
     return {
         isProcessing,
         isSaving,
         result,
+        candidates,
         identifyBird,
         saveSighting,
         resetResult,

@@ -41,6 +41,7 @@ export interface BirdResult {
     };
     confidence: number;
     error?: string;
+    images?: string[]; // Array of image URLs for the species
 }
 
 export type ScanMode = 'photo' | 'sound';

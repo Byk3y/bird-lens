@@ -13,6 +13,7 @@ import {
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Hooks
+import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { useBirdIdentification } from '@/hooks/useBirdIdentification';
 import { useScannerGestures } from '@/hooks/useScannerGestures';
 
@@ -20,9 +21,11 @@ import { useScannerGestures } from '@/hooks/useScannerGestures';
 import { IdentificationResult } from '@/components/scanner/IdentificationResult';
 import { ScannerControls } from '@/components/scanner/ScannerControls';
 import { ScannerHeader } from '@/components/scanner/ScannerHeader';
+import { ScannerPreview } from '@/components/scanner/ScannerPreview';
 import { ScannerViewfinder } from '@/components/scanner/ScannerViewfinder';
 import { SnapTipsModal } from '@/components/scanner/SnapTipsModal';
 import { SoundScanner } from '@/components/scanner/SoundScanner';
+import * as FileSystem from 'expo-file-system';
 import { StatusBar } from 'expo-status-bar';
 
 // Types
@@ -33,6 +36,8 @@ export default function ScannerScreen() {
   const [activeMode, setActiveMode] = useState<ScanMode>('photo');
   const [flash, setFlash] = useState<'off' | 'on'>('off');
   const [showSnapTips, setShowSnapTips] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
@@ -42,6 +47,7 @@ export default function ScannerScreen() {
     isProcessing,
     isSaving,
     result,
+    candidates,
     identifyBird,
     saveSighting,
     resetResult,
@@ -54,27 +60,69 @@ export default function ScannerScreen() {
     handleTrackInteraction,
   } = useScannerGestures();
 
+  const {
+    isRecording,
+    formattedTime,
+    startRecording,
+    stopRecording,
+    recordingUri,
+  } = useAudioRecording();
+
+  // Reset to photo mode on mount to prevent being stuck in sound mode
+  useEffect(() => {
+    setActiveMode('photo');
+    resetResult();
+    setCapturedImage(null);
+  }, []);
+
   useEffect(() => {
     if (params.mode) {
       setActiveMode(params.mode);
     }
   }, [params.mode]);
 
-  const handleIdentify = async () => {
-    if (!cameraRef.current || isProcessing) return;
+  // Provide a way to clear the captured image when result is reset
+  useEffect(() => {
+    if (!result && !isProcessing) {
+      setCapturedImage(null);
+    }
+  }, [result, isProcessing]);
 
-    try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        base64: true,
-        exif: false,
-      });
+  const handleCapture = async () => {
+    if (activeMode === 'photo') {
+      if (!cameraRef.current || isProcessing) return;
 
-      if (photo?.base64) {
-        await identifyBird(photo.base64);
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          base64: true,
+          exif: false,
+        });
+
+        if (photo?.base64) {
+          setCapturedImage(photo.base64); // Set immediate preview
+          await identifyBird(photo.base64);
+        }
+      } catch (error) {
+        console.error('Capture error:', error);
+        setCapturedImage(null); // Reset on error
       }
-    } catch (error) {
-      console.error('Capture error:', error);
+    } else {
+      if (isRecording) {
+        await stopRecording();
+      } else if (recordingUri) {
+        // Handle upload/identification
+        try {
+          const base64 = await FileSystem.readAsStringAsync(recordingUri, {
+            encoding: 'base64',
+          });
+          await identifyBird(undefined, base64);
+        } catch (error) {
+          console.error('Audio processing error:', error);
+        }
+      } else {
+        await startRecording();
+      }
     }
   };
 
@@ -97,11 +145,21 @@ export default function ScannerScreen() {
     );
   }
 
+
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" translucent />
       <View style={styles.container}>
-        {!result ? (
+        {capturedImage && isProcessing ? (
+          <ScannerPreview
+            imageUri={capturedImage}
+            onClose={() => {
+              resetResult();
+              setCapturedImage(null);
+            }}
+          />
+        ) : !result ? (
           <View style={styles.scannerWrapper}>
             {activeMode === 'photo' ? (
               <GestureDetector gesture={pinchGesture}>
@@ -125,26 +183,54 @@ export default function ScannerScreen() {
                       onZoomChange={setZoom}
                       onTrackInteraction={handleTrackInteraction}
                     />
-                    <ScannerControls
-                      activeMode={activeMode}
-                      onModeChange={setActiveMode}
-                      onCapture={handleIdentify}
-                      isProcessing={isProcessing}
-                      onShowTips={() => setShowSnapTips(true)}
-                    />
                   </View>
                 </View>
               </GestureDetector>
             ) : (
-              <SoundScanner onBack={() => router.back()} />
+              <SoundScanner
+                onBack={() => router.back()}
+                isRecording={isRecording}
+                formattedTime={formattedTime}
+                hasRecording={!!recordingUri}
+                isProcessing={isProcessing}
+              />
             )}
+
+            <ScannerControls
+              activeMode={activeMode}
+              onModeChange={setActiveMode}
+              onCapture={handleCapture}
+              isProcessing={isProcessing}
+              onShowTips={() => setShowSnapTips(true)}
+              isRecording={isRecording}
+              hasRecording={!!recordingUri}
+            />
           </View>
         ) : (
           <IdentificationResult
             result={result}
+            candidates={candidates}
+            capturedImage={capturedImage}
             isSaving={isSaving}
-            onSave={() => result && saveSighting(result)}
-            onReset={resetResult}
+            isSaved={isSaved}
+            onSave={async (bird, image) => {
+              const success = await saveSighting(bird, image);
+              if (success) {
+                setIsSaved(true);
+                // Wait 1s to show success state before navigating
+                setTimeout(() => {
+                  resetResult();
+                  setCapturedImage(null);
+                  setIsSaved(false);
+                  router.replace('/(tabs)/collection');
+                }, 1000);
+              }
+            }}
+            onReset={() => {
+              resetResult();
+              setCapturedImage(null);
+              setIsSaved(false);
+            }}
           />
         )}
 

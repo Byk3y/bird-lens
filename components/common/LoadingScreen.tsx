@@ -3,6 +3,7 @@ import { ChevronLeft, Search } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Easing } from 'react-native-reanimated';
 
 interface LoadingScreenProps {
     message?: string;
@@ -72,7 +73,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
                                                 duration: 4000,
                                                 loop: true,
                                                 repeatReverse: false,
-                                                easing: (t) => t,
+                                                easing: Easing.linear,
                                             }}
                                             style={styles.searchRadar}
                                         >
