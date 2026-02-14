@@ -1,6 +1,7 @@
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { BirdResult } from '@/types/scanner';
-import { Bird, Info, RefreshCcw, Save } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Bird, ExternalLink, Info, RefreshCcw, Save } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React from 'react';
 import {
@@ -25,6 +26,14 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     onSave,
     onReset,
 }) => {
+    const router = useRouter();
+
+    const handleViewProfile = () => {
+        router.push({
+            pathname: '/bird-detail',
+            params: { birdData: JSON.stringify(result) }
+        });
+    };
     return (
         <View style={styles.resultContainer}>
             <ScrollView contentContainerStyle={styles.resultScroll}>
@@ -40,8 +49,26 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         </View>
                         <View style={styles.resultTitleContainer}>
                             <Text style={styles.resultName}>{result.name}</Text>
-                            <Text style={styles.resultScientific}>{result.scientific_name}</Text>
+                            <Text style={styles.resultScientific}>
+                                {result.scientific_name}
+                                <Text style={styles.speciesOf}>, a species of </Text>
+                                {result.taxonomy.family} ({result.taxonomy.family_scientific})
+                            </Text>
                         </View>
+                    </View>
+
+                    {result.also_known_as && result.also_known_as.length > 0 && (
+                        <View style={styles.akaBox}>
+                            <Text style={styles.akaLabel}>Also known as: </Text>
+                            <Text style={styles.akaContent}>{result.also_known_as.join(', ')}</Text>
+                        </View>
+                    )}
+
+                    <View style={styles.genusBox}>
+                        <Text style={styles.genusLabel}>
+                            Genus: <Text style={styles.genusValue}>{result.taxonomy.genus}</Text>
+                            <Text style={styles.genusDesc}>, {result.taxonomy.genus_description}</Text>
+                        </Text>
                     </View>
 
                     <View style={styles.statsRow}>
@@ -63,36 +90,60 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         </View>
                     </View>
 
+                    <View style={styles.tipsContainer}>
+                        <View style={styles.factHeader}>
+                            <Bird size={16} color={Colors.accent} />
+                            <Text style={styles.factHeaderText}>How to identify it?</Text>
+                        </View>
+                        <View style={styles.tipRow}>
+                            <Text style={styles.tipLabel}>Male: </Text>
+                            <Text style={styles.tipText}>{result.identification_tips.male}</Text>
+                        </View>
+                        <View style={styles.tipRow}>
+                            <Text style={styles.tipLabel}>Female: </Text>
+                            <Text style={styles.tipText}>{result.identification_tips.female}</Text>
+                        </View>
+                    </View>
+
                     <View style={styles.factContainer}>
                         <View style={styles.factHeader}>
                             <Info size={16} color={Colors.accent} />
-                            <Text style={styles.factHeaderText}>Naturalist Fact</Text>
+                            <Text style={styles.factHeaderText}>Naturalist Description</Text>
                         </View>
-                        <Text style={styles.resultFact}>{result.fact}</Text>
+                        <Text style={styles.resultFact}>{result.description}</Text>
                     </View>
 
                     <View style={styles.actionRow}>
                         <TouchableOpacity
-                            onPress={onSave}
-                            disabled={isSaving}
-                            style={[styles.actionBtn, styles.saveBtn]}
+                            onPress={handleViewProfile}
+                            style={[styles.actionBtn, styles.profileBtn]}
                         >
-                            {isSaving ? (
-                                <ActivityIndicator color={Colors.white} />
-                            ) : (
-                                <>
-                                    <Save color={Colors.white} size={20} />
-                                    <Text style={styles.actionBtnText}>Log to Journal</Text>
-                                </>
-                            )}
+                            <ExternalLink color={Colors.white} size={20} />
+                            <Text style={styles.actionBtnText}>View Full Profile</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={onReset}
-                            style={[styles.actionBtn, styles.resetBtn]}
-                        >
-                            <RefreshCcw color={Colors.white} size={20} />
-                            <Text style={styles.actionBtnText}>Scan Again</Text>
-                        </TouchableOpacity>
+
+                        <View style={styles.secondaryActions}>
+                            <TouchableOpacity
+                                onPress={onSave}
+                                disabled={isSaving}
+                                style={[styles.actionBtn, styles.saveBtn]}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator color={Colors.white} />
+                                ) : (
+                                    <>
+                                        <Save color={Colors.white} size={20} />
+                                        <Text style={styles.actionBtnText}>Save</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={onReset}
+                                style={[styles.actionBtn, styles.resetBtn]}
+                            >
+                                <RefreshCcw color={Colors.white} size={20} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </MotiView>
             </ScrollView>
@@ -146,8 +197,41 @@ const styles = StyleSheet.create({
     resultScientific: {
         ...Typography.body,
         color: Colors.textTertiary,
-        fontStyle: 'italic',
         marginTop: 4,
+        textAlign: 'center',
+    },
+    speciesOf: {
+        color: Colors.textTertiary,
+        fontStyle: 'normal',
+    },
+    akaBox: {
+        marginBottom: Spacing.md,
+    },
+    akaLabel: {
+        ...Typography.caption,
+        color: Colors.textTertiary,
+    },
+    akaContent: {
+        ...Typography.body,
+        color: Colors.white,
+        fontWeight: '500',
+    },
+    genusBox: {
+        marginBottom: Spacing.xl,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+    },
+    genusLabel: {
+        ...Typography.body,
+        color: Colors.textTertiary,
+    },
+    genusValue: {
+        fontStyle: 'italic',
+        color: Colors.white,
+    },
+    genusDesc: {
+        color: Colors.textTertiary,
     },
     statsRow: {
         flexDirection: 'row',
@@ -196,6 +280,24 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         lineHeight: 24,
     },
+    tipsContainer: {
+        backgroundColor: Colors.surfaceLight,
+        padding: Spacing.lg,
+        borderRadius: 20,
+        marginBottom: Spacing.md,
+    },
+    tipRow: {
+        marginBottom: 8,
+    },
+    tipLabel: {
+        ...Typography.body,
+        fontWeight: '700',
+        color: Colors.white,
+    },
+    tipText: {
+        ...Typography.body,
+        color: Colors.textSecondary,
+    },
     actionRow: {
         gap: Spacing.md,
     },
@@ -209,11 +311,20 @@ const styles = StyleSheet.create({
     },
     saveBtn: {
         backgroundColor: Colors.primary,
+        flex: 1,
     },
     resetBtn: {
         backgroundColor: Colors.surfaceLight,
+        width: 60,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.05)',
+    },
+    profileBtn: {
+        backgroundColor: Colors.accent,
+    },
+    secondaryActions: {
+        flexDirection: 'row',
+        gap: Spacing.md,
     },
     actionBtnText: {
         ...Typography.body,
