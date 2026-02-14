@@ -17,9 +17,10 @@ export const useScannerGestures = () => {
             runOnJS(setZoom)(Math.min(Math.max(newZoom, 0), 1));
         });
 
-    const handleTrackInteraction = (event: GestureResponderEvent) => {
+    const handleTrackInteraction = (event: GestureResponderEvent, trackHeight: number) => {
+        if (!trackHeight) return;
         const { locationY } = event.nativeEvent;
-        const trackHeight = 100;
+        // Map Y coordinate (0 at top) to zoom value (1 at top, 0 at bottom)
         const normalized = 1 - locationY / trackHeight;
         setZoom(Math.min(Math.max(normalized, 0), 1));
     };
