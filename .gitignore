@@ -36,6 +36,13 @@ yarn-error.*
 
 # project context
 antigravity.md
+AGENTS.md
+
+# debug
+extensions_debug.json
+mcp_debug.json
+snippet.txt
+supabase/.temp/
 
 # typescript
 *.tsbuildinfo

@@ -1,9 +1,12 @@
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
 import { useRouter } from 'expo-router';
 import {
     ChevronLeft,
     ChevronRight,
-    Crown
+    Crown,
+    LogOut,
+    User
 } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useState } from 'react';
@@ -73,6 +76,8 @@ const SettingRow = ({
 );
 
 export default function SettingsScreen() {
+    const { user, session } = useAuth();
+    const isGuest = user?.is_anonymous;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [autosave, setAutosave] = useState(false);
@@ -114,14 +119,30 @@ export default function SettingsScreen() {
                 </MotiView>
 
                 {/* Account Section */}
-                <Text style={styles.sectionLabel}>Account</Text>
+                <Text style={styles.sectionLabel}>{isGuest ? 'Guest Mode' : 'Account'}</Text>
                 <View style={styles.section}>
-                    <SettingRow
-                        label="Edit Profile"
-                    />
-                    <SettingRow
-                        label="Log In / Sign Up"
-                    />
+                    {isGuest ? (
+                        <SettingRow
+                            icon={<User />}
+                            label="Create Permanent Account"
+                            value="Save your collection"
+                            tintColor={Colors.accent}
+                            onPress={() => {/* Trigger Signup Modal */ }}
+                        />
+                    ) : (
+                        <>
+                            <SettingRow
+                                icon={<User />}
+                                label="Edit Profile"
+                            />
+                            <SettingRow
+                                icon={<LogOut />}
+                                label="Sign Out"
+                                tintColor={Colors.error}
+                                onPress={() => {/* Handle Sign Out */ }}
+                            />
+                        </>
+                    )}
                     <SettingRow
                         label="Language"
                         value="English"
