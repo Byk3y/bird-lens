@@ -1,7 +1,7 @@
 import { Colors, Typography } from '@/constants/theme';
 import { ScanMode } from '@/types/scanner';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HelpCircle, Image as ImageIcon } from 'lucide-react-native';
+import { HelpCircle, Image as ImageIcon, UploadCloud } from 'lucide-react-native';
 import React from 'react';
 import {
     StyleSheet,
@@ -16,6 +16,8 @@ interface ScannerControlsProps {
     onCapture: () => void;
     isProcessing: boolean;
     onShowTips: () => void;
+    isRecording?: boolean;
+    hasRecording?: boolean;
 }
 
 export const ScannerControls: React.FC<ScannerControlsProps> = ({
@@ -24,18 +26,28 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
     onCapture,
     isProcessing,
     onShowTips,
+    isRecording = false,
+    hasRecording = false,
 }) => {
     return (
         <View style={[styles.bottomArea, activeMode === 'sound' && styles.soundBottomArea]}>
             {/* Mode Switcher */}
             <View style={styles.modeSwitcher}>
-                <TouchableOpacity onPress={() => onModeChange('photo')}>
-                    <Text style={[styles.modeLabel, activeMode === 'photo' && styles.modeLabelActive]}>
+                <TouchableOpacity onPress={() => onModeChange('photo')} disabled={isRecording}>
+                    <Text style={[
+                        styles.modeLabel,
+                        activeMode === 'photo' && styles.modeLabelActive,
+                        isRecording && { opacity: 0.5 }
+                    ]}>
                         By Photo
                     </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => onModeChange('sound')}>
-                    <Text style={[styles.modeLabel, activeMode === 'sound' && styles.modeLabelActive]}>
+                <TouchableOpacity onPress={() => onModeChange('sound')} disabled={isRecording}>
+                    <Text style={[
+                        styles.modeLabel,
+                        activeMode === 'sound' && styles.modeLabelActive,
+                        isRecording && { opacity: 0.5 }
+                    ]}>
                         By Sound
                     </Text>
                 </TouchableOpacity>
@@ -59,11 +71,36 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                     disabled={isProcessing}
                     style={styles.mainShutter}
                 >
-                    <View style={[styles.shutterInner, isProcessing && { opacity: 0.7 }]}>
-                        <LinearGradient
-                            colors={['#f97316', '#D4202C']}
-                            style={styles.shutterGradient}
-                        />
+                    <View style={[
+                        styles.shutterInner,
+                        isProcessing && { opacity: 0.7 },
+                        isRecording && styles.shutterInnerRecording,
+                        hasRecording && !isRecording && styles.shutterInnerFinished
+                    ]}>
+                        {isRecording ? (
+                            <View style={styles.stopButton}>
+                                <LinearGradient
+                                    colors={['#f97316', '#D4202C']}
+                                    style={styles.stopGradient}
+                                />
+                                <View style={styles.stopIcon} />
+                            </View>
+                        ) : hasRecording ? (
+                            <View style={styles.uploadButton}>
+                                <LinearGradient
+                                    colors={['#f97316', '#D4202C']}
+                                    style={styles.shutterGradient}
+                                />
+                                <View style={styles.uploadIconContainer}>
+                                    <UploadCloud color={Colors.white} size={24} />
+                                </View>
+                            </View>
+                        ) : (
+                            <LinearGradient
+                                colors={['#f97316', '#D4202C']}
+                                style={styles.shutterGradient}
+                            />
+                        )}
                     </View>
                 </TouchableOpacity>
 
@@ -85,8 +122,8 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
 const styles = StyleSheet.create({
     bottomArea: {
         backgroundColor: Colors.white,
-        paddingTop: 24,
-        paddingBottom: 70,
+        paddingTop: 28,
+        paddingBottom: 80,
         position: 'absolute',
         bottom: 0,
         left: 0,
@@ -170,8 +207,39 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#f1f5f9',
     },
+    shutterInnerRecording: {
+        borderColor: '#fee2e2',
+    },
+    shutterInnerFinished: {
+        borderColor: '#ffedd5',
+    },
     shutterGradient: {
         flex: 1,
         borderRadius: 28,
+    },
+    stopButton: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    stopGradient: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 28,
+    },
+    stopIcon: {
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        backgroundColor: Colors.white,
+    },
+    uploadButton: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    uploadIconContainer: {
+        position: 'absolute',
+        zIndex: 1,
     },
 });
