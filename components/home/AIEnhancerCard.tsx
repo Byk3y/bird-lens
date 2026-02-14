@@ -93,7 +93,7 @@ export const AIEnhancerCard: React.FC = () => {
 const styles = StyleSheet.create({
     enhancerCard: {
         backgroundColor: Colors.white,
-        marginHorizontal: 14,
+        marginHorizontal: 12,
         borderRadius: 16,
         padding: 10,
         flexDirection: 'row',

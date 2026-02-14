@@ -1,6 +1,8 @@
 import { MotiView } from 'moti';
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 interface SkeletonScreenProps {
     items?: number;
@@ -57,9 +59,9 @@ export const SkeletonScreen: React.FC<SkeletonScreenProps> = ({ items = 4 }) => 
 
 const styles = StyleSheet.create({
     card: {
-        width: (Platform.OS === 'web' ? 180 : 165),
-        aspectRatio: 0.85,
-        borderRadius: 24,
+        width: (width - 36) / 2,
+        aspectRatio: 0.75,
+        borderRadius: 12,
         backgroundColor: '#f1f5f9',
         padding: 16,
         justifyContent: 'space-between',

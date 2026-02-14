@@ -134,17 +134,19 @@ export default function MeScreen() {
                                             )}
                                         </View>
 
-                                        <Text style={styles.cardName} numberOfLines={1}>
-                                            {sighting.species_name}
-                                        </Text>
-
-                                        <View style={styles.cardFooter}>
-                                            <Text style={styles.cardDate}>
-                                                {format(new Date(sighting.created_at), 'yy-MM-dd')}
+                                        <View style={styles.cardContent}>
+                                            <Text style={styles.cardName} numberOfLines={1}>
+                                                {sighting.species_name}
                                             </Text>
-                                            <Pressable style={styles.moreBtn}>
-                                                <MoreHorizontal color="#94a3b8" size={18} />
-                                            </Pressable>
+
+                                            <View style={styles.cardFooter}>
+                                                <Text style={styles.cardDate}>
+                                                    {format(new Date(sighting.created_at), 'yy-MM-dd')}
+                                                </Text>
+                                                <Pressable style={styles.moreBtn}>
+                                                    <MoreHorizontal color="#94a3b8" size={18} />
+                                                </Pressable>
+                                            </View>
                                         </View>
                                     </Pressable>
                                 </MotiView>
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.background,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: 12,
         paddingTop: Spacing.xl,
     },
     sectionHeader: {
@@ -238,24 +240,23 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     collectionCard: {
-        width: (width - Spacing.md * 3) / 2,
-        borderRadius: 16,
-        backgroundColor: Colors.white, // Pure white cards
-        padding: 8,
-        marginBottom: 16,
+        width: (width - 36) / 2, // (width - 12 padding * 2 - 12 gap) / 2
+        borderRadius: 12,
+        backgroundColor: Colors.white,
+        marginBottom: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.03,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        overflow: 'hidden',
     },
     cardImageContainer: {
         width: '100%',
-        aspectRatio: 0.82, // Taller aspect ratio
-        borderRadius: 12,
+        aspectRatio: 0.9,
         backgroundColor: '#f1f5f9',
-        overflow: 'hidden',
-        marginBottom: 12,
     },
     cardImage: {
         width: '100%',
@@ -268,19 +269,20 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#f1f5f9',
     },
+    cardContent: {
+        padding: 12,
+        paddingTop: 10,
+    },
     cardName: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '600',
         color: Colors.text,
-        paddingHorizontal: 4,
         marginBottom: 4,
     },
     cardFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 4,
-        paddingBottom: 4,
     },
     cardDate: {
         fontSize: 12,
@@ -291,9 +293,9 @@ const styles = StyleSheet.create({
         padding: 2,
     },
     plusCard: {
-        width: (width - Spacing.md * 3) / 2,
-        height: ((width - Spacing.md * 3) / 2) * 1.4,
-        borderRadius: 16,
+        width: (width - 36) / 2,
+        aspectRatio: 0.75,
+        borderRadius: 12,
         borderWidth: 2,
         borderColor: '#e2e8f0',
         borderStyle: 'dashed',

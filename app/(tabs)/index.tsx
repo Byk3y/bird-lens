@@ -73,12 +73,12 @@ const styles = StyleSheet.create({
     right: 0,
   },
   section: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 13,
+    paddingHorizontal: 12,
     marginBottom: Spacing.md,
   },
   sectionIcon: {

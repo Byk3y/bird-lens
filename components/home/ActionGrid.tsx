@@ -24,7 +24,7 @@ export const ActionGrid: React.FC = () => {
                     icon={<Camera color={Colors.white} size={18} strokeWidth={2.5} />}
                     style={styles.gridCard}
                     gradient={['#FF758C', '#FF7EB3']}
-                    onPress={() => router.push('/(tabs)/scanner')}
+                    onPress={() => router.push({ pathname: '/(tabs)/scanner', params: { mode: 'photo' } })}
                 />
                 <ActionCard
                     title={"Sound\nIdentification"}
@@ -54,9 +54,9 @@ export const ActionGrid: React.FC = () => {
 
 const styles = StyleSheet.create({
     gridContainer: {
-        paddingHorizontal: 13,
+        paddingHorizontal: 12,
         gap: Spacing.sm,
-        marginBottom: Spacing.xl,
+        marginBottom: Spacing.lg,
     },
     gridRow: {
         flexDirection: 'row',

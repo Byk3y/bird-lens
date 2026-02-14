@@ -76,9 +76,7 @@ export default function ScannerScreen() {
   }, []);
 
   useEffect(() => {
-    if (params.mode) {
-      setActiveMode(params.mode);
-    }
+    setActiveMode(params.mode || 'photo');
   }, [params.mode]);
 
   // Provide a way to clear the captured image when result is reset

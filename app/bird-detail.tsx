@@ -8,7 +8,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
     Camera,
     ChevronLeft,
-    Clock,
     Edit2,
     Info,
     MoreHorizontal,
@@ -107,10 +106,8 @@ export default function BirdDetailScreen() {
                         />
                     </View>
                     <View style={styles.timestampContainer}>
-                        <Clock size={14} color={Colors.white} />
-                        <Text style={styles.timestampText}>
-                            posted on {format(sightingDate, 'd MMM')}
-                        </Text>
+                        <Text style={styles.timestampLabel}>posted on</Text>
+                        <Text style={styles.timestampValue}>{format(sightingDate, 'do MMM')}</Text>
                     </View>
                 </View>
 
@@ -258,16 +255,15 @@ const styles = StyleSheet.create({
         height: 360,
         backgroundColor: '#000',
         justifyContent: 'center',
-        alignItems: 'center',
     },
     heroBlur: {
         ...StyleSheet.absoluteFillObject,
         opacity: 0.5,
     },
     imageCardContainer: {
-        width: width * 0.58,
-        height: width * 0.72,
-        borderRadius: 16,
+        width: width * 0.48,
+        height: width * 0.65,
+        borderRadius: 12,
         overflow: 'hidden',
         borderWidth: 2,
         borderColor: 'rgba(255,255,255,0.9)',
@@ -276,29 +272,37 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.35,
         shadowRadius: 15,
         elevation: 12,
+        alignSelf: 'center',
     },
     heroImage: {
         width: '100%',
         height: '100%',
     },
     timestampContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 15,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        gap: 6,
+        position: 'absolute',
+        right: 20,
+        top: '50%',
+        marginTop: -20,
+        backgroundColor: 'transparent',
     },
-    timestampText: {
+    timestampLabel: {
         color: Colors.white,
-        fontSize: 13,
+        fontSize: 12,
+        fontWeight: '500',
+        opacity: 0.8,
+        textAlign: 'right',
+        marginBottom: 2,
+    },
+    timestampValue: {
+        color: Colors.white,
+        fontSize: 16,
         fontWeight: '700',
-        opacity: 1,
+        textAlign: 'right',
     },
     mainInfoSection: {
-        padding: 16,
+        paddingHorizontal: 12,
+        paddingTop: 16,
+        paddingBottom: 40,
         backgroundColor: '#fff',
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
@@ -353,7 +357,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fefae0',
-        paddingHorizontal: 16,
+        paddingHorizontal: 12,
         paddingVertical: 12,
         borderRadius: 20,
         marginBottom: 24,
@@ -392,8 +396,8 @@ const styles = StyleSheet.create({
         color: '#1A1A1A',
     },
     galleryScroll: {
-        marginHorizontal: -16,
-        paddingHorizontal: 16,
+        marginHorizontal: -12,
+        paddingHorizontal: 12,
     },
     galleryItem: {
         width: 140,
