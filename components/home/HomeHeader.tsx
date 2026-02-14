@@ -41,7 +41,7 @@ export const HomeHeader: React.FC = () => {
 
 const styles = StyleSheet.create({
     headerTitleContainer: {
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: 13,
         marginBottom: Spacing.lg,
     },
     headerGreeting: {
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     searchContainer: {
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: 13,
         marginBottom: Spacing.xl,
     },
     searchBar: {

@@ -54,7 +54,7 @@ export const ActionGrid: React.FC = () => {
 
 const styles = StyleSheet.create({
     gridContainer: {
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: 13,
         gap: Spacing.sm,
         marginBottom: Spacing.xl,
     },

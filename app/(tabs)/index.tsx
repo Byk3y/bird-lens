@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: 13,
     marginBottom: Spacing.md,
   },
   sectionIcon: {
