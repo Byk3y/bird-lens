@@ -56,6 +56,7 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
           <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+          <Stack.Screen name="birding-tips" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
       </ThemeProvider>

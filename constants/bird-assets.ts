@@ -1,0 +1,61 @@
+export const DIET_ASSETS: Record<string, any> = {
+    'sunflower seeds': require('../assets/images/birding-tips/diet/black-oil-sunflower.jpg'),
+    'black oil sunflower': require('../assets/images/birding-tips/diet/black-oil-sunflower.jpg'),
+    'sunflower hearts': require('../assets/images/birding-tips/diet/sunflower-hearts.jpg'),
+    'nyjer': require('../assets/images/birding-tips/diet/nyjer-seeds.jpg'),
+    'thistle': require('../assets/images/birding-tips/diet/nyjer-seeds.jpg'),
+    'suet': require('../assets/images/birding-tips/diet/suet-cake.jpg'),
+    'mealworms': require('../assets/images/birding-tips/diet/mealworms.jpg'),
+    'seeds': require('../assets/images/birding-tips/diet/black-oil-sunflower.jpg'),
+    'insects': require('../assets/images/birding-tips/diet/insects.jpg'),
+    'fruit': require('../assets/images/birding-tips/diet/fruit.jpg'),
+    'berries': require('../assets/images/birding-tips/diet/berries.jpg'),
+    'peanuts': require('../assets/images/birding-tips/diet/peanuts.jpg'),
+    'nectar': require('../assets/images/birding-tips/diet/nectar.jpg'),
+    'cracked corn': require('../assets/images/birding-tips/diet/cracked-corn.jpg'),
+    'safflower': require('../assets/images/birding-tips/diet/safflower.jpg'),
+    'white millet': require('../assets/images/birding-tips/diet/white-millet.jpg'),
+};
+
+export const FEEDER_ASSETS: Record<string, any> = {
+    'tube': require('../assets/images/birding-tips/feeder/tube.jpg'),
+    'platform': require('../assets/images/birding-tips/feeder/platform.jpg'),
+    'hopper': require('../assets/images/birding-tips/feeder/hopper.jpg'),
+    'nectar': require('../assets/images/birding-tips/feeder/nectar-feeder.jpg'),
+    'nectar-feeder': require('../assets/images/birding-tips/feeder/nectar-feeder.jpg'),
+    'suet': require('../assets/images/birding-tips/feeder/suet.jpg'),
+    'oriole': require('../assets/images/birding-tips/feeder/oriole-feeder.jpg'),
+    'fruit': require('../assets/images/birding-tips/feeder/oriole-feeder.jpg'),
+    'bird feeder': require('../assets/images/birding-tips/feeder/tube.jpg'),
+};
+
+// Habitat will use vector icons rather than local image assets
+export const HABITAT_ASSETS: Record<string, any> = {
+    forest: require('../assets/images/habitats/forest.png'),
+    woodland: require('../assets/images/habitats/forest.png'),
+    shrub: require('../assets/images/habitats/shrub.png'),
+    scrub: require('../assets/images/habitats/shrub.png'),
+    wetland: require('../assets/images/habitats/wetland.png'),
+    river: require('../assets/images/habitats/wetland.png'),
+    lake: require('../assets/images/habitats/wetland.png'),
+    grassland: require('../assets/images/habitats/grassland.png'),
+    meadow: require('../assets/images/habitats/grassland.png'),
+    mountain: require('../assets/images/habitats/mountain.png'),
+    rocky: require('../assets/images/habitats/mountain.png'),
+    backyard: require('../assets/images/habitats/backyard.png'),
+    urban: require('../assets/images/habitats/backyard.png'),
+};
+export const NESTING_ASSETS: Record<string, any> = {
+    cup: require('../assets/images/nesting/cup.png'),
+    cavity: require('../assets/images/nesting/cavity.png'),
+    ground: require('../assets/images/nesting/ground.png'),
+    platform: require('../assets/images/nesting/platform.png'),
+    scrape: require('../assets/images/nesting/scrape.png'),
+    hanging: require('../assets/images/nesting/hanging.png'),
+    burrow: require('../assets/images/nesting/burrow.png'),
+    dome: require('../assets/images/nesting/dome.png'),
+    none: require('../assets/images/nesting/none.png'),
+    tree: require('../assets/images/nesting/cup.png'),
+    pouch: require('../assets/images/nesting/hanging.png'),
+    spherical: require('../assets/images/nesting/dome.png'),
+};
