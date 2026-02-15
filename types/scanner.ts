@@ -4,6 +4,25 @@ export interface INaturalistPhoto {
     license: string;
 }
 
+export interface BirdSound {
+    id: string;
+    scientific_name: string;
+    common_name: string;
+    url: string;
+    duration: string;
+    recorder: string;
+    country: string;
+    location: string;
+    date: string;
+    sonogram: string;
+    oscillogram: string;
+    waveform: string;
+    license: string;
+    type: string;
+    lat?: number;
+    lon?: number;
+}
+
 export interface BirdResult {
     name: string;
     scientific_name: string;
@@ -13,6 +32,7 @@ export interface BirdResult {
         family_scientific: string;
         genus: string;
         genus_description: string;
+        order?: string;
     };
     identification_tips: {
         male: string;
@@ -36,6 +56,8 @@ export interface BirdResult {
     behavior: string;
     rarity: string;
     fact: string;
+    distribution_area?: string;
+    conservation_status?: string;
     key_facts?: {
         size?: string;
         wingspan?: string;
@@ -51,6 +73,9 @@ export interface BirdResult {
     inat_photos?: INaturalistPhoto[];
     male_image_url?: string;
     female_image_url?: string;
+    sounds?: BirdSound[];
+    wikipedia_image?: string;
+    gbif_taxon_key?: string;
 }
 
 export type ScanMode = 'photo' | 'sound';

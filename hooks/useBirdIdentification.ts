@@ -1,7 +1,6 @@
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { INaturalistService } from '@/services/INaturalistService';
-import { BirdResult, INaturalistPhoto } from '@/types/scanner';
+import { BirdResult } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Alert } from 'react-native';
@@ -10,7 +9,9 @@ export const useBirdIdentification = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [candidates, setCandidates] = useState<BirdResult[]>([]);
+    const [enrichedCandidates, setEnrichedCandidates] = useState<BirdResult[]>([]);
     const [result, setResult] = useState<BirdResult | null>(null);
+    const [heroImages, setHeroImages] = useState<Record<string, string>>({});
     const { user } = useAuth();
 
     const identifyBird = async (imageB64?: string, audioB64?: string) => {
@@ -27,46 +28,31 @@ export const useBirdIdentification = () => {
 
             if (error) throw error;
 
-            const primaryResult = data as BirdResult;
+            // Map the enriched media data from the server response
+            const birdCandidates = (data as any[]).map(bird => ({
+                ...bird,
+                inat_photos: bird.media?.inat_photos || [],
+                male_image_url: bird.media?.male_image_url,
+                female_image_url: bird.media?.female_image_url,
+                sounds: bird.media?.sounds || [],
+                wikipedia_image: bird.media?.wikipedia_image,
+                gbif_taxon_key: bird.media?.gbif_taxon_key
+            })) as BirdResult[];
 
-            // Mocking additional candidates for the "Masterpiece" UI
-            // In a real scenario, the backend should return this list.
-            const mockCandidates: BirdResult[] = [
-                {
-                    ...primaryResult,
-                    confidence: primaryResult.confidence,
-                    images: [
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Rufous_Hummingbird_%28Selasphorus_rufus%29_-_01.jpg/440px-Rufous_Hummingbird_%28Selasphorus_rufus%29_-_01.jpg',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Rufous_Hummingbird_-_02.jpg/440px-Rufous_Hummingbird_-_02.jpg',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Selasphorus_rufus_mp.jpg/440px-Selasphorus_rufus_mp.jpg'
-                    ]
-                },
-                {
-                    ...primaryResult,
-                    name: "Allen's Hummingbird",
-                    scientific_name: "Selasphorus sasin",
-                    confidence: 0.85,
-                    description: "Similar to the Rufous Hummingbird but with a green back.",
-                    images: [
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Allen%27s_Hummingbird_-_01.jpg/440px-Allen%27s_Hummingbird_-_01.jpg',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Selasphorus_sasin_mp.jpg/440px-Selasphorus_sasin_mp.jpg'
-                    ]
-                },
-                {
-                    ...primaryResult,
-                    name: "Broad-tailed Hummingbird",
-                    scientific_name: "Selasphorus platycercus",
-                    confidence: 0.65,
-                    description: "Known for the metallic trill produced by its wings during flight.",
-                    images: [
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Broad-tailed_Hummingbird_-_01.jpg/440px-Broad-tailed_Hummingbird_-_01.jpg',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Selasphorus_platycercus_mp.jpg/440px-Selasphorus_platycercus_mp.jpg'
-                    ]
+            const primaryResult = birdCandidates[0];
+
+            // Pre-populate hero images for all candidates
+            const initialHeroImages: Record<string, string> = {};
+            birdCandidates.forEach(bird => {
+                if (bird.inat_photos && bird.inat_photos.length > 0) {
+                    initialHeroImages[bird.scientific_name] = bird.inat_photos[0].url;
                 }
-            ];
+            });
 
-            setResult(primaryResult); // Keep primary result for backward compatibility if needed
-            setCandidates(mockCandidates);
+            setResult(primaryResult);
+            setCandidates(birdCandidates);
+            setEnrichedCandidates(birdCandidates); // Already enriched by server
+            setHeroImages(initialHeroImages);
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             return primaryResult;
@@ -78,7 +64,21 @@ export const useBirdIdentification = () => {
         }
     };
 
-    const saveSighting = async (bird: BirdResult, capturedImage?: string | null, inatPhotos: INaturalistPhoto[] = []) => {
+    const enrichCandidate = (index: number, data: Partial<BirdResult>) => {
+        setEnrichedCandidates(prev => {
+            const next = [...prev];
+            if (next[index]) {
+                next[index] = { ...next[index], ...data };
+            }
+            return next;
+        });
+    };
+
+    const updateHeroImage = (scientificName: string, url: string) => {
+        setHeroImages(prev => ({ ...prev, [scientificName]: url }));
+    };
+
+    const saveSighting = async (bird: BirdResult, capturedImage?: string | null) => {
         if (isSaving) return;
 
         try {
@@ -110,13 +110,8 @@ export const useBirdIdentification = () => {
                 imageUrl = publicUrl;
             }
 
-            // Fetch gender-specific images for identification tips
-            const [maleImg, femaleImg] = await Promise.all([
-                INaturalistService.fetchGenderedPhoto(bird.scientific_name, 'male'),
-                INaturalistService.fetchGenderedPhoto(bird.scientific_name, 'female')
-            ]);
-
             // Clean and prepare metadata for permanent storage
+            // Note: Media (inat_photos, sounds, etc.) is already in the bird object from our server-side enrichment
             const metadata: Record<string, any> = {
                 also_known_as: bird.also_known_as || [],
                 taxonomy: bird.taxonomy,
@@ -129,10 +124,13 @@ export const useBirdIdentification = () => {
                 nesting_info: bird.nesting_info,
                 feeder_info: bird.feeder_info,
                 behavior: bird.behavior,
-                images: (bird.images || []).slice(0, 5), // Limit internal images
-                inat_photos: (inatPhotos || []).slice(0, 8), // Persist the expert-vetted photos
-                male_image_url: maleImg,
-                female_image_url: femaleImg
+                images: bird.images || [],
+                inat_photos: bird.inat_photos || [],
+                male_image_url: bird.male_image_url,
+                female_image_url: bird.female_image_url,
+                sounds: bird.sounds || [],
+                wikipedia_image: bird.wikipedia_image,
+                gbif_taxon_key: bird.gbif_taxon_key
             };
 
             const { error } = await supabase.from('sightings').insert({
@@ -162,6 +160,8 @@ export const useBirdIdentification = () => {
     const resetResult = () => {
         setResult(null);
         setCandidates([]);
+        setEnrichedCandidates([]);
+        setHeroImages({});
     };
 
     return {
@@ -169,7 +169,11 @@ export const useBirdIdentification = () => {
         isSaving,
         result,
         candidates,
+        enrichedCandidates,
+        heroImages,
         identifyBird,
+        enrichCandidate,
+        updateHeroImage,
         saveSighting,
         resetResult,
     };
