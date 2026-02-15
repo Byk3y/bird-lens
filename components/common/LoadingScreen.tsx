@@ -1,9 +1,9 @@
 import { Colors, Spacing, Typography } from '@/constants/theme';
-import { ChevronLeft, Search } from 'lucide-react-native';
+import LottieView from 'lottie-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { Easing } from 'react-native-reanimated';
 
 interface LoadingScreenProps {
     message?: string;
@@ -31,7 +31,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
                             animate={{ scale: 2.5, opacity: 0 }}
                             transition={{
                                 type: 'timing',
-                                duration: 2000,
+                                duration: 2500,
                                 loop: true,
                                 repeatReverse: false,
                             }}
@@ -42,50 +42,25 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
                             animate={{ scale: 2, opacity: 0 }}
                             transition={{
                                 type: 'timing',
-                                duration: 2000,
-                                delay: 500,
+                                duration: 2500,
+                                delay: 800,
                                 loop: true,
                                 repeatReverse: false,
                             }}
                             style={styles.pulse}
                         />
 
-                        {/* Main Logo */}
-                        <MotiView
-                            from={{ scale: 0.9 }}
-                            animate={{ scale: 1.1 }}
-                            transition={{
-                                type: 'timing',
-                                duration: 1000,
-                                loop: true,
-                                repeatReverse: true,
-                            }}
-                            style={styles.logoWrapper}
-                        >
+                        {/* Main Lottie Animation */}
+                        <View style={styles.logoWrapper}>
                             <View style={styles.logoCircle}>
-                                <View style={styles.birdIconWrapper}>
-                                    {/* Using a stylized combination of Bird and Search */}
-                                    <View style={styles.iconStack}>
-                                        <MotiView
-                                            animate={{ rotate: '360deg' }}
-                                            transition={{
-                                                type: 'timing',
-                                                duration: 4000,
-                                                loop: true,
-                                                repeatReverse: false,
-                                                easing: Easing.linear,
-                                            }}
-                                            style={styles.searchRadar}
-                                        >
-                                            <Search color={Colors.primary} size={64} strokeWidth={1} />
-                                        </MotiView>
-                                        <View style={styles.innerIcon}>
-                                            <Text style={styles.logoEmoji}>🦅</Text>
-                                        </View>
-                                    </View>
-                                </View>
+                                <LottieView
+                                    source={require('@/assets/animations/bird-loading.lottie')}
+                                    autoPlay
+                                    loop
+                                    style={styles.lottie}
+                                />
                             </View>
-                        </MotiView>
+                        </View>
                     </View>
 
                     <MotiView
@@ -121,7 +96,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.background,
     },
     safeArea: {
         flex: 1,
@@ -130,11 +105,16 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#f1f5f9',
+        backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: Spacing.lg,
         marginTop: Spacing.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     content: {
         flex: 1,
@@ -142,67 +122,48 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     logoContainer: {
-        width: 120,
-        height: 120,
+        width: 160,
+        height: 160,
         justifyContent: 'center',
         alignItems: 'center',
     },
     pulse: {
         position: 'absolute',
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 1,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        borderWidth: 1.5,
         borderColor: Colors.primary,
-        backgroundColor: 'rgba(234, 88, 12, 0.05)',
+        backgroundColor: 'rgba(212, 32, 44, 0.05)',
     },
     logoWrapper: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 130,
+        height: 130,
+        borderRadius: 65,
         backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 8,
     },
     logoCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#fff7ed',
+        width: 110,
+        height: 110,
+        borderRadius: 55,
+        backgroundColor: '#fffcfc',
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
     },
-    birdIconWrapper: {
-        width: 80,
-        height: 80,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    iconStack: {
-        width: 70,
-        height: 70,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    searchRadar: {
-        position: 'absolute',
-        opacity: 0.4,
-    },
-    innerIcon: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    logoEmoji: {
-        fontSize: 40,
+    lottie: {
+        width: 200,
+        height: 200,
     },
     textContainer: {
-        marginTop: 60,
+        marginTop: 80,
         alignItems: 'center',
     },
     label: {
@@ -210,16 +171,17 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         fontSize: 18,
         fontWeight: '600',
+        letterSpacing: 0.5,
     },
     dotRow: {
         flexDirection: 'row',
-        gap: 6,
-        marginTop: 12,
+        gap: 8,
+        marginTop: 16,
     },
     dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        width: 7,
+        height: 7,
+        borderRadius: 3.5,
         backgroundColor: Colors.primary,
     },
 });

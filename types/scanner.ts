@@ -49,6 +49,8 @@ export interface BirdResult {
     error?: string;
     images?: string[]; // Array of image URLs for the species
     inat_photos?: INaturalistPhoto[];
+    male_image_url?: string;
+    female_image_url?: string;
 }
 
 export type ScanMode = 'photo' | 'sound';

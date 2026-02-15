@@ -3,13 +3,14 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { BirdResult } from '@/types/scanner';
+import { useFocusEffect } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Forward, Gem, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,27 +23,29 @@ export default function MeScreen() {
     const [sightings, setSightings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        async function fetchCollections() {
-            if (!user) return;
-            try {
-                setLoading(true);
-                const { data, error } = await supabase
-                    .from('sightings')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
+    useFocusEffect(
+        useCallback(() => {
+            async function fetchCollections() {
+                if (!user) return;
+                try {
+                    setLoading(true);
+                    const { data, error } = await supabase
+                        .from('sightings')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false });
 
-                if (error) throw error;
-                setSightings(data || []);
-            } catch (err) {
-                console.error('Error fetching sightings:', err);
-            } finally {
-                setLoading(false);
+                    if (error) throw error;
+                    setSightings(data || []);
+                } catch (err) {
+                    console.error('Error fetching sightings:', err);
+                } finally {
+                    setLoading(false);
+                }
             }
-        }
-        fetchCollections();
-    }, [user]);
+            fetchCollections();
+        }, [user])
+    );
 
     const handleBirdPress = (sighting: any) => {
         // Map database record to BirdResult structure

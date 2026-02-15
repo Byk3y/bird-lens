@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { INaturalistService } from '@/services/INaturalistService';
 import { BirdResult, INaturalistPhoto } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
@@ -109,6 +110,12 @@ export const useBirdIdentification = () => {
                 imageUrl = publicUrl;
             }
 
+            // Fetch gender-specific images for identification tips
+            const [maleImg, femaleImg] = await Promise.all([
+                INaturalistService.fetchGenderedPhoto(bird.scientific_name, 'male'),
+                INaturalistService.fetchGenderedPhoto(bird.scientific_name, 'female')
+            ]);
+
             // Clean and prepare metadata for permanent storage
             const metadata: Record<string, any> = {
                 also_known_as: bird.also_known_as || [],
@@ -123,7 +130,9 @@ export const useBirdIdentification = () => {
                 feeder_info: bird.feeder_info,
                 behavior: bird.behavior,
                 images: (bird.images || []).slice(0, 5), // Limit internal images
-                inat_photos: (inatPhotos || []).slice(0, 8) // Persist the expert-vetted photos
+                inat_photos: (inatPhotos || []).slice(0, 8), // Persist the expert-vetted photos
+                male_image_url: maleImg,
+                female_image_url: femaleImg
             };
 
             const { error } = await supabase.from('sightings').insert({

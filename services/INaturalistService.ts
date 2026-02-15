@@ -67,4 +67,34 @@ export class INaturalistService {
             return [];
         }
     }
+
+    static async fetchGenderedPhoto(scientificName: string, sex: 'male' | 'female'): Promise<string | null> {
+        try {
+            // iNaturalist term_id=1 is "Sex"
+            // term_value_id=2 is "Male", 3 is "Female"
+            const sexValue = sex === 'male' ? 2 : 3;
+
+            const response = await fetch(
+                `${this.BASE_URL}/observations?taxon_name=${encodeURIComponent(
+                    scientificName
+                )}&term_id=1&term_value_id=${sexValue}&quality_grade=research&order=desc&order_by=votes&per_page=5&photos=true`
+            );
+            const data = await response.json();
+
+            if (!data.results || data.results.length === 0) return null;
+
+            // Find the first valid photo
+            for (const obs of data.results) {
+                const photo = obs.observation_photos?.[0]?.photo;
+                if (photo) {
+                    return photo.url.replace('square', 'large');
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.error(`Error fetching ${sex} photo:`, error);
+            return null;
+        }
+    }
 }

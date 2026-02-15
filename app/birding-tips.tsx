@@ -1,11 +1,11 @@
 import { DIET_ASSETS, FEEDER_ASSETS, HABITAT_ASSETS, NESTING_ASSETS } from '@/constants/bird-assets';
 import { BirdResult } from '@/types/scanner';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Lightbulb } from 'lucide-react-native';
 import React from 'react';
 import {
     Dimensions,
-    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -23,36 +23,44 @@ export default function BirdingTipsScreen() {
     const renderAssetGrid = (title: string, tags: string[], assetMap: Record<string, any>) => {
         if (!tags || tags.length === 0) return null;
 
+        // Resolve assets and filter out duplicates
+        const resolvedItems: { tag: string; asset: any }[] = [];
+        const seenAssets = new Set();
+
+        tags.forEach(tag => {
+            const normalizedTag = tag.toLowerCase().trim();
+            let asset = assetMap[normalizedTag];
+
+            if (!asset) {
+                const key = Object.keys(assetMap).find(k => normalizedTag.includes(k) || k.includes(normalizedTag));
+                if (key) asset = assetMap[key];
+            }
+
+            // Only add if we haven't seen this asset yet, or if there's no asset (placeholder case)
+            if (!asset || !seenAssets.has(asset)) {
+                resolvedItems.push({ tag, asset });
+                if (asset) seenAssets.add(asset);
+            }
+        });
+
         return (
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>{title}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalGrid}>
-                    {tags.map((tag, index) => {
-                        const normalizedTag = tag.toLowerCase().trim();
-                        // Find matching asset or use placeholder
-                        let asset = assetMap[normalizedTag];
-
-                        // Fallback logic for nested or partial matches
-                        if (!asset) {
-                            const key = Object.keys(assetMap).find(k => normalizedTag.includes(k) || k.includes(normalizedTag));
-                            if (key) asset = assetMap[key];
-                        }
-
-                        return (
-                            <View key={index} style={styles.gridItem}>
-                                <View style={styles.assetWrapper}>
-                                    {asset ? (
-                                        <Image source={asset} style={styles.assetImage} />
-                                    ) : (
-                                        <View style={[styles.assetImage, styles.placeholderAsset]}>
-                                            <Text style={styles.placeholderText}>{tag.substring(0, 1).toUpperCase()}</Text>
-                                        </View>
-                                    )}
-                                </View>
-                                <Text style={styles.assetLabel} numberOfLines={2}>{tag}</Text>
+                    {resolvedItems.map((item, index) => (
+                        <View key={index} style={styles.gridItem}>
+                            <View style={styles.assetWrapper}>
+                                {item.asset ? (
+                                    <Image source={item.asset} style={styles.assetImage} />
+                                ) : (
+                                    <View style={[styles.assetImage, styles.placeholderAsset]}>
+                                        <Text style={styles.placeholderText}>{item.tag.substring(0, 1).toUpperCase()}</Text>
+                                    </View>
+                                )}
                             </View>
-                        );
-                    })}
+                            <Text style={styles.assetLabel} numberOfLines={2}>{item.tag}</Text>
+                        </View>
+                    ))}
                 </ScrollView>
             </View>
         );
@@ -147,11 +155,14 @@ export default function BirdingTipsScreen() {
                     <View style={styles.genderRow}>
                         <View style={styles.genderItem}>
                             <View style={styles.genderImageContainer}>
-                                {bird.images?.[0] ? (
-                                    <Image source={{ uri: bird.images[0] }} style={styles.genderImage} />
-                                ) : (
-                                    <View style={[styles.genderImage, styles.placeholderAsset]} />
-                                )}
+                                {(() => {
+                                    const img = bird.male_image_url || bird.images?.[0] || bird.inat_photos?.[0]?.url;
+                                    return img ? (
+                                        <Image source={{ uri: img }} style={styles.genderImage} />
+                                    ) : (
+                                        <View style={[styles.genderImage, styles.placeholderAsset]} />
+                                    );
+                                })()}
                                 <View style={styles.genderLabelBadge}>
                                     <Text style={styles.genderLabelText}>Male</Text>
                                 </View>
@@ -161,11 +172,14 @@ export default function BirdingTipsScreen() {
                         </View>
                         <View style={styles.genderItem}>
                             <View style={styles.genderImageContainer}>
-                                {bird.images?.[1] ? (
-                                    <Image source={{ uri: bird.images[1] }} style={styles.genderImage} />
-                                ) : (
-                                    <View style={[styles.genderImage, styles.placeholderAsset]} />
-                                )}
+                                {(() => {
+                                    const img = bird.female_image_url || bird.images?.[1] || bird.inat_photos?.[1]?.url;
+                                    return img ? (
+                                        <Image source={{ uri: img }} style={styles.genderImage} />
+                                    ) : (
+                                        <View style={[styles.genderImage, styles.placeholderAsset]} />
+                                    );
+                                })()}
                                 <View style={styles.genderLabelBadge}>
                                     <Text style={styles.genderLabelText}>Female</Text>
                                 </View>
