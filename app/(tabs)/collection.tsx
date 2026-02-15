@@ -4,12 +4,13 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { BirdResult } from '@/types/scanner';
 import { format } from 'date-fns';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Forward, Gem, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -122,16 +123,14 @@ export default function MeScreen() {
                                         onPress={() => handleBirdPress(sighting)}
                                     >
                                         <View style={styles.cardImageContainer}>
-                                            {sighting.image_url ? (
-                                                <Image
-                                                    source={{ uri: sighting.image_url }}
-                                                    style={styles.cardImage}
-                                                />
-                                            ) : (
-                                                <View style={styles.imagePlaceholder}>
-                                                    <Gem color="#e2e8f0" size={32} />
-                                                </View>
-                                            )}
+                                            <Image
+                                                source={sighting.image_url || sighting.metadata?.inat_photos?.[0]?.url}
+                                                style={styles.cardImage}
+                                                contentFit="cover"
+                                                transition={500}
+                                                cachePolicy="disk"
+                                                placeholder={{ uri: 'https://via.placeholder.com/200?text=Loading...' }}
+                                            />
                                         </View>
 
                                         <View style={styles.cardContent}>
@@ -302,6 +301,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: Colors.white,
-        marginVertical: 4,
+        marginBottom: 12,
     },
 });

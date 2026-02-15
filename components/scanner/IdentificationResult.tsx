@@ -1,13 +1,14 @@
 import { Colors, Spacing } from '@/constants/theme';
-import { BirdResult } from '@/types/scanner';
+import { INaturalistService } from '@/services/INaturalistService';
+import { BirdResult, INaturalistPhoto } from '@/types/scanner';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Camera, Check, ChevronLeft, Image as ImageIcon, Save, Share2, Volume2 } from 'lucide-react-native';
 import { Skeleton } from 'moti/skeleton';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
-    Image,
     ScrollView,
     StyleSheet,
     Text,
@@ -21,7 +22,7 @@ interface IdentificationResultProps {
     capturedImage: string | null;
     isSaving: boolean;
     isSaved?: boolean;
-    onSave: (bird: BirdResult, capturedImage: string | null) => void;
+    onSave: (bird: BirdResult, capturedImage: string | null, inatPhotos: INaturalistPhoto[]) => void;
     onReset: () => void;
 }
 
@@ -72,17 +73,53 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     const router = useRouter();
     const [activeIndex, setActiveIndex] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [inatPhotos, setInatPhotos] = useState<INaturalistPhoto[]>([]);
+    const [heroImages, setHeroImages] = useState<Record<string, string>>({});
 
     // Simulate loading for the skeleton effect
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsLoading(false);
-        }, 1500);
+        }, 1200);
         return () => clearTimeout(timer);
     }, []);
 
     const displayCandidates = candidates.length > 0 ? candidates : (result ? [result] : []);
     const activeBird = displayCandidates[activeIndex] || result;
+
+    // Fetch iNaturalist photos for the active bird
+    useEffect(() => {
+        if (activeBird) {
+            const fetchPhotos = async () => {
+                const photos = await INaturalistService.fetchPhotos(activeBird.scientific_name);
+                setInatPhotos(photos);
+
+                // If we don't have a hero image for this bird yet, use the first photo
+                if (photos.length > 0 && !heroImages[activeBird.scientific_name]) {
+                    setHeroImages(prev => ({
+                        ...prev,
+                        [activeBird.scientific_name]: photos[0].url
+                    }));
+                }
+            };
+            fetchPhotos();
+        }
+    }, [activeBird]);
+
+    // Pre-fetch hero images for all candidates
+    useEffect(() => {
+        displayCandidates.forEach(async (bird) => {
+            if (!heroImages[bird.scientific_name]) {
+                const photos = await INaturalistService.fetchPhotos(bird.scientific_name);
+                if (photos.length > 0) {
+                    setHeroImages(prev => ({
+                        ...prev,
+                        [bird.scientific_name]: photos[0].url
+                    }));
+                }
+            }
+        });
+    }, [displayCandidates]);
 
     const onScroll = (event: any) => {
         const slideSize = event.nativeEvent.layoutMeasurement.width;
@@ -128,9 +165,16 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         {displayCandidates.map((bird, index) => (
                             <View key={index} style={styles.birdSlide}>
                                 <View style={styles.mainCircle}>
-                                    <View style={[styles.circleImage, { backgroundColor: '#E5E5E5', alignItems: 'center', justifyContent: 'center' }]}>
-                                        <ImageIcon color="#999" size={40} />
-                                    </View>
+                                    {heroImages[bird.scientific_name] ? (
+                                        <Image
+                                            source={{ uri: heroImages[bird.scientific_name] }}
+                                            style={styles.circleImage}
+                                        />
+                                    ) : (
+                                        <View style={[styles.circleImage, { backgroundColor: '#E5E5E5', alignItems: 'center', justifyContent: 'center' }]}>
+                                            <ImageIcon color="#999" size={40} />
+                                        </View>
+                                    )}
                                 </View>
                             </View>
                         ))}
@@ -200,13 +244,21 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         <Text style={styles.sectionTitle}>Images of {activeBird.name}</Text>
                     </View>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-                        {[1, 2, 3, 4].map((_, idx) => (
-                            <View key={idx} style={styles.galleryItem}>
-                                <View style={styles.galleryPlaceholder}>
-                                    <ImageIcon color="#999" size={24} />
+                        {inatPhotos.length > 0 ? (
+                            inatPhotos.map((photo, idx) => (
+                                <View key={idx} style={styles.galleryItem}>
+                                    <Image source={{ uri: photo.url }} style={styles.galleryImage} />
                                 </View>
-                            </View>
-                        ))}
+                            ))
+                        ) : (
+                            [1, 2, 3, 4].map((_, idx) => (
+                                <View key={idx} style={styles.galleryItem}>
+                                    <View style={styles.galleryPlaceholder}>
+                                        <ImageIcon color="#999" size={24} />
+                                    </View>
+                                </View>
+                            ))
+                        )}
                     </ScrollView>
                 </View>
 
@@ -217,7 +269,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             <View style={styles.bottomBar}>
                 <TouchableOpacity
                     style={styles.actionItem}
-                    onPress={() => onSave(activeBird, capturedImage)}
+                    onPress={() => onSave(activeBird, capturedImage, inatPhotos)}
                     disabled={isSaving || isSaved}
                 >
                     {isSaving ? (
@@ -429,6 +481,11 @@ const styles = StyleSheet.create({
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    galleryImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
     },
     bottomBar: {
         position: 'absolute',
