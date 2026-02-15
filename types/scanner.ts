@@ -1,3 +1,9 @@
+export interface INaturalistPhoto {
+    url: string;
+    attribution: string;
+    license: string;
+}
+
 export interface BirdResult {
     name: string;
     scientific_name: string;
@@ -42,6 +48,7 @@ export interface BirdResult {
     confidence: number;
     error?: string;
     images?: string[]; // Array of image URLs for the species
+    inat_photos?: INaturalistPhoto[];
 }
 
 export type ScanMode = 'photo' | 'sound';
