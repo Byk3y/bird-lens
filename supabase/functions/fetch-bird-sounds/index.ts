@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { corsHeaders } from './_shared/cors.ts';
 
 interface XenoCantoRecording {
@@ -19,6 +20,7 @@ interface XenoCantoRecording {
         medium: string;
         large: string;
     };
+    'file-name': string;
 }
 
 interface XenoCantoResponse {
@@ -30,6 +32,8 @@ interface XenoCantoResponse {
 }
 
 const XENO_CANTO_API_KEY = Deno.env.get('XENO_CANTO_API_KEY');
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
@@ -43,11 +47,39 @@ serve(async (req: Request) => {
             throw new Error('scientific_name is required');
         }
 
-        // Xeno-canto API v2/v3 query.
-        // Note: API key is typically used for specific endpoints or higher limits.
-        // We'll include it as a param if provided.
-        const query = encodeURIComponent(`sci:"${scientific_name}" q:A`);
-        const url = `https://xeno-canto.org/api/2/recordings?q=${query}${XENO_CANTO_API_KEY ? `&key=${XENO_CANTO_API_KEY}` : ''}`;
+        if (!XENO_CANTO_API_KEY) {
+            throw new Error('XENO_CANTO_API_KEY is not configured');
+        }
+
+        if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+            throw new Error("Supabase credentials missing");
+        }
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+        // 1. Check Cache
+        const { data: cached } = await supabase
+            .from("species_meta")
+            .select("*")
+            .eq("scientific_name", scientific_name)
+            .single();
+
+        const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 7 * 24 * 60 * 60 * 1000);
+
+        if (cached && !isStale && cached.sounds && cached.sounds.length > 0) {
+            console.log(`Cache hit for sounds: ${scientific_name}`);
+            return new Response(JSON.stringify({ recordings: cached.sounds }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        console.log(`Cache miss/stale for sounds: ${scientific_name}. Fetching fresh...`);
+
+        // Xeno-canto API v3 query.
+        // API key is REQUIRED for v3.
+        // Query format uses tags: sp:"Genus species"
+        const query = encodeURIComponent(`sp:"${scientific_name}" q:A`);
+        const url = `https://xeno-canto.org/api/3/recordings?query=${query}&key=${XENO_CANTO_API_KEY}`;
 
         console.log(`Fetching sounds for: ${scientific_name}`);
         const response = await fetch(url);
@@ -64,41 +96,81 @@ serve(async (req: Request) => {
             });
         }
 
-        // Specific Filtering: 3 Songs and 1 Call
+        // Function to fix and improve URLs
+        const fixUrl = (url: string, rec?: XenoCantoRecording) => {
+            if (!url) return '';
+
+            let finalUrl = url.startsWith('//') ? `https:${url}` : url;
+            const osciUrl = rec?.osci?.large || rec?.osci?.medium || rec?.osci?.small;
+
+            // If it's a generic xeno-canto.org/ID/download link, 
+            // try to construct the direct uploaded path which is more AVPlayer friendly.
+            if (finalUrl.includes('xeno-canto.org') && finalUrl.endsWith('/download') && osciUrl) {
+                const match = osciUrl.match(/sounds\/uploaded\/([^/]+)\//);
+                if (match && match[1]) {
+                    const dir = match[1];
+                    const idMatch = finalUrl.match(/xeno-canto\.org\/(\d+)\/download/);
+                    if (idMatch && idMatch[1]) {
+                        const id = idMatch[1];
+                        // If we have the exact filename, use it. Otherwise fallback to XC+ID.mp3
+                        const fileName = rec?.['file-name'] || `XC${id}.mp3`;
+                        return `https://xeno-canto.org/sounds/uploaded/${dir}/${fileName}`;
+                    }
+                }
+            }
+
+            return finalUrl;
+        };
+
+        // Specific Filtering: 2 Songs and 2 Calls
         const isSong = (rec: XenoCantoRecording) => rec.type.toLowerCase().includes('song');
-        const isCall = (rec: XenoCantoRecording) => rec.type.toLowerCase().includes('call');
+        const isCall = (rec: XenoCantoRecording) => rec.type.toLowerCase().includes('call') && !isSong(rec);
 
         const songs = data.recordings
             .filter(isSong)
-            .slice(0, 3)
-            .map(rec => ({
-                id: rec.id,
-                url: rec.file,
-                waveform: rec.osci.large,
-                type: 'song',
-                quality: rec.q,
-                recorder: rec.rec,
-                license: rec.lic,
-                duration: rec.length,
-                location: rec.loc,
-                country: rec.cnt
-            }));
+            .slice(0, 2)
+            .map(rec => {
+                const osci = rec.osci?.large || rec.osci?.medium || rec.osci?.small || '';
+                return {
+                    id: rec.id,
+                    scientific_name: rec.gen + ' ' + rec.sp,
+                    common_name: rec.en,
+                    url: fixUrl(rec.file, rec),
+                    waveform: fixUrl(osci),
+                    type: 'song',
+                    quality: rec.q,
+                    recorder: rec.rec,
+                    license: rec.lic,
+                    duration: rec.length,
+                    location: rec.loc,
+                    country: rec.cnt,
+                    lat: undefined,
+                    lon: undefined
+                };
+            });
 
         const calls = data.recordings
             .filter(isCall)
-            .slice(0, 1)
-            .map(rec => ({
-                id: rec.id,
-                url: rec.file,
-                waveform: rec.osci.large,
-                type: 'call',
-                quality: rec.q,
-                recorder: rec.rec,
-                license: rec.lic,
-                duration: rec.length,
-                location: rec.loc,
-                country: rec.cnt
-            }));
+            .slice(0, 2)
+            .map(rec => {
+                const osci = rec.osci?.large || rec.osci?.medium || rec.osci?.small || '';
+                return {
+                    id: rec.id,
+                    scientific_name: rec.gen + ' ' + rec.sp,
+                    common_name: rec.en,
+                    url: fixUrl(rec.file, rec),
+                    waveform: fixUrl(osci),
+                    type: 'call',
+                    quality: rec.q,
+                    recorder: rec.rec,
+                    license: rec.lic,
+                    duration: rec.length,
+                    location: rec.loc,
+                    country: rec.cnt,
+                    lat: undefined,
+                    lon: undefined
+                };
+            });
 
         const results = [...songs, ...calls];
 
