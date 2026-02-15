@@ -211,8 +211,8 @@ export default function ScannerScreen() {
             capturedImage={capturedImage}
             isSaving={isSaving}
             isSaved={isSaved}
-            onSave={async (bird, image) => {
-              const success = await saveSighting(bird, image);
+            onSave={async (bird, image, inatPhotos) => {
+              const success = await saveSighting(bird, image, inatPhotos);
               if (success) {
                 setIsSaved(true);
                 // Wait 1s to show success state before navigating

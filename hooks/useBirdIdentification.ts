@@ -1,6 +1,6 @@
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { BirdResult } from '@/types/scanner';
+import { BirdResult, INaturalistPhoto } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Alert } from 'react-native';
@@ -77,7 +77,7 @@ export const useBirdIdentification = () => {
         }
     };
 
-    const saveSighting = async (bird: BirdResult, capturedImage?: string | null) => {
+    const saveSighting = async (bird: BirdResult, capturedImage?: string | null, inatPhotos: INaturalistPhoto[] = []) => {
         if (isSaving) return;
 
         try {
@@ -109,6 +109,23 @@ export const useBirdIdentification = () => {
                 imageUrl = publicUrl;
             }
 
+            // Clean and prepare metadata for permanent storage
+            const metadata: Record<string, any> = {
+                also_known_as: bird.also_known_as || [],
+                taxonomy: bird.taxonomy,
+                identification_tips: bird.identification_tips,
+                description: bird.description,
+                diet: bird.diet,
+                diet_tags: bird.diet_tags || [],
+                habitat: bird.habitat,
+                habitat_tags: bird.habitat_tags || [],
+                nesting_info: bird.nesting_info,
+                feeder_info: bird.feeder_info,
+                behavior: bird.behavior,
+                images: (bird.images || []).slice(0, 5), // Limit internal images
+                inat_photos: (inatPhotos || []).slice(0, 8) // Persist the expert-vetted photos
+            };
+
             const { error } = await supabase.from('sightings').insert({
                 user_id: user?.id,
                 species_name: bird.name,
@@ -117,20 +134,7 @@ export const useBirdIdentification = () => {
                 fact: bird.fact,
                 confidence: bird.confidence,
                 image_url: imageUrl,
-                metadata: {
-                    also_known_as: bird.also_known_as,
-                    taxonomy: bird.taxonomy,
-                    identification_tips: bird.identification_tips,
-                    description: bird.description,
-                    diet: bird.diet,
-                    diet_tags: bird.diet_tags,
-                    habitat: bird.habitat,
-                    habitat_tags: bird.habitat_tags,
-                    nesting_info: bird.nesting_info,
-                    feeder_info: bird.feeder_info,
-                    behavior: bird.behavior,
-                    images: bird.images
-                }
+                metadata: metadata
             });
 
             if (error) throw error;
