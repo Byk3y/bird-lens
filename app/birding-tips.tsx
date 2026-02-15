@@ -153,45 +153,58 @@ export default function BirdingTipsScreen() {
                 </View>
 
                 {/* Gender Identification Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>How to ID between gender?</Text>
-                    <View style={styles.genderRow}>
-                        <View style={styles.genderItem}>
-                            <View style={styles.genderImageContainer}>
-                                {(() => {
-                                    const img = bird.male_image_url || bird.images?.[0] || bird.inat_photos?.[0]?.url;
-                                    return img ? (
-                                        <Image source={{ uri: img }} style={styles.genderImage} />
-                                    ) : (
-                                        <View style={[styles.genderImage, styles.placeholderAsset]} />
-                                    );
-                                })()}
-                                <View style={styles.genderLabelBadge}>
-                                    <Text style={styles.genderLabelText}>Male</Text>
-                                </View>
+                {(() => {
+                    const hasMale = bird.identification_tips?.male && bird.identification_tips.male !== 'N/A';
+                    const hasFemale = bird.identification_tips?.female && bird.identification_tips.female !== 'N/A' && !bird.identification_tips.female.toLowerCase().includes('similar to male');
+
+                    if (!hasMale && !hasFemale) return null;
+
+                    return (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>How to ID between gender?</Text>
+                            <View style={styles.genderRow}>
+                                {hasMale && (
+                                    <View style={styles.genderItem}>
+                                        <View style={styles.genderImageContainer}>
+                                            {(() => {
+                                                const img = bird.male_image_url || bird.images?.[0] || bird.inat_photos?.[0]?.url;
+                                                return img ? (
+                                                    <Image source={{ uri: img }} style={styles.genderImage} />
+                                                ) : (
+                                                    <View style={[styles.genderImage, styles.placeholderAsset]} />
+                                                );
+                                            })()}
+                                            <View style={styles.genderLabelBadge}>
+                                                <Text style={styles.genderLabelText}>Male</Text>
+                                            </View>
+                                        </View>
+                                        <Text style={styles.genderName}>Male</Text>
+                                        <Text style={styles.genderDesc}>{bird.identification_tips?.male}</Text>
+                                    </View>
+                                )}
+                                {hasFemale && (
+                                    <View style={styles.genderItem}>
+                                        <View style={styles.genderImageContainer}>
+                                            {(() => {
+                                                const img = bird.female_image_url || bird.images?.[1] || bird.inat_photos?.[1]?.url;
+                                                return img ? (
+                                                    <Image source={{ uri: img }} style={styles.genderImage} />
+                                                ) : (
+                                                    <View style={[styles.genderImage, styles.placeholderAsset]} />
+                                                );
+                                            })()}
+                                            <View style={styles.genderLabelBadge}>
+                                                <Text style={styles.genderLabelText}>Female</Text>
+                                            </View>
+                                        </View>
+                                        <Text style={styles.genderName}>Female</Text>
+                                        <Text style={styles.genderDesc}>{bird.identification_tips?.female}</Text>
+                                    </View>
+                                )}
                             </View>
-                            <Text style={styles.genderName}>Male</Text>
-                            <Text style={styles.genderDesc}>{bird.identification_tips?.male || 'N/A'}</Text>
                         </View>
-                        <View style={styles.genderItem}>
-                            <View style={styles.genderImageContainer}>
-                                {(() => {
-                                    const img = bird.female_image_url || bird.images?.[1] || bird.inat_photos?.[1]?.url;
-                                    return img ? (
-                                        <Image source={{ uri: img }} style={styles.genderImage} />
-                                    ) : (
-                                        <View style={[styles.genderImage, styles.placeholderAsset]} />
-                                    );
-                                })()}
-                                <View style={styles.genderLabelBadge}>
-                                    <Text style={styles.genderLabelText}>Female</Text>
-                                </View>
-                            </View>
-                            <Text style={styles.genderName}>Female</Text>
-                            <Text style={styles.genderDesc}>{bird.identification_tips?.female || 'N/A'}</Text>
-                        </View>
-                    </View>
-                </View>
+                    );
+                })()}
 
                 {/* Fun Facts Section */}
                 <View style={[styles.section, { marginBottom: 60 }]}>

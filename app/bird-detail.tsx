@@ -1,11 +1,8 @@
 import { LoadingScreen } from '@/components/common/LoadingScreen';
-import { OverlapAvatars } from '@/components/common/OverlapAvatars';
-import { HABITAT_ASSETS, NESTING_ASSETS } from '@/constants/bird-assets';
+import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { Colors } from '@/constants/theme';
-import { INaturalistService } from '@/services/INaturalistService';
 import { BirdMedia, MediaService } from '@/services/MediaService';
-import { BirdSound, SoundService } from '@/services/SoundService';
-import { BirdResult, INaturalistPhoto } from '@/types/scanner';
+import { BirdResult, BirdSound, INaturalistPhoto } from '@/types/scanner';
 import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -15,15 +12,7 @@ import {
     Camera,
     ChevronLeft,
     ChevronRight,
-    Edit2,
-    Image as ImageIcon,
-    Info,
-    LayoutGrid,
-    Lightbulb,
-    MoreHorizontal,
-    Notebook,
     Share2,
-    Volume2,
     X
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -72,29 +61,21 @@ export default function BirdDetailScreen() {
     useEffect(() => {
         async function loadData() {
             try {
-                // Determine if we should fetch iNaturalist photos or use saved ones
                 const savedInatPhotos = bird.inat_photos || [];
+                const savedSounds = bird.sounds || [];
 
-                const fetchPromises: Promise<any>[] = [
-                    MediaService.fetchBirdMedia(bird.scientific_name),
-                    SoundService.fetchSounds(bird.scientific_name)
-                ];
+                // 1. Fetch media (hits cache first)
+                const mediaData = await MediaService.fetchBirdMedia(bird.scientific_name);
 
-                // Only fetch live if we don't have saved photos
-                if (savedInatPhotos.length === 0) {
-                    fetchPromises.push(INaturalistService.fetchPhotos(bird.scientific_name));
-                }
+                setMedia(mediaData);
 
-                const results = await Promise.all(fetchPromises);
+                // 2. Use saved data OR data from the enriched media response
+                // This ensures we never hit iNaturalist directly from the client
+                const finalSounds = savedSounds.length > 0 ? savedSounds : (mediaData.sounds || []);
+                const finalPhotos = savedInatPhotos.length > 0 ? savedInatPhotos : (mediaData.inat_photos || []);
 
-                setMedia(results[0]);
-                setSounds(results[1]);
-
-                if (savedInatPhotos.length > 0) {
-                    setInatPhotos(savedInatPhotos);
-                } else {
-                    setInatPhotos(results[2] || []);
-                }
+                setSounds(finalSounds);
+                setInatPhotos(finalPhotos);
             } catch (error) {
                 console.error('Failed to load detail data:', error);
             } finally {
@@ -179,224 +160,18 @@ export default function BirdDetailScreen() {
 
                 {/* Main Content */}
                 <View style={styles.mainInfoSection}>
-                    <View style={styles.titleRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.mainTitle}>
-                                {bird.name}
-                                <Text style={styles.speciesOfText}>, a species of</Text>
-                            </Text>
-                            <Text style={styles.familyText}>
-                                {bird.taxonomy?.family || 'N/A'}
-                                {bird.taxonomy?.family_scientific && (
-                                    <Text style={styles.scientificFamilyText}>({bird.taxonomy.family_scientific})</Text>
-                                )}
-                            </Text>
-                        </View>
-                        <Pressable style={styles.editBtn}>
-                            <Edit2 size={18} color="#999" />
-                        </Pressable>
-                    </View>
-
-                    <View style={styles.metaRow}>
-                        <Text style={styles.metaLabel}>Also known as: </Text>
-                        <Text style={styles.metaValue}>{bird.also_known_as?.join(', ') || 'N/A'}</Text>
-                    </View>
-
-                    <View style={styles.scientificNameRow}>
-                        <Text style={styles.scientificNameLabel}>Scientific name: </Text>
-                        <Text style={styles.scientificNameValue}>{bird.scientific_name}</Text>
-                        <Pressable style={styles.speakerBtn} onPress={handlePronounce}>
-                            <Volume2 size={12} color="#FFF" />
-                        </Pressable>
-                    </View>
-
-                    <View style={styles.gutter} />
-
-                    {/* Gallery Section */}
-                    {inatPhotos.length > 0 && (
-                        <View style={styles.gallerySection}>
-                            <View style={styles.sectionHeaderRow}>
-                                <View style={styles.sectionTitleLeft}>
-                                    <ImageIcon size={22} color="#1A1A1A" />
-                                    <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
-                                </View>
-                                <MoreHorizontal size={20} color="#999" />
-                            </View>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-                                {inatPhotos.map((photo, idx) => (
-                                    <TouchableOpacity
-                                        key={idx}
-                                        style={styles.galleryItem}
-                                        onPress={() => {
-                                            setSelectedImageIndex(idx);
-                                            setIsImageViewerVisible(true);
-                                            Haptics.selectionAsync();
-                                        }}
-                                    >
-                                        <Image source={{ uri: photo.url }} style={styles.galleryImage} />
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
-
-                    {/* Birding Tips Section */}
-                    <View style={styles.gutter} />
-                    <View style={styles.tipsSection}>
-                        <View style={styles.sectionHeaderRow}>
-                            <View style={styles.sectionTitleLeft}>
-                                <Notebook size={22} color="#1A1A1A" />
-                                <Text style={styles.sectionTitle}>Birding Tips</Text>
-                            </View>
-                            <MoreHorizontal size={20} color="#999" />
-                        </View>
-
-                        <View style={styles.gridContainer}>
-                            {/* Full Width Tip: Diet */}
-                            <TouchableOpacity style={styles.wideCard} onPress={handleOpenTips}>
-                                <View style={styles.cardContent}>
-                                    <Text style={styles.cardLabel}>Diet</Text>
-                                </View>
-                                <View style={styles.cardRight}>
-                                    <OverlapAvatars
-                                        tags={[...(bird.diet_tags || []), bird.diet].filter(Boolean)}
-                                        type="diet"
-                                    />
-                                    <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Full Width Tip: Feeder */}
-                            <TouchableOpacity style={styles.wideCard} onPress={handleOpenTips}>
-                                <View style={styles.cardContent}>
-                                    <Text style={styles.cardLabel}>Feeder</Text>
-                                </View>
-                                <View style={styles.cardRight}>
-                                    <OverlapAvatars
-                                        tags={bird.feeder_info?.feeder_types || []}
-                                        type="feeder"
-                                    />
-                                    <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Two Column Row: Habitat & Nesting */}
-                            <View style={styles.row}>
-                                <TouchableOpacity style={styles.halfCard} onPress={handleOpenTips}>
-                                    <View style={styles.halfCardTop}>
-                                        <Text style={styles.cardLabel}>Habitat</Text>
-                                        <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} />
-                                    </View>
-                                    <View style={styles.halfCardMain}>
-                                        {(() => {
-                                            const h = (bird.habitat_tags?.[0] || bird.habitat || '').toLowerCase();
-                                            let asset = HABITAT_ASSETS.forest; // Default
-
-                                            if (h.includes('forest') || h.includes('wood')) asset = HABITAT_ASSETS.forest;
-                                            else if (h.includes('wetland') || h.includes('river') || h.includes('lake') || h.includes('water') || h.includes('marsh')) asset = HABITAT_ASSETS.wetland;
-                                            else if (h.includes('grass') || h.includes('field') || h.includes('meadow') || h.includes('prairie')) asset = HABITAT_ASSETS.grassland;
-                                            else if (h.includes('mountain') || h.includes('rock') || h.includes('cliff')) asset = HABITAT_ASSETS.mountain;
-                                            else if (h.includes('shrub') || h.includes('scrub') || h.includes('thicket')) asset = HABITAT_ASSETS.shrub;
-                                            else if (h.includes('backyard') || h.includes('urban') || h.includes('park') || h.includes('garden')) asset = HABITAT_ASSETS.backyard;
-
-                                            return <Image source={asset} style={styles.habitatIcon} />;
-                                        })()}
-                                        <Text style={styles.halfCardValue}>{bird.habitat_tags?.[0] || bird.habitat || 'N/A'}</Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.halfCard} onPress={handleOpenTips}>
-                                    <View style={styles.halfCardTop}>
-                                        <Text style={styles.cardLabel}>Nesting</Text>
-                                        <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} />
-                                    </View>
-                                    <View style={styles.halfCardMain}>
-                                        {(() => {
-                                            const loc = (bird.nesting_info?.location || '').toLowerCase();
-                                            let asset = NESTING_ASSETS.cup;
-                                            let name = 'Cup';
-
-                                            if (loc.includes('cavity') || loc.includes('hole')) {
-                                                asset = NESTING_ASSETS.cavity;
-                                                name = 'Cavity';
-                                            } else if (loc.includes('burrow') || loc.includes('tunnel')) {
-                                                asset = NESTING_ASSETS.burrow;
-                                                name = 'Burrow';
-                                            } else if (loc.includes('dome') || loc.includes('spherical') || loc.includes('enclosed')) {
-                                                asset = NESTING_ASSETS.dome;
-                                                name = 'Dome';
-                                            } else if (loc.includes('ground') || loc.includes('shrub')) {
-                                                asset = NESTING_ASSETS.ground;
-                                                name = 'Ground';
-                                            } else if (loc.includes('platform') || loc.includes('ledge') || loc.includes('building')) {
-                                                asset = NESTING_ASSETS.platform;
-                                                name = 'Platform';
-                                            } else if (loc.includes('scrape') || loc.includes('sand') || loc.includes('pebbles')) {
-                                                asset = NESTING_ASSETS.scrape;
-                                                name = 'Scrape';
-                                            } else if (loc.includes('hanging') || loc.includes('pouch') || loc.includes('pendant')) {
-                                                asset = NESTING_ASSETS.hanging;
-                                                name = 'Hanging';
-                                            } else if (loc.includes('none') || loc.includes('parasitic') || loc.includes('no nest')) {
-                                                asset = NESTING_ASSETS.none;
-                                                name = 'No Nest';
-                                            } else if (loc.includes('tree') || loc.includes('branch') || loc.includes('cup')) {
-                                                asset = NESTING_ASSETS.cup;
-                                                name = 'Cup';
-                                            }
-
-                                            return (
-                                                <>
-                                                    <Image source={asset} style={styles.habitatIcon} />
-                                                    <Text style={styles.halfCardValue}>{name}</Text>
-                                                </>
-                                            );
-                                        })()}
-                                    </View>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Differences Row */}
-                            <TouchableOpacity style={styles.listItem} onPress={handleOpenTips}>
-                                <View style={styles.listItemLeft}>
-                                    <LayoutGrid size={20} color="#FF6B35" />
-                                    <Text style={styles.listItemText}>Male-female differences</Text>
-                                </View>
-                                <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} />
-                            </TouchableOpacity>
-
-                            {/* Insight Tip */}
-                            <TouchableOpacity style={styles.insightCard} onPress={handleOpenTips}>
-                                <View style={styles.insightIconWrapper}>
-                                    <Lightbulb size={20} color="#FFD166" />
-                                </View>
-                                <Text style={styles.insightText} numberOfLines={2}>
-                                    {bird.fact || bird.description}
-                                </Text>
-                                <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Extra Info */}
-                    <View style={styles.gutter} />
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeaderRow}>
-                            <View style={styles.sectionTitleLeft}>
-                                <Info size={22} color="#1A1A1A" />
-                                <Text style={styles.sectionTitle}>Facts</Text>
-                            </View>
-                        </View>
-                        <Text style={styles.descriptionText}>{bird.description}</Text>
-                    </View>
-
-                    <View style={styles.factCard}>
-                        <Info color={Colors.primary} size={24} />
-                        <View style={styles.factContent}>
-                            <Text style={styles.factTitle}>Did you know?</Text>
-                            <Text style={styles.factText}>{bird.fact}</Text>
-                        </View>
-                    </View>
+                    <BirdProfileContent
+                        bird={bird}
+                        inatPhotos={inatPhotos}
+                        sounds={sounds}
+                        onPlaySound={handlePronounce}
+                        onImagePress={(idx) => {
+                            setSelectedImageIndex(idx);
+                            setIsImageViewerVisible(true);
+                            Haptics.selectionAsync();
+                        }}
+                        onOpenTips={handleOpenTips}
+                    />
                 </View>
                 <View style={{ height: 120 }} />
             </ScrollView>
@@ -548,7 +323,7 @@ const styles = StyleSheet.create({
     imageCardContainer: {
         width: width * 0.48,
         height: width * 0.65,
-        borderRadius: 13,
+        borderRadius: 8,
         overflow: 'hidden',
         borderWidth: 2,
         borderColor: 'rgba(255,255,255,0.9)',
@@ -585,294 +360,12 @@ const styles = StyleSheet.create({
         textAlign: 'right',
     },
     mainInfoSection: {
-        paddingHorizontal: 12,
         paddingTop: 16,
         paddingBottom: 40,
         backgroundColor: '#fff',
         borderTopLeftRadius: 13,
         borderTopRightRadius: 13,
         marginTop: -16,
-    },
-    titleRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 16,
-    },
-    mainTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#000',
-        letterSpacing: -0.5,
-    },
-    speciesOfText: {
-        fontSize: 16,
-        fontWeight: '300',
-        color: '#999',
-    },
-    familyText: {
-        fontSize: 20,
-        color: '#1A1A1A',
-        marginTop: 2,
-    },
-    scientificFamilyText: {
-        fontSize: 20,
-        color: '#1A1A1A',
-        fontStyle: 'italic',
-    },
-    bold: {
-        fontWeight: '700',
-    },
-    italic: {
-        fontStyle: 'italic',
-    },
-    editBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'transparent',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    metaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    metaLabel: {
-        fontSize: 15,
-        color: '#999',
-    },
-    metaValue: {
-        fontSize: 15,
-        fontWeight: '400',
-        color: '#1A1A1A',
-    },
-    scientificNameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'transparent',
-        paddingHorizontal: 0,
-        paddingVertical: 4,
-        borderRadius: 0,
-        marginBottom: 12,
-    },
-    scientificNameLabel: {
-        fontSize: 15,
-        color: '#999',
-    },
-    scientificNameValue: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: '#1A1A1A',
-        fontStyle: 'italic',
-    },
-    gutter: {
-        height: 12,
-        backgroundColor: '#F2F2F2',
-        marginHorizontal: -12,
-        marginBottom: 16,
-    },
-    speakerBtn: {
-        width: 20,
-        height: 20,
-        borderRadius: 4,
-        backgroundColor: '#D4A373',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 8,
-    },
-    gallerySection: {
-        marginBottom: 32,
-    },
-    sectionHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    galleryTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1A1A1A',
-        marginLeft: 10,
-    },
-    sectionTitleLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    galleryScroll: {
-        marginHorizontal: -12,
-        paddingHorizontal: 12,
-    },
-    galleryItem: {
-        width: 128,
-        aspectRatio: 0.8,
-        borderRadius: 8,
-        overflow: 'hidden',
-        marginRight: 12,
-        backgroundColor: '#f1f5f9',
-    },
-    galleryImage: {
-        width: '100%',
-        height: '100%',
-    },
-    tipsSection: {
-        marginBottom: 32,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1A1A1A',
-        marginLeft: 10,
-    },
-    tipsContainer: {
-        gap: 12,
-    },
-    gridContainer: {
-        gap: 12,
-        marginTop: 8,
-    },
-    wideCard: {
-        flexDirection: 'row',
-        backgroundColor: '#EFEFEF',
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        minHeight: 94,
-    },
-    cardContent: {
-        gap: 4,
-    },
-    cardLabel: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1A1A1A',
-    },
-    cardValue: {
-        fontSize: 16,
-        color: '#666',
-        fontWeight: '400',
-    },
-    cardRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 8,
-    },
-    row: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    halfCard: {
-        flex: 1,
-        backgroundColor: '#EFEFEF',
-        borderRadius: 8,
-        padding: 16,
-        minHeight: 150,
-    },
-    halfCardTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    halfCardMain: {
-        alignItems: 'center',
-        gap: 12,
-    },
-    halfCardValue: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1A1A1A',
-        textAlign: 'center',
-    },
-    listItem: {
-        flexDirection: 'row',
-        backgroundColor: '#EFEFEF',
-        borderRadius: 8,
-        padding: 16,
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    listItemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    listItemText: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: '#1A1A1A',
-    },
-    insightCard: {
-        flexDirection: 'row',
-        backgroundColor: '#EFEFEF',
-        borderRadius: 8,
-        padding: 16,
-        alignItems: 'center',
-        gap: 12,
-    },
-    insightIconWrapper: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFF1E6',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    insightText: {
-        flex: 1,
-        fontSize: 15,
-        color: '#444',
-        lineHeight: 20,
-    },
-    tipCard: {
-        backgroundColor: '#f8fafc',
-        borderRadius: 13,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    tipCardLabel: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1A1A1A',
-        marginBottom: 8,
-    },
-    tipCardText: {
-        fontSize: 16,
-        color: '#333333',
-        lineHeight: 24,
-    },
-    section: {
-        marginBottom: 32,
-    },
-    descriptionText: {
-        fontSize: 16,
-        color: '#333333',
-        lineHeight: 24,
-    },
-    factCard: {
-        backgroundColor: '#fefae0',
-        borderRadius: 13,
-        padding: 16,
-        flexDirection: 'row',
-        gap: 16,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#e9edc9',
-    },
-    factContent: {
-        flex: 1,
-    },
-    factTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1A1A1A',
-        marginBottom: 6,
     },
     factText: {
         fontSize: 16,
@@ -912,12 +405,6 @@ const styles = StyleSheet.create({
         width: 1,
         height: 30,
         backgroundColor: '#f1f5f9',
-    },
-    habitatIcon: {
-        width: 64,
-        height: 64,
-        resizeMode: 'contain',
-        marginVertical: 4,
     },
     // Modal Styles
     modalBg: {

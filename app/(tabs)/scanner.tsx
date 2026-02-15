@@ -38,6 +38,7 @@ export default function ScannerScreen() {
   const [showSnapTips, setShowSnapTips] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
@@ -48,7 +49,11 @@ export default function ScannerScreen() {
     isSaving,
     result,
     candidates,
+    enrichedCandidates,
+    heroImages,
     identifyBird,
+    enrichCandidate,
+    updateHeroImage,
     saveSighting,
     resetResult,
   } = useBirdIdentification();
@@ -71,8 +76,6 @@ export default function ScannerScreen() {
   // Reset to photo mode on mount to prevent being stuck in sound mode
   useEffect(() => {
     setActiveMode('photo');
-    resetResult();
-    setCapturedImage(null);
   }, []);
 
   useEffect(() => {
@@ -208,11 +211,17 @@ export default function ScannerScreen() {
           <IdentificationResult
             result={result}
             candidates={candidates}
+            enrichedCandidates={enrichedCandidates}
+            heroImages={heroImages}
             capturedImage={capturedImage}
             isSaving={isSaving}
             isSaved={isSaved}
-            onSave={async (bird, image, inatPhotos) => {
-              const success = await saveSighting(bird, image, inatPhotos);
+            activeIndex={activeIndex}
+            setActiveIndex={setActiveIndex}
+            enrichCandidate={enrichCandidate}
+            updateHeroImage={updateHeroImage}
+            onSave={async (bird, image, inatPhotos, sounds) => {
+              const success = await saveSighting(bird, image, inatPhotos, sounds);
               if (success) {
                 setIsSaved(true);
                 // Wait 1s to show success state before navigating
@@ -220,6 +229,7 @@ export default function ScannerScreen() {
                   resetResult();
                   setCapturedImage(null);
                   setIsSaved(false);
+                  setActiveIndex(0);
                   router.replace('/(tabs)/collection');
                 }, 1000);
               }
@@ -228,6 +238,7 @@ export default function ScannerScreen() {
               resetResult();
               setCapturedImage(null);
               setIsSaved(false);
+              setActiveIndex(0);
             }}
           />
         )}
