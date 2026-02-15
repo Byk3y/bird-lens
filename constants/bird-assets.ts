@@ -23,6 +23,8 @@ export const DIET_ASSETS: Record<string, any> = {
     'fruit': require('../assets/images/birding-tips/diet/fruit.jpg'),
     'berries': require('../assets/images/birding-tips/diet/berries.jpg'),
     'peanuts': require('../assets/images/birding-tips/diet/peanuts.jpg'),
+    'acorns': require('../assets/images/birding-tips/diet/acorns.jpg'),
+    'beechnuts': require('../assets/images/birding-tips/diet/beechnuts.jpg'),
     'nectar': require('../assets/images/birding-tips/diet/nectar.jpg'),
     'cracked corn': require('../assets/images/birding-tips/diet/cracked-corn.jpg'),
     'safflower': require('../assets/images/birding-tips/diet/safflower.jpg'),
@@ -32,6 +34,8 @@ export const DIET_ASSETS: Record<string, any> = {
 export const FEEDER_ASSETS: Record<string, any> = {
     'tube': require('../assets/images/birding-tips/feeder/tube.jpg'),
     'platform': require('../assets/images/birding-tips/feeder/platform.jpg'),
+    'ground': require('../assets/images/birding-tips/feeder/ground.jpg'),
+    'ground feeder': require('../assets/images/birding-tips/feeder/ground.jpg'),
     'hopper': require('../assets/images/birding-tips/feeder/hopper.jpg'),
     'nectar': require('../assets/images/birding-tips/feeder/nectar-feeder.jpg'),
     'nectar-feeder': require('../assets/images/birding-tips/feeder/nectar-feeder.jpg'),
