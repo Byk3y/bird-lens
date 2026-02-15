@@ -77,9 +77,24 @@ Deno.serve(async (req: Request) => {
 
         const persona = "You are a world-class Field Ornithologist and Nature Educator. Your goal is to provide highly accurate, scientific, yet engaging bird identification data.";
 
+        const promptInstructions = `
+Identify this bird with maximum scientific precision. 
+
+CRITICAL INSTRUCTIONS FOR BIRDING TIPS:
+- DO NOT use generic category names like 'Seeds', 'Insects', 'Fruits', 'Feeder', or 'Forest'.
+- ALWAYS use highly specific, descriptive terminology.
+- MANDATORY TRANSFORMATIONS:
+    * Instead of 'Seeds', use professional terms like 'Black Oil Sunflower Seeds', 'Hulled Sunflower Seeds', 'White Proso Millet', or 'Nyjer (Thistle) Seeds'.
+    * Instead of 'Insects', use 'Live Mealworms', 'Small Beetles', or 'Spiders'.
+    * Instead of 'Nectar', use 'Commercial Hummingbird Nectar' or 'Sugar-Water Solution (4:1 ratio)'.
+    * Instead of 'Feeder', use 'Large Tube Feeder', 'Large Hopper Feeder', 'Platform Feeder', 'Suet Cage', or 'Window-mounted Feeder'.
+    * Instead of 'Forest', use 'Dry Coniferous Forest', 'Deciduous Woodlands', or 'Mature Oak-Hickory Forest'.
+
+Provide multiple specific diet and feeder tags to ensure a rich user experience. Return a comprehensive encyclopedia-style profile.`;
+
         const prompt = image
-            ? `${persona}\n\nIdentify the bird in this image. Focus on plumage details, beak shape, and distinctive markers. Return a comprehensive encyclopedia-style profile.`
-            : `${persona}\n\nIdentify the bird in this audio clip. Focus on the pitch, rhythm, and pattern of the song or call. Return a comprehensive encyclopedia-style profile.`;
+            ? `${persona}\n\nIdentify the bird in this image. Focus on plumage details, beak shape, and distinctive markers.\n${promptInstructions}`
+            : `${persona}\n\nIdentify the bird in this audio clip. Focus on the pitch, rhythm, and pattern of the song or call.\n${promptInstructions}`;
 
         const parts: any[] = [{ text: prompt }];
 
@@ -132,10 +147,10 @@ Deno.serve(async (req: Request) => {
                                 required: ["male", "female"]
                             },
                             description: { type: "STRING" },
-                            diet: { type: "STRING" },
-                            diet_tags: { type: "ARRAY", items: { type: "STRING" }, description: "Short tags like 'Seeds', 'Insects', 'Nectar'" },
-                            habitat: { type: "STRING" },
-                            habitat_tags: { type: "ARRAY", items: { type: "STRING" }, description: "Short tags like 'Forest', 'Grassland', 'Wetland'" },
+                            diet: { type: "STRING", description: "Detailed description of natural diet, including seasonal variations." },
+                            diet_tags: { type: "ARRAY", items: { type: "STRING" }, description: "Specific food items. MANDATORY: Use terms like 'Black Oil Sunflower Seeds', 'Nyjer Seeds', 'Suet Blocks', NOT 'Seeds' or 'Insects'." },
+                            habitat: { type: "STRING", description: "Detailed description of specific ecological niches." },
+                            habitat_tags: { type: "ARRAY", items: { type: "STRING" }, description: "Specific habitats. MANDATORY: Use terms like 'Deciduous Woodlands', 'Open Grasslands', 'Alpine Tundra', NOT 'Forest' or 'Grassland'." },
                             nesting_info: {
                                 type: "OBJECT",
                                 properties: {
@@ -148,8 +163,8 @@ Deno.serve(async (req: Request) => {
                             feeder_info: {
                                 type: "OBJECT",
                                 properties: {
-                                    attracted_by: { type: "ARRAY", items: { type: "STRING" }, description: "Food types that attract them to feeders" },
-                                    feeder_types: { type: "ARRAY", items: { type: "STRING" }, description: "Types of feeders they visit, e.g., 'Tube', 'Hopper', 'Platform'" }
+                                    attracted_by: { type: "ARRAY", items: { type: "STRING" }, description: "Specific foods like 'Black Oil Sunflower Seeds', 'Peas', 'Mealworms'" },
+                                    feeder_types: { type: "ARRAY", items: { type: "STRING" }, description: "Specific feeder models like 'Large Tube Feeder', 'Hopper Feeder', 'Ground Feeder', 'Platform Feeder'" }
                                 },
                                 required: ["attracted_by", "feeder_types"]
                             },
