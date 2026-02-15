@@ -83,20 +83,14 @@ Identify this bird with maximum scientific precision.
 CRITICAL INSTRUCTIONS FOR BIRDING TIPS:
 - DO NOT use generic category names like 'Seeds', 'Insects', 'Fruits', 'Feeder', or 'Forest'.
 - ALWAYS use highly specific, descriptive terminology.
-- MANDATORY TRANSFORMATIONS (Concise Title Case, Max 2-3 words):
-    * Instead of 'Seeds', use 'Black Oil Sunflower Seeds', 'Hulled Sunflower Seeds', 'Safflower', or 'Nyjer (Thistle)'.
-    * Instead of 'Insects', use 'Mealworms', 'Small Beetles', or 'Spiders'.
-    * Instead of 'Nectar', use 'Nectar Feeder' or 'Sugar-Water'.
-    * Instead of 'Feeder', use 'Large Tube Feeder', 'Large Hopper', 'Platform', 'Suet Cage', or 'Window Feeder'.
-    * Instead of 'Forest', use 'Deciduous Forest', 'Open Woodland', or 'Oak-Hickory Forest'.
+
+MANDATORY VOCABULARY (Use these exact keys if they apply):
+DIET: 'Black Oil Sunflower Seeds', 'Sunflower Hearts', 'Striped Sunflower Seeds', 'Nyjer Seeds', 'Thistle Seeds', 'Dandelion Seeds', 'Milo', 'Sorghum', 'Canary Seed', 'Hemp Seeds', 'Red Millet', 'Canola Seeds', 'White Millet', 'Safflower', 'Cracked Corn', 'Suet', 'Mealworms', 'Peanuts', 'Nectar', 'Fruit', 'Berries'.
+FEEDER: 'Large Tube Feeder', 'Platform Feeder', 'Hopper Feeder', 'Suet Cage', 'Nectar Feeder', 'Oriole Feeder', 'Window Feeder', 'Ground Feeder'.
 
 CRITICAL INSTRUCTIONS FOR TAGS (Diet, Feeder, Habitat):
 - OUTPUT FORMAT: Concise, Title Case names ONLY (Max 2-3 words).
-- PROHIBITED: Do NOT include parenthetical descriptions, usage instructions, or elaborations (e.g., instead of "Oriole feeders (for nectar)", use "Oriole Feeder").
-- NAMING CONVENTIONS (Follow these examples):
-    * "Large Tube Feeder", "Large Hopper", "Platform", "Suet Cage", "Nectar Feeder"
-    * "Black Oil Sunflower Seeds", "Hulled Sunflower", "Safflower", "Nyjer Seeds", "Mealworms", "Fruit", "Jelly"
-    * "Deciduous Forest", "Open Woodland", "Backyard", "Wetland"
+- PROHIBITED: Do NOT include parenthetical descriptions, usage instructions, or elaborations.
 - ACCURACY: List ONLY the specific items scientifically verified for this species. Do not hallucinate or add "filler" items to fill space.
 
 Provide multiple specific diet and feeder tags to ensure a rich user experience. Return a comprehensive encyclopedia-style profile.`;

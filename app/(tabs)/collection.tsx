@@ -21,29 +21,54 @@ export default function MeScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const [sightings, setSightings] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    // Initialize loading only if we have no sightings yet
+    const [loading, setLoading] = useState(sightings.length === 0);
 
+    // Initial fetch and user changes
+    React.useEffect(() => {
+        if (!user) return;
+
+        async function fetchInitial() {
+            try {
+                const { data, error } = await supabase
+                    .from('sightings')
+                    .select('id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                if (data) setSightings(data);
+            } catch (err) {
+                console.error('Error fetching sightings:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchInitial();
+    }, [user]);
+
+    // Refresh data silently when screen comes into focus
     useFocusEffect(
         useCallback(() => {
-            async function fetchCollections() {
-                if (!user) return;
+            if (!user) return;
+
+            async function refreshCollections() {
                 try {
-                    setLoading(true);
                     const { data, error } = await supabase
                         .from('sightings')
-                        .select('*')
+                        .select('id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false });
 
-                    if (error) throw error;
-                    setSightings(data || []);
+                    if (!error && data) {
+                        setSightings(data);
+                    }
                 } catch (err) {
-                    console.error('Error fetching sightings:', err);
-                } finally {
-                    setLoading(false);
+                    console.error('Silent refresh failed:', err);
                 }
             }
-            fetchCollections();
+            refreshCollections();
         }, [user])
     );
 

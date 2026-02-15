@@ -32,7 +32,10 @@ export default function BirdingTipsScreen() {
             let asset = assetMap[normalizedTag];
 
             if (!asset) {
-                const key = Object.keys(assetMap).find(k => normalizedTag.includes(k) || k.includes(normalizedTag));
+                // Priority Match: Sort keys by length (longest first) to find the most specific match
+                // This prevents "Dandelion Seeds" from matching a generic "Seeds" key if a "Dandelion" key exists
+                const sortedKeys = Object.keys(assetMap).sort((a, b) => b.length - a.length);
+                const key = sortedKeys.find(k => normalizedTag.includes(k) || k.includes(normalizedTag));
                 if (key) asset = assetMap[key];
             }
 
