@@ -1,17 +1,5 @@
 import { supabase } from '@/lib/supabase';
-
-export interface BirdSound {
-    id: string;
-    url: string;
-    waveform: string;
-    location: string;
-    country: string;
-    type: string;
-    quality: string;
-    recorder: string;
-    license: string;
-    duration: string;
-}
+import { BirdSound } from '@/types/scanner';
 
 export const SoundService = {
     fetchSounds: async (scientificName: string): Promise<BirdSound[]> => {

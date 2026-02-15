@@ -13,6 +13,18 @@ export class INaturalistService {
                     scientificName
                 )}&quality_grade=research&order=desc&order_by=votes&per_page=20&photos=true`
             );
+
+            if (!response.ok) {
+                console.error(`iNaturalist API error: ${response.status} ${response.statusText}`);
+                return [];
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('iNaturalist API returned non-JSON response');
+                return [];
+            }
+
             const data = await response.json();
 
             if (!data.results || data.results.length === 0) return [];
@@ -79,6 +91,17 @@ export class INaturalistService {
                     scientificName
                 )}&term_id=1&term_value_id=${sexValue}&quality_grade=research&order=desc&order_by=votes&per_page=5&photos=true`
             );
+
+            if (!response.ok) {
+                console.error(`iNaturalist gender photo error: ${response.status}`);
+                return null;
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return null;
+            }
+
             const data = await response.json();
 
             if (!data.results || data.results.length === 0) return null;

@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
+import { BirdSound, INaturalistPhoto } from '@/types/scanner';
+
 export interface BirdMedia {
     image: {
         url: string | null;
@@ -13,6 +15,8 @@ export interface BirdMedia {
         taxonKey: number | null;
         tileUrl: string | null;
     };
+    inat_photos?: INaturalistPhoto[];
+    sounds?: BirdSound[];
 }
 
 export class MediaService {
