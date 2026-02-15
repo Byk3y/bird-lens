@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     container: {
         width: 280,
         height: 380,
-        borderRadius: 16,
+        borderRadius: 8,
         overflow: 'hidden',
         backgroundColor: Colors.surface,
         marginHorizontal: 10,

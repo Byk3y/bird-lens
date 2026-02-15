@@ -1,6 +1,7 @@
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bird, X } from 'lucide-react-native';
+import LottieView from 'lottie-react-native';
+import { X } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
@@ -53,7 +54,7 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, onClos
             {/* Header / Close Button */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                    <X color={Colors.white} size={28} />
+                    <X color={Colors.text} size={28} />
                 </TouchableOpacity>
             </View>
 
@@ -85,6 +86,16 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, onClos
                             ))}
                         </View>
 
+                        {/* Lens Flare / Vignette Effect */}
+                        <View style={styles.lensOverlay} pointerEvents="none">
+                            <LinearGradient
+                                colors={['rgba(255,255,255,0.1)', 'transparent', 'rgba(0,0,0,0.2)']}
+                                style={StyleSheet.absoluteFill}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            />
+                        </View>
+
                         {/* Scanning Laser */}
                         <Animated.View style={[styles.scanLine, scanLineStyle]}>
                             <LinearGradient
@@ -99,20 +110,16 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, onClos
             {/* Scanning Indicator Section */}
             <View style={styles.bottomSection}>
                 <View style={styles.scannerCircleContainer}>
-                    {/* Rotating Ring */}
-                    <Animated.View style={[styles.scannerRing, ringStyle]}>
-                        <LinearGradient
-                            colors={[Colors.accent, 'transparent']}
-                            style={StyleSheet.absoluteFill}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        />
-                    </Animated.View>
-
-                    {/* Inner Content */}
-                    <View style={styles.scannerInner}>
-                        <View style={styles.birdIconContainer}>
-                            <Bird color={Colors.accent} size={40} />
+                    <View style={styles.birdLensBorder}>
+                        <View style={styles.birdLensInner}>
+                            <LottieView
+                                source={require('@/assets/animations/bird-loading.lottie')}
+                                autoPlay
+                                loop
+                                style={{ width: 180, height: 180 }}
+                            />
+                            {/* Glass Highlight Overlay */}
+                            <View style={styles.lensGlassHighlight} pointerEvents="none" />
                         </View>
                     </View>
                 </View>
@@ -125,7 +132,7 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, onClos
 const styles = StyleSheet.create({
     container: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.95)',
+        backgroundColor: Colors.background,
         zIndex: 100,
         justifyContent: 'space-between',
         paddingVertical: 60,
@@ -138,7 +145,7 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(0,0,0,0.05)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -148,8 +155,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     frameContainer: {
-        width: width * 0.85,
-        height: height * 0.5,
+        width: width * 0.75,
+        height: height * 0.4,
         position: 'relative',
         padding: 4,
     },
@@ -157,7 +164,7 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 4,
         overflow: 'hidden',
-        backgroundColor: '#111',
+        backgroundColor: '#000',
     },
     image: {
         width: '100%',
@@ -166,21 +173,21 @@ const styles = StyleSheet.create({
     },
     gridOverlay: {
         ...StyleSheet.absoluteFillObject,
-        opacity: 0.15,
+        opacity: 0.1,
     },
     gridLineH: {
         position: 'absolute',
         left: 0,
         right: 0,
         height: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: '#000',
     },
     gridLineV: {
         position: 'absolute',
         top: 0,
         bottom: 0,
         width: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: '#000',
     },
     corner: {
         position: 'absolute',
@@ -229,44 +236,56 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     scannerCircleContainer: {
-        width: 140,
-        height: 140,
+        width: 160,
+        height: 160,
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 10,
     },
-    scannerRing: {
-        ...StyleSheet.absoluteFillObject,
-        borderRadius: 70,
-        borderWidth: 2,
-        borderColor: 'rgba(249, 115, 22, 0.3)',
-    },
-    scannerInner: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+    birdLensBorder: {
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        borderWidth: 4,
+        borderColor: '#E5E7EB', // Metallic grey border
+        padding: 4,
         backgroundColor: '#fff',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#eee',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 10,
+        shadowRadius: 12,
         elevation: 5,
     },
-    birdIconContainer: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
-        backgroundColor: '#fff7ed',
+    birdLensInner: {
+        flex: 1,
+        borderRadius: 76,
+        backgroundColor: '#F9FAFB',
+        overflow: 'hidden',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    lensGlassHighlight: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderTopLeftRadius: 76,
+        borderBottomRightRadius: 76,
+        borderLeftWidth: 2,
+        borderTopWidth: 2,
+        borderColor: 'rgba(255,255,255,0.4)',
     },
     analyzingText: {
         ...Typography.h3,
-        color: Colors.white,
+        color: Colors.text,
         fontWeight: 'bold',
+        marginTop: 0,
     },
+    lensOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+    }
 });
 

@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { DIET_ASSETS, FEEDER_ASSETS } from '../../constants/bird-assets';
 
 interface OverlapAvatarsProps {
@@ -43,7 +44,11 @@ export const OverlapAvatars: React.FC<OverlapAvatarsProps> = ({ tags, type }) =>
                     key={index}
                     style={styles.avatarWrapper}
                 >
-                    <Image source={typeof url === 'number' ? url : { uri: url }} style={styles.avatar} />
+                    <Image
+                        source={typeof url === 'number' ? url : { uri: url }}
+                        style={styles.avatar}
+                        cachePolicy="memory-disk"
+                    />
                 </View>
             ))}
         </View>
