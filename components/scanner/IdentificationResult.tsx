@@ -40,6 +40,7 @@ const ITEM_WIDTH = width * 0.48;
 const SPACER_WIDTH = (width - ITEM_WIDTH) / 2;
 const CIRCLE_SIZE = 150;
 const SIDE_CIRCLE_SIZE = 100;
+const ACTIVE_TAB_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='32' viewBox='0 0 40 32'%3E%3Cpath d='M 0 32 Q 8 32 8 24 L 8 12 A 12 12 0 0 1 32 12 L 32 24 Q 32 32 40 32 Z' fill='white' /%3E%3C/svg%3E`;
 
 const SkeletonLoader = () => {
     return (
@@ -261,22 +262,32 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
 
                     {/* Pagination Tabs */}
                     <View style={styles.pagination}>
-                        {Array.from({ length: carouselItems.length + 1 }).map((_, index) => (
-                            <View
-                                key={index}
-                                style={[
-                                    styles.tabIndicator,
-                                    index === activeIndex && styles.activeTab
-                                ]}
-                            >
-                                <Text style={[
-                                    styles.tabText,
-                                    index === activeIndex && styles.activeTabText
-                                ]}>
-                                    {index === carouselItems.length ? '?' : index + 1}
-                                </Text>
-                            </View>
-                        ))}
+                        {Array.from({ length: carouselItems.length + 1 }).map((_, index) => {
+                            const isActive = index === activeIndex;
+                            return (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.tabIndicator,
+                                        isActive && styles.activeTab
+                                    ]}
+                                >
+                                    {isActive && (
+                                        <Image
+                                            source={{ uri: ACTIVE_TAB_SVG }}
+                                            style={styles.activeTabBackground}
+                                            contentFit="fill"
+                                        />
+                                    )}
+                                    <Text style={[
+                                        styles.tabText,
+                                        isActive && styles.activeTabText
+                                    ]}>
+                                        {index === carouselItems.length ? '?' : index + 1}
+                                    </Text>
+                                </View>
+                            );
+                        })}
                     </View>
                 </View>
                 <View style={styles.contentContainer}>
@@ -439,40 +450,53 @@ const styles = StyleSheet.create({
     pagination: {
         flexDirection: 'row',
         position: 'absolute',
-        bottom: 20,
-        gap: 6,
-        paddingHorizontal: 8,
-        alignItems: 'center',
+        bottom: 32,
+        left: 0,
+        right: 0,
+        gap: 8,
+        justifyContent: 'center',
+        alignItems: 'flex-end',
+        zIndex: 50,
+        paddingBottom: 4, // Add clearance so inactive circles don't touch the white container
     },
     tabIndicator: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: Colors.white + '80', // Semi-transparent white
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
     },
     activeTab: {
-        backgroundColor: Colors.white,
-        width: 32,
-        height: 38,
-        borderRadius: 16,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        paddingBottom: 6,
-        bottom: -10, // Pull it into the white container notch area
-        zIndex: 10,
+        backgroundColor: 'transparent',
+        width: 40,
+        height: 32,
+        borderRadius: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowOpacity: 0,
+        elevation: 0,
+        marginBottom: -4,
+    },
+    activeTabBackground: {
+        ...StyleSheet.absoluteFillObject,
     },
     tabText: {
         ...Typography.label,
-        color: Colors.white,
-        fontSize: 11,
+        color: '#666',
+        fontSize: 10,
         fontWeight: '700',
     },
     activeTabText: {
         color: Colors.primary,
-        fontSize: 16,
-        fontWeight: '900',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 2,
     },
     correctionSection: {
         padding: 24,

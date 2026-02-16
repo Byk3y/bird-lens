@@ -34,7 +34,9 @@ export async function enrichSpecies(scientificName: string, xenoCantoApiKey: str
 async function fetchINatPhotos(scientificName: string) {
     try {
         // Use scientific_name search and filter by Aves (taxon_id 3 is Birds in iNat)
-        const url = `${INAT_API_URL}/taxa?scientific_name=${encodeURIComponent(scientificName)}&iconic_taxa=Aves&per_page=1`;
+        const fields = "(id:!t,name:!t,taxon_photos:(photo:(id:!t,medium_url:!t,attribution:!t,license_code:!t)),default_photo:(id:!t,medium_url:!t,attribution:!t,license_code:!t))";
+        const url = `${INAT_API_URL}/taxa?scientific_name=${encodeURIComponent(scientificName)}&iconic_taxa=Aves&per_page=1&fields=${fields}`;
+
         console.log(`Fetching iNat photos for: ${scientificName} -> ${url}`);
         const res = await fetch(url);
 
@@ -97,7 +99,11 @@ async function fetchINatPhotos(scientificName: string) {
 
 async function fetchObservationPhotos(scientificName: string, count: number) {
     try {
-        const url = `${INAT_API_URL}/observations?scientific_name=${encodeURIComponent(scientificName)}&quality_grade=research&photos=true&per_page=${count}&order_by=votes`;
+        // Use field selection to strictly limit data returned to ONLY what we need
+        const fields = "(id:!t,photos:(id:!t,medium_url:!t,attribution:!t,license_code:!t))";
+        const url = `${INAT_API_URL}/observations?scientific_name=${encodeURIComponent(scientificName)}&quality_grade=research&photos=true&per_page=${count}&order_by=votes&fields=${fields}`;
+
+        console.log(`iNat: Fetching observation photos (minimized)...`);
         const res = await fetch(url);
         const data = await res.json();
 
@@ -105,11 +111,10 @@ async function fetchObservationPhotos(scientificName: string, count: number) {
         if (data.results) {
             for (const obs of data.results) {
                 if (obs.photos && obs.photos.length > 0) {
-                    // Get the best photo from the observation
                     const p = obs.photos[0];
                     photos.push({
                         id: p.id,
-                        url: p.medium_url || p.url, // Fallback to url if medium_url missing
+                        url: p.medium_url || p.url,
                         attribution: p.attribution,
                         license_code: p.license_code
                     });
@@ -125,7 +130,8 @@ async function fetchObservationPhotos(scientificName: string, count: number) {
 
 async function fetchINatGenderedPhoto(scientificName: string, gender: string) {
     try {
-        const url = `${INAT_API_URL}/observations?scientific_name=${encodeURIComponent(scientificName)}&term_id=5&term_value_id=${gender === "male" ? 6 : 7}&quality_grade=research&per_page=1&order_by=votes`;
+        const fields = "(photos:(medium_url:!t))";
+        const url = `${INAT_API_URL}/observations?scientific_name=${encodeURIComponent(scientificName)}&term_id=5&term_value_id=${gender === "male" ? 6 : 7}&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
         const res = await fetch(url);
         const data = await res.json();
         return data.results?.[0]?.photos?.[0]?.medium_url || null;
@@ -169,8 +175,8 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string) {
             return finalUrl;
         };
 
-        const songs = data.recordings.filter((r: any) => r.type.toLowerCase().includes("song")).slice(0, 2);
-        const calls = data.recordings.filter((r: any) => r.type.toLowerCase().includes("call") && !r.type.toLowerCase().includes("song")).slice(0, 2);
+        const songs = data.recordings.filter((r: any) => r.type.toLowerCase().includes("song")).slice(0, 1);
+        const calls = data.recordings.filter((r: any) => r.type.toLowerCase().includes("call") && !r.type.toLowerCase().includes("song")).slice(0, 1);
 
         return [...songs, ...calls].map((rec: any) => ({
             id: rec.id,

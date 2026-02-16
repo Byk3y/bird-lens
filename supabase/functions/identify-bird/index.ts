@@ -119,8 +119,9 @@ Deno.serve(async (req: Request) => {
         // Supabase client removed to save memory (users reported memory limit issues with caching)
         // const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-        const body: BirdIdentificationRequest = await req.json();
-        const { image, audio } = body;
+        let body: BirdIdentificationRequest = await req.json();
+        let image = body.image;
+        let audio = body.audio;
 
         console.log(`Request received. Image size: ${image ? image.length : 0} chars, Audio size: ${audio ? audio.length : 0} chars`);
 
@@ -159,13 +160,38 @@ IDENTIFICATION MARKERS:
 - If they look similar but juveniles are distinct, provide 'juvenile' and 'adult' tips (put 'adult' in 'female').
 - VERY IMPORTANT: If there is NO significant visual difference between genders or ages, DO NOT force differentiation. In such cases, provide a single set of tips in the 'male' field and leave 'female' as an empty string or 'Similar to male'.
 
-Provide multiple specific diet and feeder tags to ensure a rich user experience. Return a comprehensive encyclopedia-style profile for EACH candidate.`;
+Provide multiple specific diet and feeder tags to ensure a rich user experience. Return a comprehensive encyclopedia-style profile for EACH candidate.
+
+Return the response as a JSON array of objects, where each object has these exact keys:
+{
+  "name": "string",
+  "scientific_name": "string",
+  "also_known_as": ["string"],
+  "taxonomy": { "family": "string", "family_scientific": "string", "genus": "string", "genus_description": "string", "order": "string" },
+  "identification_tips": { "male": "string", "female": "string", "juvenile": "string" },
+  "description": "string",
+  "diet": "string",
+  "diet_tags": ["string"],
+  "habitat": "string",
+  "habitat_tags": ["string"],
+  "nesting_info": { "description": "string", "location": "string", "type": "string" },
+  "feeder_info": { "attracted_by": ["string"], "feeder_types": ["string"] },
+  "behavior": "string",
+  "rarity": "string",
+  "fact": "string",
+  "distribution_area": "string",
+  "conservation_status": "string",
+  "key_facts": { "size": "string", "wingspan": "string", "wing_shape": "string", "life_expectancy": "string", "colors": ["string"], "tail_shape": "string", "weight": "string" },
+  "confidence": number
+}
+Return EXACTLY 3 candidates in the array.`;
+
 
         const prompt = image
             ? `${persona}\n\nIdentify the bird in this image. Focus on plumage details, beak shape, and distinctive markers.\n${promptInstructions}`
             : `${persona}\n\nIdentify the bird in this audio clip. Focus on the pitch, rhythm, and pattern of the song or call.\n${promptInstructions}`;
 
-        const parts: any[] = [{ text: prompt }];
+        let parts: any[] = [{ text: prompt }];
 
         if (image) {
             parts.push({
@@ -183,10 +209,9 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
             });
         }
 
-        let identificationResponse;
+        let identificationResponse: Response | undefined;
         let isFallback = false;
-
-        const openRouterModel = "google/gemini-2.0-flash";
+        const openRouterModel = "google/gemini-2.5-flash";
 
         // Identification Logic: Primary (OpenRouter) -> Fallback (Direct Gemini)
         try {
@@ -197,25 +222,7 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
             const schemaInstructions = `
             MANDATORY: Return a JSON object with a key "candidates" which is an array of objects. 
             Each bird object in the "candidates" array MUST have these EXACT keys:
-            - "name": Common name of the bird.
-            - "scientific_name": Scientific name.
-            - "also_known_as": Array of strings.
-            - "taxonomy": Object with "family", "family_scientific", "genus", "genus_description", "order".
-            - "identification_tips": Object with "male", "female", "juvenile".
-            - "description": text.
-            - "diet": text.
-            - "diet_tags": Array of strings (specific items like 'Black Oil Sunflower Seeds').
-            - "habitat": text.
-            - "habitat_tags": Array of strings.
-            - "nesting_info": Object with "description", "location", "type".
-            - "feeder_info": Object with "attracted_by", "feeder_types".
-            - "behavior": text.
-            - "rarity": "Common", "Uncommon", "Rare", or "Very Rare".
-            - "fact": interesting fact.
-            - "distribution_area": text.
-            - "conservation_status": text.
-            - "key_facts": Object with "size", "wingspan", "wing_shape", "life_expectancy", "colors", "tail_shape", "weight".
-            - "confidence": number between 0 and 1.
+            - "name", "scientific_name", "also_known_as", "taxonomy", "identification_tips", "description", "diet", "diet_tags", "habitat", "habitat_tags", "nesting_info", "feeder_info", "behavior", "rarity", "fact", "distribution_area", "conservation_status", "key_facts", "confidence".
             
             MANDATORY JSON STRUCTURE:
             {
@@ -227,41 +234,45 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
             }
             `;
 
-            const openRouterContent: any[] = [{
-                type: "text",
-                text: `${prompt}\n\n${schemaInstructions}\n\nReturn EXACTLY 3 candidates in the "candidates" array.`
-            }];
-            if (image) {
-                openRouterContent.push({
-                    type: "image_url",
-                    image_url: { url: `data:image/jpeg;base64,${image}` }
-                });
-            } else if (audio) {
-                openRouterContent.push({
-                    type: "input_audio",
-                    input_audio: { data: audio, format: "mp3" }
-                });
-            }
+            const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-            identificationResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            identificationResponse = await fetch(OPENROUTER_API_URL, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                    "HTTP-Referer": "https://github.com/Byk3y/bird-lens",
-                    "X-Title": "Bird Lens",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://bird-identifier.supabase.co",
+                    "X-Title": "Bird Identifier",
                 },
                 body: JSON.stringify({
                     model: openRouterModel,
-                    messages: [{ role: "user", content: openRouterContent }],
+                    messages: [{
+                        role: "user",
+                        content: [
+                            { type: "text", text: `${prompt}\n\n${schemaInstructions}\n\nReturn EXACTLY 3 candidates in the "candidates" array.` },
+                            ...(image ? [{
+                                type: "image_url",
+                                image_url: { url: `data:image/jpeg;base64,${image}` }
+                            }] : []),
+                            ...(audio ? [{
+                                type: "audio_url",
+                                audio_url: { url: `data:audio/mp3;base64,${audio}` }
+                            }] : [])
+                        ]
+                    }],
                     response_format: { type: "json_object" }
-                })
+                }),
             });
 
-            if (!identificationResponse.ok) {
-                const errText = await identificationResponse.text();
-                throw new Error(`OpenRouter Error ${identificationResponse.status}: ${errText}`);
-            }
+            // CLEAR ALL LARGE INPUT DATA IMMEDIATELY
+            // @ts-ignore
+            image = null;
+            // @ts-ignore
+            audio = null;
+            // @ts-ignore
+            body = null;
+            // @ts-ignore
+            parts = null;
 
         } catch (primaryError: any) {
             console.warn("Primary Identification (OpenRouter) failed. Falling back to Direct Gemini...", primaryError.message);
@@ -272,122 +283,35 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     contents: [{ parts }],
-                    generationConfig: {
-                        response_mime_type: "application/json",
-                        response_schema: {
-                            type: "ARRAY",
-                            items: {
-                                type: "OBJECT",
-                                properties: {
-                                    name: { type: "STRING" },
-                                    scientific_name: { type: "STRING" },
-                                    also_known_as: { type: "ARRAY", items: { type: "STRING" } },
-                                    taxonomy: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            family: { type: "STRING" },
-                                            family_scientific: { type: "STRING" },
-                                            genus: { type: "STRING" },
-                                            genus_description: { type: "STRING" },
-                                            order: { type: "STRING" }
-                                        },
-                                        required: ["family", "family_scientific", "genus", "genus_description", "order"]
-                                    },
-                                    identification_tips: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            male: { type: "STRING" },
-                                            female: { type: "STRING" },
-                                            juvenile: { type: "STRING" }
-                                        },
-                                        required: ["male", "female"]
-                                    },
-                                    description: { type: "STRING" },
-                                    diet: { type: "STRING" },
-                                    diet_tags: { type: "ARRAY", items: { type: "STRING" } },
-                                    habitat: { type: "STRING" },
-                                    habitat_tags: { type: "ARRAY", items: { type: "STRING" } },
-                                    nesting_info: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            description: { type: "STRING" },
-                                            location: { type: "STRING" },
-                                            type: { type: "STRING" }
-                                        },
-                                        required: ["description", "location", "type"]
-                                    },
-                                    feeder_info: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            attracted_by: { type: "ARRAY", items: { type: "STRING" } },
-                                            feeder_types: { type: "ARRAY", items: { type: "STRING" } }
-                                        },
-                                        required: ["attracted_by", "feeder_types"]
-                                    },
-                                    behavior: { type: "STRING" },
-                                    rarity: { type: "STRING", enum: ["Common", "Uncommon", "Rare", "Very Rare"] },
-                                    fact: { type: "STRING" },
-                                    distribution_area: { type: "STRING" },
-                                    conservation_status: { type: "STRING", description: "IUCN status, e.g., 'Least Concern', 'Near Threatened', 'Decreasing Population'" },
-                                    key_facts: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            size: { type: "STRING" },
-                                            wingspan: { type: "STRING" },
-                                            wing_shape: { type: "STRING" },
-                                            life_expectancy: { type: "STRING" },
-                                            colors: { type: "ARRAY", items: { type: "STRING" } },
-                                            tail_shape: { type: "STRING" },
-                                            weight: { type: "STRING" }
-                                        },
-                                        required: ["size", "wingspan", "wing_shape", "life_expectancy", "colors", "tail_shape", "weight"]
-                                    },
-                                    confidence: { type: "NUMBER" },
-                                },
-                                required: [
-                                    "name",
-                                    "scientific_name",
-                                    "also_known_as",
-                                    "taxonomy",
-                                    "identification_tips",
-                                    "description",
-                                    "diet",
-                                    "diet_tags",
-                                    "habitat",
-                                    "habitat_tags",
-                                    "nesting_info",
-                                    "feeder_info",
-                                    "behavior",
-                                    "rarity",
-                                    "fact",
-                                    "distribution_area",
-                                    "conservation_status",
-                                    "key_facts",
-                                    "confidence"
-                                ],
-                            }
-                        },
-                    },
+                    generationConfig: { responseMimeType: "application/json" }
                 }),
             });
 
+            // Clear large variables immediately to save memory
+            // @ts-ignore
+            image = null;
+            // @ts-ignore
+            audio = null;
+            // @ts-ignore
+            body = null;
+            // @ts-ignore
+            parts = null;
         }
 
-        if (!identificationResponse.ok) {
-            const errorRaw = await identificationResponse.text();
+        if (!identificationResponse || !identificationResponse.ok) {
+            const errorRaw = identificationResponse ? await identificationResponse.text() : "No response";
             console.error(isFallback ? "Fallback Gemini Error:" : "Primary OpenRouter Error:", {
-                status: identificationResponse.status,
+                status: identificationResponse?.status,
                 body: errorRaw
             });
 
-            return createErrorResponse(`Identification failed: ${identificationResponse.statusText}`, 502);
+            return createErrorResponse(`Identification failed: ${identificationResponse?.statusText || "No response"}`, 502);
         }
 
         const result = await identificationResponse.json();
         let birdData: BirdIdentificationResult[];
 
         if (!isFallback) {
-            // OpenRouter Result Parsing
             if (!result.choices?.[0]?.message?.content) {
                 console.error("OpenRouter response missing content:", JSON.stringify(result));
                 throw new Error("OpenRouter response missing expected content structure");
@@ -396,24 +320,22 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
             const parsed = cleanAndParseJson(content, "OpenRouter");
             birdData = parsed.candidates || parsed.birds || parsed.results || (Array.isArray(parsed) ? parsed : [parsed]);
         } else {
-            // Gemini Result Parsing
             console.log("Parsing Direct Gemini response...");
             birdData = cleanAndParseJson(result.candidates[0].content.parts[0].text, "Gemini");
         }
 
         console.log(`Successfully identified ${birdData.length} bird candidates.`);
 
-
         // --- ENRICHMENT LAYER (No Caching) ---
         const enrichedResults = [];
         console.log(`Starting enrichment for ${birdData.length} birds sequentially...`);
 
-        // Loop through all 3 candidates and enrich
         for (const [index, bird] of birdData.slice(0, 3).entries()) {
             const { scientific_name } = bird;
             console.log(`[${index + 1}/3] Enriching: ${bird.name} (${scientific_name})...`);
 
             try {
+                // SEQUENTIAL: enrichSpecies already handles the internal sequential calls
                 const enriched = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
                 enrichedResults.push({
                     ...bird,
