@@ -122,6 +122,8 @@ Deno.serve(async (req: Request) => {
         const body: BirdIdentificationRequest = await req.json();
         const { image, audio } = body;
 
+        console.log(`Request received. Image size: ${image ? image.length : 0} chars, Audio size: ${audio ? audio.length : 0} chars`);
+
         if (!image && !audio) {
             return createErrorResponse("Either image or audio data is required", 400);
         }
