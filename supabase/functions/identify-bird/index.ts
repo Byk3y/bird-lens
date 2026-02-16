@@ -437,12 +437,17 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
         }
 
         // --- ENRICHMENT & CACHING LAYER ---
-        const enrichedResults = await Promise.all(birdData.map(async (bird, index) => {
+        const enrichedResults = [];
+        console.log(`Starting enrichment for ${birdData.length} birds sequentially...`);
+
+        for (let i = 0; i < birdData.length; i++) {
+            const bird = birdData[i];
             const { scientific_name, name } = bird;
 
             if (!scientific_name) {
-                console.error(`Error: bird at index ${index} is missing scientific_name. Raw bird:`, JSON.stringify(bird));
-                return { ...bird, media: { inat_photos: [], sounds: [] } };
+                console.error(`Error: bird at index ${i} is missing scientific_name. Raw bird:`, JSON.stringify(bird));
+                enrichedResults.push({ ...bird, media: { inat_photos: [], sounds: [] } });
+                continue;
             }
 
             // 1. Check cache
@@ -455,45 +460,52 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
             const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 7 * 24 * 60 * 60 * 1000);
 
             if (cached && !isStale) {
-                console.log(`Cache hit for: ${scientific_name}`);
-                return {
+                console.log(`[${i + 1}/${birdData.length}] Cache hit for: ${scientific_name}`);
+                enrichedResults.push({
                     ...bird,
                     media: {
                         inat_photos: cached.inat_photos,
                         male_image_url: cached.male_image_url,
                         female_image_url: cached.female_image_url,
-                        sounds: cached.sounds,
-                        wikipedia_image: cached.wikipedia_image,
-                        gbif_taxon_key: cached.gbif_taxon_key
+                        sounds: cached.sounds
                     }
-                };
+                });
+                continue;
             }
 
             // 2. Fetch fresh data (Cache miss or stale)
-            console.log(`Cache ${isStale ? "stale" : "miss"} for: ${scientific_name} (${name || "Unknown Name"}). Enriching...`);
-            const media = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
+            console.log(`[${i + 1}/${birdData.length}] Cache ${isStale ? "stale" : "miss"} for: ${scientific_name} (${name || "Unknown Name"}). Enriching...`);
 
-            // 3. Upsert into cache
-            await supabase
-                .from("species_meta")
-                .upsert({
-                    scientific_name,
-                    common_name: name || "Unknown Bird",
-                    inat_photos: media.inat_photos,
-                    male_image_url: media.male_image_url,
-                    female_image_url: media.female_image_url,
-                    sounds: media.sounds,
-                    wikipedia_image: media.wikipedia_image,
-                    gbif_taxon_key: media.gbif_taxon_key,
-                    identification_data: bird, // Save full Gemini data
-                    updated_at: new Date().toISOString()
+            // Garbage collection hint: Explicitly nullify variables from previous iteration if possible, 
+            // though JS engine handles this. The main win is not running 3 of these at once.
+            try {
+                const media = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
+
+                // 3. Upsert into cache
+                await supabase
+                    .from("species_meta")
+                    .upsert({
+                        scientific_name,
+                        common_name: name || "Unknown Bird",
+                        inat_photos: media.inat_photos,
+                        male_image_url: media.male_image_url,
+                        female_image_url: media.female_image_url,
+                        sounds: media.sounds,
+                        identification_data: bird, // Save full Gemini data
+                        updated_at: new Date().toISOString()
+                    });
+
+
+                enrichedResults.push({
+                    ...bird,
+                    media
                 });
-
-            return {
-                ...bird,
-                media
-            };
-        }));
+            } catch (enrichError) {
+                console.error(`Error enriching ${scientific_name}:`, enrichError);
+                // Return basic data without enrichment rather than failing everything
+                enrichedResults.push({ ...bird, media: { inat_photos: [], sounds: [] } });
+            }
+        }
 
         const duration = Date.now() - startTime;
         console.log(`Identification complete: ${enrichedResults[0].name} in ${duration}ms`);

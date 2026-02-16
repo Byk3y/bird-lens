@@ -1,7 +1,5 @@
 
 const INAT_API_URL = "https://api.inaturalist.org/v1";
-const WIKI_API_URL = "https://en.wikipedia.org/w/api.php";
-const GBIF_API_URL = "https://api.gbif.org/v1";
 const XENO_CANTO_API_URL = "https://xeno-canto.org/api/3/recordings";
 
 export interface EnrichedMedia {
@@ -9,21 +7,27 @@ export interface EnrichedMedia {
     male_image_url: string | null;
     female_image_url: string | null;
     sounds: any[];
-    wikipedia_image: string | null;
-    gbif_taxon_key: string | null;
 }
 
 export async function enrichSpecies(scientificName: string, xenoCantoApiKey: string): Promise<EnrichedMedia> {
     console.log(`Enriching data for: ${scientificName}`);
 
-    const [inatData, malePhoto, femalePhoto, wikiMedia, gbifData, sounds] = await Promise.all([
-        fetchINatPhotos(scientificName),
-        fetchINatGenderedPhoto(scientificName, "male"),
-        fetchINatGenderedPhoto(scientificName, "female"),
-        fetchWikipediaMedia(scientificName),
-        fetchGBIFTaxonKey(scientificName),
-        fetchXenoCantoSounds(scientificName, xenoCantoApiKey)
-    ]);
+    // Execute sequentially to minimize memory footprint
+    // 1. iNaturalist Photos (potentially heaviest payload)
+    const inatData = await fetchINatPhotos(scientificName);
+
+    // 2. Gendered Photos (lightweight)
+    const malePhoto = await fetchINatGenderedPhoto(scientificName, "male");
+    const femalePhoto = await fetchINatGenderedPhoto(scientificName, "female");
+
+    // 3. Wikipedia (medium)
+    const wikiMedia = await fetchWikipediaMedia(scientificName);
+
+    // 4. GBIF (lightweight)
+    const gbifData = await fetchGBIFTaxonKey(scientificName);
+
+    // 5. Xeno-Canto (medium - large JSON list)
+    const sounds = await fetchXenoCantoSounds(scientificName, xenoCantoApiKey);
 
     return {
         inat_photos: inatData,
@@ -137,35 +141,7 @@ async function fetchINatGenderedPhoto(scientificName: string, gender: string) {
     }
 }
 
-async function fetchWikipediaMedia(scientificName: string) {
-    try {
-        const url = `${WIKI_API_URL}?action=query&format=json&prop=pageimages|pageprops&titles=${encodeURIComponent(scientificName)}&generator=search&gsrsearch=${encodeURIComponent(scientificName)}&gsrlimit=1&piprop=original`;
-        const res = await fetch(url);
-        const data = await res.json();
 
-        if (data.query?.pages) {
-            const pageId = Object.keys(data.query.pages)[0];
-            const page = data.query.pages[pageId];
-            return {
-                imageUrl: page.original?.source || null
-            };
-        }
-        return { imageUrl: null };
-    } catch (e) {
-        return { imageUrl: null };
-    }
-}
-
-async function fetchGBIFTaxonKey(scientificName: string) {
-    try {
-        const url = `${GBIF_API_URL}/species/match?name=${encodeURIComponent(scientificName)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        return { taxonKey: data.usageKey || null };
-    } catch (e) {
-        return { taxonKey: null };
-    }
-}
 
 async function fetchXenoCantoSounds(scientificName: string, apiKey: string) {
     try {
