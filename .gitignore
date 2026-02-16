@@ -37,6 +37,7 @@ yarn-error.*
 # project context
 antigravity.md
 AGENTS.md
+.agent/
 
 # debug
 extensions_debug.json
