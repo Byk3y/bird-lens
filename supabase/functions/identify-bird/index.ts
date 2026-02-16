@@ -440,30 +440,37 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
         const enrichedResults = [];
         console.log(`Starting enrichment for ${birdData.length} birds sequentially...`);
 
-        for (let i = 0; i < birdData.length; i++) {
-            const bird = birdData[i];
-            const { scientific_name, name } = bird;
+        // Loop through the results from Gemini
+        // Limit to 3 candidates, but ONLY enrich the first one to save memory
+        for (const [index, bird] of birdData.slice(0, 3).entries()) {
+            const { scientific_name } = bird;
+            console.log(`[${index + 1}/3] Processing: ${bird.name} (${scientific_name})...`);
 
-            if (!scientific_name) {
-                console.error(`Error: bird at index ${i} is missing scientific_name. Raw bird:`, JSON.stringify(bird));
-                enrichedResults.push({ ...bird, media: { inat_photos: [], sounds: [] } });
-                continue;
-            }
-
-            console.log(`[${i + 1}/${birdData.length}] Enriching: ${scientific_name} (${name || "Unknown Name"})...`);
-
-            try {
-                // Fetch fresh data (Directly, no cache)
-                const media = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
-
+            if (index === 0) {
+                // Full enrichment for the top candidate
+                try {
+                    console.log(`Enriching top candidate: ${scientific_name}`);
+                    const enriched = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
+                    enrichedResults.push({
+                        ...bird,
+                        media: enriched
+                    });
+                } catch (enrichError) {
+                    console.error(`Error enriching ${scientific_name}:`, enrichError);
+                    enrichedResults.push({ ...bird, media: { inat_photos: [], sounds: [], male_image_url: null, female_image_url: null } });
+                }
+            } else {
+                // Skip enrichment for others to prevent Memory Limit Exceeded
+                console.log(`Skipping enrichment for secondary candidate: ${scientific_name}`);
                 enrichedResults.push({
                     ...bird,
-                    media
+                    media: {
+                        inat_photos: [],
+                        sounds: [],
+                        male_image_url: null,
+                        female_image_url: null
+                    }
                 });
-            } catch (enrichError) {
-                console.error(`Error enriching ${scientific_name}:`, enrichError);
-                // Return basic data without enrichment rather than failing everything
-                enrichedResults.push({ ...bird, media: { inat_photos: [], sounds: [] } });
             }
         }
 
