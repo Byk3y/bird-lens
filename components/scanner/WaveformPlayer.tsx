@@ -14,13 +14,22 @@ import {
 
 interface WaveformPlayerProps {
     sound: BirdSound;
+    activeSoundId?: string | null;
+    onPlay?: (id: string) => void;
 }
 
-export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({ sound }) => {
+export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({ sound, activeSoundId, onPlay }) => {
     const [playback, setPlayback] = useState<Audio.Sound | null>(null);
     const [status, setStatus] = useState<AVPlaybackStatusSuccess | null>(null);
     const [loading, setLoading] = useState(false);
     const [containerWidth, setContainerWidth] = useState(0);
+
+    // Stop playback if another sound becomes active
+    useEffect(() => {
+        if (activeSoundId && activeSoundId !== sound.id && playback && status?.isPlaying) {
+            playback.pauseAsync();
+        }
+    }, [activeSoundId, playback, status?.isPlaying, sound.id]);
 
     useEffect(() => {
         return () => {
@@ -33,23 +42,29 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({ sound }) => {
     const handlePlayPause = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+        // Notify parent that this sound is trying to play
+        if (onPlay) {
+            onPlay(sound.id);
+        }
+
         if (!playback) {
             try {
                 setLoading(true);
+                console.log(`Loading sound: ${sound.url}`);
                 const { sound: audioInstance } = await Audio.Sound.createAsync(
                     {
                         uri: sound.url,
                         headers: {
-                            'User-Agent': 'BirdLensApp/1.0'
+                            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
                         }
                     },
-                    { shouldPlay: true },
+                    { shouldPlay: true, volume: 1.0 },
                     onPlaybackStatusUpdate
                 );
                 setPlayback(audioInstance);
                 setLoading(false);
             } catch (error) {
-                console.error('Error loading sound:', error);
+                console.error(`Error loading sound from ${sound.url}:`, error);
                 setLoading(false);
             }
             return;
@@ -96,7 +111,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({ sound }) => {
                     pressed && { opacity: 0.8 }
                 ]}
             >
-                {loading ? (
+                {loading || (status && !status.isPlaying && status.isBuffering) ? (
                     <ActivityIndicator color={Colors.white} size="small" />
                 ) : status?.isPlaying ? (
                     <Pause color={Colors.white} size={12} fill={Colors.white} />

@@ -1,5 +1,6 @@
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -16,6 +17,7 @@ import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-ha
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { useBirdIdentification } from '@/hooks/useBirdIdentification';
 import { useScannerGestures } from '@/hooks/useScannerGestures';
+import { useAuth } from '@/lib/auth';
 
 // Components
 import { IdentificationResult } from '@/components/scanner/IdentificationResult';
@@ -39,6 +41,7 @@ export default function ScannerScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const { isLoading: isAuthLoading } = useAuth();
 
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
@@ -96,13 +99,22 @@ export default function ScannerScreen() {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
-          base64: true,
+          base64: false, // We will generate base64 after resizing
           exif: false,
         });
 
-        if (photo?.base64) {
-          setCapturedImage(photo.base64); // Set immediate preview
-          await identifyBird(photo.base64);
+        if (photo?.uri) {
+          // Resize and compress the image to avoid hitting Edge Function memory limits
+          const manipResult = await manipulateAsync(
+            photo.uri,
+            [{ resize: { width: 800 } }], // Resize to reasonable width for API
+            { compress: 0.6, format: SaveFormat.JPEG, base64: true }
+          );
+
+          if (manipResult.base64) {
+            setCapturedImage(manipResult.base64); // Set resized preview
+            await identifyBird(manipResult.base64);
+          }
         }
       } catch (error) {
         console.error('Capture error:', error);
@@ -202,6 +214,7 @@ export default function ScannerScreen() {
               onModeChange={setActiveMode}
               onCapture={handleCapture}
               isProcessing={isProcessing}
+              isInitializing={isAuthLoading}
               onShowTips={() => setShowSnapTips(true)}
               isRecording={isRecording}
               hasRecording={!!recordingUri}
@@ -220,8 +233,8 @@ export default function ScannerScreen() {
             setActiveIndex={setActiveIndex}
             enrichCandidate={enrichCandidate}
             updateHeroImage={updateHeroImage}
-            onSave={async (bird, image, inatPhotos, sounds) => {
-              const success = await saveSighting(bird, image, inatPhotos, sounds);
+            onSave={async (bird, image) => {
+              const success = await saveSighting(bird, image);
               if (success) {
                 setIsSaved(true);
                 // Wait 1s to show success state before navigating

@@ -14,7 +14,7 @@ import {
     Notebook,
     Volume2,
 } from 'lucide-react-native';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     Pressable,
@@ -47,6 +47,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     onOpenTips,
 }) => {
     const galleryRef = useRef<ScrollView>(null);
+    const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
 
     // Reset gallery scroll position when bird changes
     useEffect(() => {
@@ -134,32 +135,36 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
 
                 <View style={styles.gridContainer}>
                     {/* Full Width Tip: Diet */}
-                    <TouchableOpacity style={styles.wideCard} onPress={onOpenTips}>
-                        <View style={styles.cardContent}>
-                            <Text style={styles.cardLabel}>Diet</Text>
-                        </View>
-                        <View style={styles.cardRight}>
-                            <OverlapAvatars
-                                tags={[...(bird.diet_tags || []), bird.diet].filter(Boolean)}
-                                type="diet"
-                            />
-                            <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
-                        </View>
-                    </TouchableOpacity>
+                    {(bird.diet_tags?.length > 0 || bird.diet) && (
+                        <TouchableOpacity style={styles.wideCard} onPress={onOpenTips}>
+                            <View style={styles.cardContent}>
+                                <Text style={styles.cardLabel}>Diet</Text>
+                            </View>
+                            <View style={styles.cardRight}>
+                                <OverlapAvatars
+                                    tags={[...(bird.diet_tags || []), bird.diet].filter(Boolean)}
+                                    type="diet"
+                                />
+                                <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Full Width Tip: Feeder */}
-                    <TouchableOpacity style={styles.wideCard} onPress={onOpenTips}>
-                        <View style={styles.cardContent}>
-                            <Text style={styles.cardLabel}>Feeder</Text>
-                        </View>
-                        <View style={styles.cardRight}>
-                            <OverlapAvatars
-                                tags={bird.feeder_info?.feeder_types || []}
-                                type="feeder"
-                            />
-                            <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
-                        </View>
-                    </TouchableOpacity>
+                    {(bird.feeder_info?.feeder_types?.length > 0) && (
+                        <TouchableOpacity style={styles.wideCard} onPress={onOpenTips}>
+                            <View style={styles.cardContent}>
+                                <Text style={styles.cardLabel}>Feeder</Text>
+                            </View>
+                            <View style={styles.cardRight}>
+                                <OverlapAvatars
+                                    tags={bird.feeder_info?.feeder_types || []}
+                                    type="feeder"
+                                />
+                                <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Two Column Row: Habitat & Nesting */}
                     <View style={styles.row}>
@@ -280,7 +285,12 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                     <HelpCircle size={16} color="#666" style={{ marginLeft: 6 }} />
                                 </View>
                                 {sounds.filter(s => s.type === 'song').map((sound) => (
-                                    <WaveformPlayer key={sound.id} sound={sound} />
+                                    <WaveformPlayer
+                                        key={sound.id}
+                                        sound={sound}
+                                        activeSoundId={activeSoundId}
+                                        onPlay={setActiveSoundId}
+                                    />
                                 ))}
                             </View>
                         )}
@@ -293,7 +303,12 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                     <HelpCircle size={16} color="#666" style={{ marginLeft: 6 }} />
                                 </View>
                                 {sounds.filter(s => s.type === 'call').map((sound) => (
-                                    <WaveformPlayer key={sound.id} sound={sound} />
+                                    <WaveformPlayer
+                                        key={sound.id}
+                                        sound={sound}
+                                        activeSoundId={activeSoundId}
+                                        onPlay={setActiveSoundId}
+                                    />
                                 ))}
                             </View>
                         )}

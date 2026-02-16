@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { HelpCircle, Image as ImageIcon, UploadCloud } from 'lucide-react-native';
 import React from 'react';
 import {
+    ActivityIndicator,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -15,6 +16,7 @@ interface ScannerControlsProps {
     onModeChange: (mode: ScanMode) => void;
     onCapture: () => void;
     isProcessing: boolean;
+    isInitializing?: boolean;
     onShowTips: () => void;
     isRecording?: boolean;
     hasRecording?: boolean;
@@ -25,6 +27,7 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
     onModeChange,
     onCapture,
     isProcessing,
+    isInitializing = false,
     onShowTips,
     isRecording = false,
     hasRecording = false,
@@ -68,16 +71,20 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
 
                 <TouchableOpacity
                     onPress={onCapture}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isInitializing}
                     style={styles.mainShutter}
                 >
                     <View style={[
                         styles.shutterInner,
-                        isProcessing && { opacity: 0.7 },
+                        (isProcessing || isInitializing) && { opacity: 0.7 },
                         isRecording && styles.shutterInnerRecording,
                         hasRecording && !isRecording && styles.shutterInnerFinished
                     ]}>
-                        {isRecording ? (
+                        {isInitializing ? (
+                            <View style={styles.initializingContainer}>
+                                <ActivityIndicator color={Colors.primary} size="small" />
+                            </View>
+                        ) : isRecording ? (
                             <View style={styles.stopButton}>
                                 <LinearGradient
                                     colors={['#f97316', '#D4202C']}
@@ -241,5 +248,10 @@ const styles = StyleSheet.create({
     uploadIconContainer: {
         position: 'absolute',
         zIndex: 1,
+    },
+    initializingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

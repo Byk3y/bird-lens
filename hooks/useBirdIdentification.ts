@@ -12,7 +12,7 @@ export const useBirdIdentification = () => {
     const [enrichedCandidates, setEnrichedCandidates] = useState<BirdResult[]>([]);
     const [result, setResult] = useState<BirdResult | null>(null);
     const [heroImages, setHeroImages] = useState<Record<string, string>>({});
-    const { user } = useAuth();
+    const { user, isLoading: isAuthLoading } = useAuth();
 
     const identifyBird = async (imageB64?: string, audioB64?: string) => {
         if (isProcessing) return;
@@ -20,6 +20,22 @@ export const useBirdIdentification = () => {
         try {
             setIsProcessing(true);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+            // Wait for auth session if it's still initializing
+            // This prevents the 401 Unauthorized race condition on cold starts
+            if (isAuthLoading || !user) {
+                console.log('Waiting for auth session before identification...');
+                let attempts = 0;
+                while ((isAuthLoading || !user) && attempts < 10) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    attempts++;
+                }
+
+                if (isAuthLoading || !user) {
+                    throw new Error('Authentication timed out. Please try again.');
+                }
+                console.log('Auth session ready after', attempts * 0.5, 's');
+            }
 
             // Real API Call
             const { data, error } = await supabase.functions.invoke('identify-bird', {
@@ -57,7 +73,28 @@ export const useBirdIdentification = () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             return primaryResult;
         } catch (error: any) {
-            Alert.alert('Identification Failed', error.message);
+            // Use warn instead of error to avoid intrusive Expo dev-mode overlays
+            console.warn('Identification attempt status:', error.message || error);
+
+            // Extract status code - Supabase FunctionsHttpError usually has .status
+            const status = error.status || error.context?.status || error.statusCode;
+            const isQuotaError = status === 429 ||
+                error.message?.includes('429') ||
+                error.message?.includes('Quota') ||
+                error.message?.includes('RESOURCE_EXHAUSTED');
+
+            if (isQuotaError) {
+                Alert.alert(
+                    'AI is taking a nap 😴',
+                    'We\'ve hit the Google Gemini free tier limit. Please wait about 30-60 seconds and try your capture again.',
+                    [{ text: 'Got it' }]
+                );
+            } else {
+                Alert.alert(
+                    'Identification Failed',
+                    error.message || 'An unexpected error occurred. Please try again later.'
+                );
+            }
             return null;
         } finally {
             setIsProcessing(false);

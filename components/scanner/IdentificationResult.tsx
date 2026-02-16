@@ -3,6 +3,7 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { BirdResult } from '@/types/scanner';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import * as Speech from 'expo-speech';
 import { Camera, Check, ChevronLeft, Image as ImageIcon, Save, Share2 } from 'lucide-react-native';
 import { Skeleton } from 'moti/skeleton';
 import React, { useEffect } from 'react';
@@ -110,6 +111,16 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
         });
     };
 
+    const playScientificName = () => {
+        if (activeBird?.scientific_name) {
+            Speech.speak(activeBird.scientific_name, {
+                language: 'la',
+                pitch: 1.0,
+                rate: 0.9,
+            });
+        }
+    };
+
     if (isLoading) {
         return <SkeletonLoader />;
     }
@@ -200,14 +211,13 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         ))}
                     </View>
                 </View>
-
-                {/* Content Section */}
                 {!isComparisonTab && activeBird ? (
                     <BirdProfileContent
                         bird={activeBird}
                         inatPhotos={activeBird.inat_photos}
                         sounds={activeBird.sounds}
                         onOpenTips={() => handleOpenTips(activeBird)}
+                        onPlaySound={playScientificName}
                     />
                 ) : (
                     <View style={styles.correctionSection}>
@@ -225,40 +235,42 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             </ScrollView>
 
             {/* Bottom Action Bar */}
-            {!isComparisonTab && activeBird && (
-                <View style={styles.bottomBar}>
-                    <TouchableOpacity
-                        style={styles.actionItem}
-                        onPress={() => onSave(activeBird, capturedImage)}
-                        disabled={isSaving || isSaved}
-                    >
-                        {isSaving ? (
-                            <ActivityIndicator size="small" color={Colors.primary} />
-                        ) : isSaved ? (
-                            <Check color={Colors.primary} size={24} />
-                        ) : (
-                            <Save color={Colors.text} size={24} />
-                        )}
-                        <Text style={[styles.actionText, (isSaving || isSaved) && { color: Colors.primary }]}>
-                            {isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
-                        </Text>
-                    </TouchableOpacity>
+            {
+                !isComparisonTab && activeBird && (
+                    <View style={styles.bottomBar}>
+                        <TouchableOpacity
+                            style={styles.actionItem}
+                            onPress={() => onSave(activeBird, capturedImage)}
+                            disabled={isSaving || isSaved}
+                        >
+                            {isSaving ? (
+                                <ActivityIndicator size="small" color={Colors.primary} />
+                            ) : isSaved ? (
+                                <Check color={Colors.primary} size={24} />
+                            ) : (
+                                <Save color={Colors.text} size={24} />
+                            )}
+                            <Text style={[styles.actionText, (isSaving || isSaved) && { color: Colors.primary }]}>
+                                {isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
+                            </Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.actionItem}
-                        onPress={onReset}
-                    >
-                        <Camera color={Colors.text} size={24} />
-                        <Text style={styles.actionText}>New</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.actionItem}
+                            onPress={onReset}
+                        >
+                            <Camera color={Colors.text} size={24} />
+                            <Text style={styles.actionText}>New</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.actionItem}>
-                        <Share2 color={Colors.text} size={24} />
-                        <Text style={styles.actionText}>Share</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-        </View>
+                        <TouchableOpacity style={styles.actionItem}>
+                            <Share2 color={Colors.text} size={24} />
+                            <Text style={styles.actionText}>Share</Text>
+                        </TouchableOpacity>
+                    </View>
+                )
+            }
+        </View >
     );
 };
 
