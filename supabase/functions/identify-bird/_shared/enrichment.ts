@@ -1,193 +1,268 @@
+// enrichment.ts — Media enrichment for bird identification
+// Fetches photos from iNaturalist, gendered photos, Wikimedia Commons fallback, and sounds from Xeno-Canto
 
 const INAT_API_URL = "https://api.inaturalist.org/v1";
-const XENO_CANTO_API_URL = "https://xeno-canto.org/api/3/recordings";
+const WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php";
+
+// ---------- Types ----------
+
+export interface INatPhoto {
+    url: string;
+    attribution: string;
+    license: string;
+}
+
+export interface BirdSound {
+    id: string;
+    scientific_name: string;
+    common_name: string;
+    url: string;
+    waveform: string;
+    type: string;
+    quality: string;
+    recorder: string;
+    license: string;
+    duration: string;
+    location: string;
+    country: string;
+}
 
 export interface EnrichedMedia {
-    inat_photos: any[];
+    inat_photos: INatPhoto[];
     male_image_url: string | null;
     female_image_url: string | null;
-    sounds: any[];
+    sounds: BirdSound[];
+    wikipedia_image: string | null;
 }
 
-export async function enrichSpecies(scientificName: string, xenoCantoApiKey: string): Promise<EnrichedMedia> {
-    console.log(`Enriching data for: ${scientificName}`);
+// ---------- iNaturalist Photos ----------
 
-    // Execute sequentially to minimize memory footprint
-    // 1. iNaturalist Photos (potentially heaviest payload)
-    const inatData = await fetchINatPhotos(scientificName);
-
-    // 2. Gendered Photos (lightweight)
-    const malePhoto = await fetchINatGenderedPhoto(scientificName, "male");
-    const femalePhoto = await fetchINatGenderedPhoto(scientificName, "female");
-
-    // 3. Xeno-Canto (medium - large JSON list)
-    const sounds = await fetchXenoCantoSounds(scientificName, xenoCantoApiKey);
-
-    return {
-        inat_photos: inatData,
-        male_image_url: malePhoto,
-        female_image_url: femalePhoto,
-        sounds: sounds
-    };
-}
-
-async function fetchINatPhotos(scientificName: string) {
+/**
+ * Fetches high-quality taxon photos from iNaturalist.
+ * Uses taxa endpoint for species-level photos (more reliable than observations).
+ */
+async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
     try {
-        // Use scientific_name search and filter by Aves (taxon_id 3 is Birds in iNat)
-        const fields = "(id:!t,name:!t,taxon_photos:(photo:(id:!t,medium_url:!t,attribution:!t,license_code:!t)),default_photo:(id:!t,medium_url:!t,attribution:!t,license_code:!t))";
-        const url = `${INAT_API_URL}/taxa?scientific_name=${encodeURIComponent(scientificName)}&iconic_taxa=Aves&per_page=1&fields=${fields}`;
+        const query = scientificName.trim();
+        const url = `${INAT_API_URL}/taxa?q=${encodeURIComponent(query)}&per_page=5`;
+        const response = await fetch(url);
+        if (!response.ok) return [];
 
-        console.log(`Fetching iNat photos for: ${scientificName} -> ${url}`);
-        const res = await fetch(url);
+        const data = await response.json();
+        // Try to find an exact match first, otherwise take the first result
+        const taxon = data.results?.find((t: any) => t.name.toLowerCase() === query.toLowerCase()) || data.results?.[0];
 
-        if (!res.ok) {
-            console.error(`iNat API error: ${res.status} ${res.statusText}`);
-            return [];
+        if (!taxon) return [];
+
+        // Collect all possible photos (taxon_photos or default_photo)
+        let photos = taxon.taxon_photos || [];
+        if (photos.length === 0 && taxon.default_photo) {
+            photos = [{ photo: taxon.default_photo }];
         }
 
-        const data = await res.json();
-        const taxon = data.results?.[0];
+        if (photos.length === 0) return [];
 
-        if (!taxon) {
-            console.warn(`iNat: No taxon found for ${scientificName}`);
-            return [];
-        }
+        return photos.slice(0, 8).map((tp: any) => {
+            const photo = tp.photo;
+            const originalUrl = photo.url || photo.medium_url || photo.small_url || '';
+            if (!originalUrl) return null;
 
-        let photos: any[] = [];
+            // Upgrade to large URLs for high quality
+            const largeUrl = originalUrl.replace('/square.', '/large.').replace('/medium.', '/large.').replace('/small.', '/large.');
 
-        // 1. Get Taxon Photos
-        if (taxon.taxon_photos && taxon.taxon_photos.length > 0) {
-            photos = taxon.taxon_photos.map((tp: any) => ({
-                id: tp.photo.id,
-                url: tp.photo.medium_url,
-                attribution: tp.photo.attribution,
-                license_code: tp.photo.license_code
-            }));
-        }
-
-        // 2. Add Default Photo if not present
-        if (taxon.default_photo) {
-            const defaultPhoto = {
-                id: taxon.default_photo.id,
-                url: taxon.default_photo.medium_url,
-                attribution: taxon.default_photo.attribution,
-                license_code: taxon.default_photo.license_code
+            return {
+                url: largeUrl || originalUrl,
+                attribution: photo.attribution || 'Unknown',
+                license: photo.license_code || 'CC-BY-NC',
             };
-            if (!photos.some(p => p.id === defaultPhoto.id)) {
-                photos.unshift(defaultPhoto);
-            }
-        }
-
-        // 3. Fallback/Supplement with Observation Photos if needed
-        if (photos.length < 8) {
-            console.log(`iNat: Only found ${photos.length} taxon photos, fetching observations...`);
-            const obsPhotos = await fetchObservationPhotos(scientificName, 5); // Fetch fewer to save memory
-            for (const p of obsPhotos) {
-                if (!photos.some((existing) => existing.id === p.id) && photos.length < 8) {
-                    photos.push(p);
-                }
-            }
-        }
-
-        console.log(`iNat: Returning ${photos.length} photos for ${scientificName}`);
-        return photos;
-    } catch (e) {
-        console.error("iNaturalist catch error:", e);
+        }).filter(Boolean);
+    } catch (error) {
+        console.error(`Error fetching iNat photos for ${scientificName}:`, error);
         return [];
     }
 }
 
-async function fetchObservationPhotos(scientificName: string, count: number) {
+/**
+ * Fetches gendered photos from iNaturalist observations.
+ * Uses Annotation system: term_id=1 (Sex), term_value_id=2 (Male) / 3 (Female)
+ */
+async function fetchINatGenderedPhoto(scientificName: string, gender: "male" | "female"): Promise<string | null> {
     try {
-        // Use field selection to strictly limit data returned to ONLY what we need
-        const fields = "(id:!t,photos:(id:!t,medium_url:!t,attribution:!t,license_code:!t))";
-        const url = `${INAT_API_URL}/observations?scientific_name=${encodeURIComponent(scientificName)}&quality_grade=research&photos=true&per_page=${count}&order_by=votes&fields=${fields}`;
+        const termValueId = gender === "male" ? 2 : 3;
+        const fields = "photos.url,photos.license_code,photos.attribution";
+        const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=1&term_value_id=${termValueId}&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
 
-        console.log(`iNat: Fetching observation photos (minimized)...`);
-        const res = await fetch(url);
-        const data = await res.json();
+        const response = await fetch(url);
+        if (!response.ok) return null;
 
-        const photos: any[] = [];
-        if (data.results) {
-            for (const obs of data.results) {
-                if (obs.photos && obs.photos.length > 0) {
-                    const p = obs.photos[0];
-                    photos.push({
-                        id: p.id,
-                        url: p.medium_url || p.url,
-                        attribution: p.attribution,
-                        license_code: p.license_code
-                    });
-                }
-            }
-        }
-        return photos;
-    } catch (e) {
-        console.error("Error fetching observation photos:", e);
-        return [];
-    }
-}
+        const data = await response.json();
+        const photo = data.results?.[0]?.photos?.[0];
+        if (!photo?.url) return null;
 
-async function fetchINatGenderedPhoto(scientificName: string, gender: string) {
-    try {
-        const fields = "(photos:(medium_url:!t))";
-        const url = `${INAT_API_URL}/observations?scientific_name=${encodeURIComponent(scientificName)}&term_id=5&term_value_id=${gender === "male" ? 6 : 7}&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        return data.results?.[0]?.photos?.[0]?.medium_url || null;
-    } catch (e) {
+        // Upgrade to large URL
+        return photo.url.replace('/square.', '/large.').replace('/medium.', '/large.');
+    } catch (error) {
+        console.error(`Error fetching ${gender} photo for ${scientificName}:`, error);
         return null;
     }
 }
 
+// ---------- Wikimedia Commons Fallback ----------
 
-
-async function fetchXenoCantoSounds(scientificName: string, apiKey: string) {
+/**
+ * Fetches a high-quality image from Wikimedia Commons as a fallback.
+ * Uses the search API to find images by scientific name.
+ */
+async function fetchWikimediaImage(scientificName: string): Promise<string | null> {
     try {
-        const query = encodeURIComponent(`sp:"${scientificName}" q:A`);
-        const url = `${XENO_CANTO_API_URL}?query=${query}&key=${apiKey}`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const params = new URLSearchParams({
+            action: 'query',
+            format: 'json',
+            generator: 'search',
+            gsrsearch: `${scientificName} bird`,
+            gsrnamespace: '6', // File namespace
+            gsrlimit: '3',
+            prop: 'imageinfo',
+            iiprop: 'url|mime',
+            iiurlwidth: '1024',
+        });
 
-        if (!data.recordings) return [];
+        const response = await fetch(`${WIKIMEDIA_API_URL}?${params}`);
+        if (!response.ok) return null;
 
-        const fixUrl = (u: string, rec?: any) => {
-            if (!u) return "";
+        const data = await response.json();
+        if (!data.query?.pages) return null;
 
-            let finalUrl = u.startsWith("//") ? `https:${u}` : u;
-            const osciUrl = rec?.osci?.large || rec?.osci?.medium || rec?.osci?.small;
-
-            // If it's a generic xeno-canto.org/ID/download link, 
-            // try to construct the direct uploaded path which is more AVPlayer friendly.
-            if (finalUrl.includes('xeno-canto.org') && finalUrl.endsWith('/download') && osciUrl) {
-                const match = osciUrl.match(/sounds\/uploaded\/([^/]+)\//);
-                if (match && match[1]) {
-                    const dir = match[1];
-                    const idMatch = finalUrl.match(/xeno-canto\.org\/(\d+)\/download/);
-                    if (idMatch && idMatch[1]) {
-                        const id = idMatch[1];
-                        // If we have the exact filename, use it. Otherwise fallback to XC+ID.mp3
-                        const fileName = rec?.["file-name"] || `XC${id}.mp3`;
-                        return `https://xeno-canto.org/sounds/uploaded/${dir}/${fileName}`;
-                    }
-                }
+        // Find the first image result (not SVG/PDF)
+        const pages = Object.values(data.query.pages) as any[];
+        for (const page of pages) {
+            const info = page.imageinfo?.[0];
+            if (info && info.mime?.startsWith('image/') && !info.mime.includes('svg')) {
+                return info.thumburl || info.url;
             }
-            return finalUrl;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching Wikimedia image for ${scientificName}:`, error);
+        return null;
+    }
+}
+
+// ---------- Xeno-Canto Sounds ----------
+
+interface XenoCantoRecording {
+    id: string;
+    gen: string;
+    sp: string;
+    en: string;
+    cnt: string;
+    loc: string;
+    file: string;
+    q: string;
+    type: string;
+    rec: string;
+    lic: string;
+    length: string;
+    osci: { small: string; medium: string; large: string };
+    'file-name': string;
+}
+
+function fixXenoCantoUrl(url: string, rec?: XenoCantoRecording): string {
+    if (!url) return '';
+    let finalUrl = url.startsWith('//') ? `https:${url}` : url;
+
+    const osciUrl = rec?.osci?.large || rec?.osci?.medium || rec?.osci?.small;
+    if (finalUrl.includes('xeno-canto.org') && finalUrl.endsWith('/download') && osciUrl) {
+        const match = osciUrl.match(/sounds\/uploaded\/([^/]+)\//);
+        if (match?.[1]) {
+            const dir = match[1];
+            const idMatch = finalUrl.match(/xeno-canto\.org\/(\d+)\/download/);
+            if (idMatch?.[1]) {
+                const fileName = rec?.['file-name'] || `XC${idMatch[1]}.mp3`;
+                return `https://xeno-canto.org/sounds/uploaded/${dir}/${fileName}`;
+            }
+        }
+    }
+    return finalUrl;
+}
+
+async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Promise<BirdSound[]> {
+    try {
+        if (!apiKey) {
+            console.warn('XENO_CANTO_API_KEY not set, skipping sounds');
+            return [];
+        }
+
+        const query = encodeURIComponent(`sp:"${scientificName}" q:A`);
+        const url = `https://xeno-canto.org/api/3/recordings?query=${query}&key=${apiKey}`;
+
+        const response = await fetch(url);
+        if (!response.ok) return [];
+
+        const data = await response.json();
+        if (!data.recordings?.length) return [];
+
+        const isSong = (r: XenoCantoRecording) => r.type.toLowerCase().includes('song');
+        const isCall = (r: XenoCantoRecording) => r.type.toLowerCase().includes('call') && !isSong(r);
+
+        const mapRecording = (rec: XenoCantoRecording, type: string): BirdSound => {
+            const osci = rec.osci?.large || rec.osci?.medium || rec.osci?.small || '';
+            return {
+                id: rec.id,
+                scientific_name: `${rec.gen} ${rec.sp}`,
+                common_name: rec.en,
+                url: fixXenoCantoUrl(rec.file, rec),
+                waveform: fixXenoCantoUrl(osci),
+                type,
+                quality: rec.q,
+                recorder: rec.rec,
+                license: rec.lic,
+                duration: rec.length,
+                location: rec.loc,
+                country: rec.cnt,
+            };
         };
 
-        const songs = data.recordings.filter((r: any) => r.type.toLowerCase().includes("song")).slice(0, 1);
-        const calls = data.recordings.filter((r: any) => r.type.toLowerCase().includes("call") && !r.type.toLowerCase().includes("song")).slice(0, 1);
+        const songs = data.recordings.filter(isSong).slice(0, 2).map((r: XenoCantoRecording) => mapRecording(r, 'song'));
+        const calls = data.recordings.filter(isCall).slice(0, 2).map((r: XenoCantoRecording) => mapRecording(r, 'call'));
 
-        return [...songs, ...calls].map((rec: any) => ({
-            id: rec.id,
-            url: fixUrl(rec.file, rec),
-            waveform: fixUrl(rec.osci?.large || rec.osci?.medium || ""),
-            type: rec.type.toLowerCase().includes("song") ? "song" : "call",
-            duration: rec.length,
-            attribution: rec.rec,
-            license: rec.lic
-        })).filter(sound => sound.url && !sound.url.includes('/download'));
-    } catch (e) {
+        return [...songs, ...calls];
+    } catch (error) {
+        console.error(`Error fetching sounds for ${scientificName}:`, error);
         return [];
     }
+}
+
+// ---------- Main Enrichment Function ----------
+
+/**
+ * Enriches a species with media data.
+ * Fetches sequentially to minimize memory footprint within edge function limits.
+ */
+export async function enrichSpecies(scientificName: string, xenoCantoApiKey: string): Promise<EnrichedMedia> {
+    console.log(`Enriching data for: ${scientificName}`);
+
+    // 1. iNaturalist Taxon Photos
+    const inatPhotos = await fetchINatPhotos(scientificName);
+
+    // 2. Wikimedia Commons fallback if iNat photos are sparse
+    let wikipediaImage: string | null = null;
+    if (inatPhotos.length < 3) {
+        wikipediaImage = await fetchWikimediaImage(scientificName);
+    }
+
+    // 3. Gendered Photos (lightweight)
+    const malePhoto = await fetchINatGenderedPhoto(scientificName, "male");
+    const femalePhoto = await fetchINatGenderedPhoto(scientificName, "female");
+
+    // 4. Xeno-Canto Sounds
+    const sounds = await fetchXenoCantoSounds(scientificName, xenoCantoApiKey);
+
+    return {
+        inat_photos: inatPhotos,
+        male_image_url: malePhoto,
+        female_image_url: femalePhoto,
+        sounds,
+        wikipedia_image: wikipediaImage,
+    };
 }

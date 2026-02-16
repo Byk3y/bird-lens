@@ -77,29 +77,23 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     const router = useRouter();
 
     const activeBirdFromProps = enrichedCandidates[activeIndex] || result;
-    const [isLoading, setIsLoading] = React.useState(!heroImages[activeBirdFromProps?.scientific_name || '']);
 
-    // Simplified effect: Stop loading once data is available
+    // With streaming, candidate data arrives fast (~4s) but media arrives later.
+    // Only show skeleton if we have zero candidate data at all.
+    const hasAnyCandidateData = enrichedCandidates.length > 0 || result !== null;
+    const [isLoading, setIsLoading] = React.useState(!hasAnyCandidateData);
+
+    // Stop loading once we have any candidate data
     useEffect(() => {
-        if (activeBirdFromProps && heroImages[activeBirdFromProps.scientific_name]) {
+        if (hasAnyCandidateData && isLoading) {
             setIsLoading(false);
         }
-    }, [activeIndex, heroImages, activeBirdFromProps]);
+    }, [hasAnyCandidateData]);
 
     // Unified list for carousel
     const carouselItems = enrichedCandidates.slice(0, 3);
     const isComparisonTab = activeIndex === carouselItems.length;
     const activeBird = !isComparisonTab ? carouselItems[activeIndex] : null;
-
-    // Simulate short initial loading ONLY if we have no data at all
-    useEffect(() => {
-        if (isLoading) {
-            const timer = setTimeout(() => {
-                setIsLoading(false);
-            }, 1500);
-            return () => clearTimeout(timer);
-        }
-    }, []);
 
     const scrollX = React.useRef(new Animated.Value(0)).current;
 

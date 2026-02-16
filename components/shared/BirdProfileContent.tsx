@@ -91,22 +91,23 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             <View style={styles.gutter} />
 
             {/* Gallery Section */}
-            {(inatPhotos.length > 0 || (bird.inat_photos && bird.inat_photos.length > 0)) && (
-                <View style={styles.gallerySection}>
-                    <View style={styles.sectionHeaderRow}>
-                        <View style={styles.sectionTitleLeft}>
-                            <ImageIcon size={22} color="#1A1A1A" />
-                            <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
-                        </View>
-                        <MoreHorizontal size={20} color="#999" />
+            {/* Gallery Section */}
+            <View style={styles.gallerySection}>
+                <View style={styles.sectionHeaderRow}>
+                    <View style={styles.sectionTitleLeft}>
+                        <ImageIcon size={22} color="#1A1A1A" />
+                        <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
                     </View>
-                    <ScrollView
-                        ref={galleryRef}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        style={styles.galleryScroll}
-                    >
-                        {(inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).map((photo, idx) => (
+                    <MoreHorizontal size={20} color="#999" />
+                </View>
+                <ScrollView
+                    ref={galleryRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.galleryScroll}
+                >
+                    {(inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).length > 0 ? (
+                        (inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).map((photo, idx) => (
                             <TouchableOpacity
                                 key={idx}
                                 style={styles.galleryItem}
@@ -118,10 +119,17 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                     cachePolicy="memory-disk"
                                 />
                             </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
+                        ))
+                    ) : (
+                        // Render placeholders when no images are available yet
+                        [1, 2, 3].map((_, idx) => (
+                            <View key={idx} style={[styles.galleryItem, { backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center' }]}>
+                                <ImageIcon size={32} color="#CCC" />
+                            </View>
+                        ))
+                    )}
+                </ScrollView>
+            </View>
 
             <View style={styles.gutter} />
             <View style={styles.tipsSection}>

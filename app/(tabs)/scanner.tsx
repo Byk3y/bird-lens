@@ -76,10 +76,13 @@ export default function ScannerScreen() {
     recordingUri,
   } = useAudioRecording();
 
-  // Reset to photo mode on mount to prevent being stuck in sound mode
+  // Reset to photo mode and auto-request permission on mount
   useEffect(() => {
     setActiveMode('photo');
-  }, []);
+    if (permission && !permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission]);
 
   useEffect(() => {
     setActiveMode(params.mode || 'photo');
@@ -141,18 +144,22 @@ export default function ScannerScreen() {
 
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-  if (!permission) return <View style={[styles.container, { backgroundColor: '#000' }]} />;
+  if (!permission || permission.status === 'undetermined') {
+    return <View style={[styles.container, { backgroundColor: '#000' }]} />;
+  }
 
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <ShieldAlert color={Colors.accent} size={64} style={{ marginBottom: Spacing.lg }} />
+        <View style={styles.iconCircle}>
+          <ShieldAlert color={Colors.primary} size={48} />
+        </View>
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>
-          Enable your camera to start identifying species in the wild.
+          We need your camera to identify bird species. Enable access to start your bird lens.
         </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+          <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
         </TouchableOpacity>
       </View>
     );
@@ -164,7 +171,7 @@ export default function ScannerScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" translucent />
       <View style={styles.container}>
-        {capturedImage && isProcessing ? (
+        {capturedImage && !result && isProcessing ? (
           <ScannerPreview
             imageUri={capturedImage}
             onClose={() => {
@@ -288,29 +295,54 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Spacing.xl,
+    padding: Spacing.xxl,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+    // iOS Shadow
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    // Android Elevation
+    elevation: 8,
   },
   permissionTitle: {
-    ...Typography.h2,
-    color: Colors.white,
-    marginBottom: Spacing.sm,
+    ...Typography.h1,
+    color: Colors.text,
+    marginBottom: Spacing.md,
     textAlign: 'center',
   },
   permissionText: {
     ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.xxl,
+    paddingHorizontal: Spacing.md,
   },
   permissionButton: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: 16,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.lg,
+    borderRadius: 20,
+    // iOS Shadow
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    // Android Elevation
+    elevation: 6,
   },
   permissionButtonText: {
     ...Typography.body,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.white,
+    letterSpacing: -0.2,
   },
 });

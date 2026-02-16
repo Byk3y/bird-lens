@@ -2,8 +2,51 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { BirdResult } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
+import { fetch } from 'expo/fetch';
 import { useState } from 'react';
 import { Alert } from 'react-native';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+
+/**
+ * Parses a single line of NDJSON into a typed chunk.
+ */
+function parseNDJSONLine(line: string): { type: string;[key: string]: any } | null {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+
+    try {
+        return JSON.parse(trimmed);
+    } catch {
+        // Fallback: try to find the JSON object within the line
+        try {
+            const start = trimmed.indexOf('{');
+            const end = trimmed.lastIndexOf('}');
+            if (start !== -1 && end > start) {
+                return JSON.parse(trimmed.substring(start, end + 1));
+            }
+        } catch {
+            // Still failed
+        }
+        console.warn('Failed to parse NDJSON line:', trimmed.slice(0, 100));
+        return null;
+    }
+}
+
+/**
+ * Maps raw candidate data + media into a BirdResult.
+ */
+function toBirdResult(bird: any, media?: any): BirdResult {
+    return {
+        ...bird,
+        inat_photos: media?.inat_photos || [],
+        male_image_url: media?.male_image_url,
+        female_image_url: media?.female_image_url,
+        sounds: media?.sounds || [],
+        wikipedia_image: media?.wikipedia_image,
+        gbif_taxon_key: media?.gbif_taxon_key,
+    };
+}
 
 export const useBirdIdentification = () => {
     const [isProcessing, setIsProcessing] = useState(false);
@@ -22,7 +65,6 @@ export const useBirdIdentification = () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
             // Wait for auth session if it's still initializing
-            // This prevents the 401 Unauthorized race condition on cold starts
             if (isAuthLoading || !user) {
                 console.log('Waiting for auth session before identification...');
                 let attempts = 0;
@@ -37,46 +79,144 @@ export const useBirdIdentification = () => {
                 console.log('Auth session ready after', attempts * 0.5, 's');
             }
 
-            // Real API Call
-            const { data, error } = await supabase.functions.invoke('identify-bird', {
-                body: { image: imageB64, audio: audioB64 },
+            // Get a fresh session to ensure the JWT hasn't expired
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            if (sessionError || !session?.access_token) {
+                console.warn('Session retrieval failed:', sessionError);
+                throw new Error('No active session. Please try logging in again.');
+            }
+
+            // --- STREAMING FETCH ---
+            const url = `${SUPABASE_URL}/functions/v1/identify-bird`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+                },
+                body: JSON.stringify({ image: imageB64, audio: audioB64 }),
             });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`Edge Function Error (${response.status}):`, errorText);
 
-            // Map the enriched media data from the server response
-            const birdCandidates = (data as any[]).map(bird => ({
-                ...bird,
-                inat_photos: bird.media?.inat_photos || [],
-                male_image_url: bird.media?.male_image_url,
-                female_image_url: bird.media?.female_image_url,
-                sounds: bird.media?.sounds || [],
-                wikipedia_image: bird.media?.wikipedia_image,
-                gbif_taxon_key: bird.media?.gbif_taxon_key
-            })) as BirdResult[];
-
-            const primaryResult = birdCandidates[0];
-
-            // Pre-populate hero images for all candidates
-            const initialHeroImages: Record<string, string> = {};
-            birdCandidates.forEach(bird => {
-                if (bird.inat_photos && bird.inat_photos.length > 0) {
-                    initialHeroImages[bird.scientific_name] = bird.inat_photos[0].url;
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Unauthorized. Your session may have expired. Please restart the app.');
                 }
-            });
 
-            setResult(primaryResult);
-            setCandidates(birdCandidates);
-            setEnrichedCandidates(birdCandidates); // Already enriched by server
-            setHeroImages(initialHeroImages);
+                let errorMessage = `Server error (${response.status})`;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.error || errorMessage;
+                } catch {
+                    // Use the generic error message
+                }
 
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            return primaryResult;
+                if (response.status === 429) {
+                    throw Object.assign(new Error(errorMessage), { status: 429 });
+                }
+                throw new Error(errorMessage);
+            }
+
+            // Read the NDJSON stream line-by-line
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('No response body to read');
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let rawCandidates: any[] = [];
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete lines
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep the incomplete line in the buffer
+
+                for (const line of lines) {
+                    const chunk = parseNDJSONLine(line);
+                    if (!chunk) continue;
+
+                    switch (chunk.type) {
+                        case 'progress': {
+                            console.log(`[Stream Progress] ${chunk.message}`);
+                            break;
+                        }
+
+                        case 'candidates': {
+                            // First chunk: bird identification data (no media yet)
+                            rawCandidates = chunk.data;
+                            const initialBirds = rawCandidates.map((bird: any) => toBirdResult(bird));
+
+                            setResult(initialBirds[0] || null);
+                            setCandidates(initialBirds);
+                            setEnrichedCandidates(initialBirds);
+
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            console.log(`Received ${initialBirds.length} candidates`);
+                            break;
+                        }
+
+                        case 'media': {
+                            // Progressive media chunks: update the specific candidate
+                            const { index, data: media } = chunk;
+
+                            setEnrichedCandidates(prev => {
+                                const next = [...prev];
+                                if (next[index]) {
+                                    next[index] = toBirdResult(rawCandidates[index], media);
+                                }
+                                return next;
+                            });
+
+                            // Update hero image for this candidate
+                            if (media.inat_photos?.length > 0 && rawCandidates[index]) {
+                                setHeroImages(prev => ({
+                                    ...prev,
+                                    [rawCandidates[index].scientific_name]: media.inat_photos[0].url,
+                                }));
+                            }
+
+                            // Update primary result if this is the first candidate
+                            if (index === 0) {
+                                setResult(prev => prev ? toBirdResult(rawCandidates[0], media) : null);
+                            }
+
+                            console.log(`Received media for candidate ${index}: ${media.inat_photos?.length || 0} photos, ${media.sounds?.length || 0} sounds`);
+                            break;
+                        }
+
+                        case 'done': {
+                            console.log(`Stream complete in ${chunk.duration}ms`);
+                            break;
+                        }
+
+                        case 'error': {
+                            console.error('Stream error from server:', chunk.message);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Process any remaining data in the buffer
+            if (buffer.trim()) {
+                const chunk = parseNDJSONLine(buffer);
+                if (chunk?.type === 'done') {
+                    console.log(`Stream complete in ${chunk.duration}ms`);
+                }
+            }
+
+            return result;
         } catch (error: any) {
-            // Use warn instead of error to avoid intrusive Expo dev-mode overlays
             console.warn('Identification attempt status:', error.message || error);
 
-            // Extract status code - Supabase FunctionsHttpError usually has .status
             const status = error.status || error.context?.status || error.statusCode;
             const isQuotaError = status === 429 ||
                 error.message?.includes('429') ||
@@ -126,7 +266,6 @@ export const useBirdIdentification = () => {
             if (capturedImage) {
                 const fileName = `${user?.id}/${Date.now()}.jpg`;
 
-                // Convert base64 to binary using Buffer (more reliable for images)
                 const { Buffer } = require('buffer');
                 const bytes = Buffer.from(capturedImage, 'base64');
 
@@ -139,7 +278,6 @@ export const useBirdIdentification = () => {
 
                 if (uploadError) throw uploadError;
 
-                // Get public URL
                 const { data: { publicUrl } } = supabase.storage
                     .from('sightings')
                     .getPublicUrl(fileName);
@@ -147,8 +285,7 @@ export const useBirdIdentification = () => {
                 imageUrl = publicUrl;
             }
 
-            // Clean and prepare metadata for permanent storage
-            // Note: Media (inat_photos, sounds, etc.) is already in the bird object from our server-side enrichment
+            // Clean and prepare metadata for storage
             const metadata: Record<string, any> = {
                 also_known_as: bird.also_known_as || [],
                 taxonomy: bird.taxonomy,
