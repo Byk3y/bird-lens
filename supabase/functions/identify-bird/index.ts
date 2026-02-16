@@ -1,4 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders, createErrorResponse, createResponse } from "./_shared/cors.ts";
 import { enrichSpecies } from "./_shared/enrichment.ts";
@@ -115,10 +114,11 @@ Deno.serve(async (req: Request) => {
 
     try {
         if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is missing");
-        if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase credentials missing");
         if (!XENO_CANTO_API_KEY) throw new Error("XENO_CANTO_API_KEY is missing");
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        // Supabase client removed to save memory (users reported memory limit issues with caching)
+        // const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
         const body: BirdIdentificationRequest = await req.json();
         const { image, audio } = body;
 
@@ -436,7 +436,7 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
             birdData = cleanAndParseJson(result.candidates[0].content.parts[0].text, "Gemini");
         }
 
-        // --- ENRICHMENT & CACHING LAYER ---
+        // --- ENRICHMENT LAYER (No Caching) ---
         const enrichedResults = [];
         console.log(`Starting enrichment for ${birdData.length} birds sequentially...`);
 
@@ -450,51 +450,11 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
                 continue;
             }
 
-            // 1. Check cache
-            const { data: cached } = await supabase
-                .from("species_meta")
-                .select("*")
-                .eq("scientific_name", scientific_name)
-                .single();
+            console.log(`[${i + 1}/${birdData.length}] Enriching: ${scientific_name} (${name || "Unknown Name"})...`);
 
-            const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 7 * 24 * 60 * 60 * 1000);
-
-            if (cached && !isStale) {
-                console.log(`[${i + 1}/${birdData.length}] Cache hit for: ${scientific_name}`);
-                enrichedResults.push({
-                    ...bird,
-                    media: {
-                        inat_photos: cached.inat_photos,
-                        male_image_url: cached.male_image_url,
-                        female_image_url: cached.female_image_url,
-                        sounds: cached.sounds
-                    }
-                });
-                continue;
-            }
-
-            // 2. Fetch fresh data (Cache miss or stale)
-            console.log(`[${i + 1}/${birdData.length}] Cache ${isStale ? "stale" : "miss"} for: ${scientific_name} (${name || "Unknown Name"}). Enriching...`);
-
-            // Garbage collection hint: Explicitly nullify variables from previous iteration if possible, 
-            // though JS engine handles this. The main win is not running 3 of these at once.
             try {
+                // Fetch fresh data (Directly, no cache)
                 const media = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
-
-                // 3. Upsert into cache
-                await supabase
-                    .from("species_meta")
-                    .upsert({
-                        scientific_name,
-                        common_name: name || "Unknown Bird",
-                        inat_photos: media.inat_photos,
-                        male_image_url: media.male_image_url,
-                        female_image_url: media.female_image_url,
-                        sounds: media.sounds,
-                        identification_data: bird, // Save full Gemini data
-                        updated_at: new Date().toISOString()
-                    });
-
 
                 enrichedResults.push({
                     ...bird,
@@ -513,6 +473,5 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
         return createResponse(enrichedResults);
     } catch (error: any) {
         console.error("Edge Function Error:", error);
-        return createErrorResponse(error.message || "Internal Server Error", 500);
     }
 });

@@ -20,22 +20,14 @@ export async function enrichSpecies(scientificName: string, xenoCantoApiKey: str
     const malePhoto = await fetchINatGenderedPhoto(scientificName, "male");
     const femalePhoto = await fetchINatGenderedPhoto(scientificName, "female");
 
-    // 3. Wikipedia (medium)
-    const wikiMedia = await fetchWikipediaMedia(scientificName);
-
-    // 4. GBIF (lightweight)
-    const gbifData = await fetchGBIFTaxonKey(scientificName);
-
-    // 5. Xeno-Canto (medium - large JSON list)
+    // 3. Xeno-Canto (medium - large JSON list)
     const sounds = await fetchXenoCantoSounds(scientificName, xenoCantoApiKey);
 
     return {
         inat_photos: inatData,
         male_image_url: malePhoto,
         female_image_url: femalePhoto,
-        sounds: sounds,
-        wikipedia_image: wikiMedia.imageUrl,
-        gbif_taxon_key: gbifData.taxonKey
+        sounds: sounds
     };
 }
 
@@ -86,7 +78,7 @@ async function fetchINatPhotos(scientificName: string) {
         // 3. Fallback/Supplement with Observation Photos if needed
         if (photos.length < 8) {
             console.log(`iNat: Only found ${photos.length} taxon photos, fetching observations...`);
-            const obsPhotos = await fetchObservationPhotos(scientificName, 10); // Fetch a few more to filter
+            const obsPhotos = await fetchObservationPhotos(scientificName, 5); // Fetch fewer to save memory
             for (const p of obsPhotos) {
                 if (!photos.some((existing) => existing.id === p.id) && photos.length < 8) {
                     photos.push(p);
