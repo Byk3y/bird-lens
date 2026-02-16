@@ -184,22 +184,99 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
         }
 
         let identificationResponse;
-        let isOpenRouter = false;
+        let isFallback = false;
 
+        const openRouterModel = "google/gemini-2.0-flash";
+
+        // Identification Logic: Primary (OpenRouter) -> Fallback (Direct Gemini)
         try {
-            console.log("Attempting identification with Direct Gemini API...");
+            if (!OPENROUTER_API_KEY) throw new Error("OpenRouter Key missing");
+
+            console.log(`Starting primary identification with OpenRouter (${openRouterModel})...`);
+
+            const schemaInstructions = `
+            MANDATORY: Return a JSON object with a key "candidates" which is an array of objects. 
+            Each bird object in the "candidates" array MUST have these EXACT keys:
+            - "name": Common name of the bird.
+            - "scientific_name": Scientific name.
+            - "also_known_as": Array of strings.
+            - "taxonomy": Object with "family", "family_scientific", "genus", "genus_description", "order".
+            - "identification_tips": Object with "male", "female", "juvenile".
+            - "description": text.
+            - "diet": text.
+            - "diet_tags": Array of strings (specific items like 'Black Oil Sunflower Seeds').
+            - "habitat": text.
+            - "habitat_tags": Array of strings.
+            - "nesting_info": Object with "description", "location", "type".
+            - "feeder_info": Object with "attracted_by", "feeder_types".
+            - "behavior": text.
+            - "rarity": "Common", "Uncommon", "Rare", or "Very Rare".
+            - "fact": interesting fact.
+            - "distribution_area": text.
+            - "conservation_status": text.
+            - "key_facts": Object with "size", "wingspan", "wing_shape", "life_expectancy", "colors", "tail_shape", "weight".
+            - "confidence": number between 0 and 1.
+            
+            MANDATORY JSON STRUCTURE:
+            {
+              "candidates": [
+                { "name": "...", "scientific_name": "...", ... },
+                { "name": "...", "scientific_name": "...", ... },
+                { "name": "...", "scientific_name": "...", ... }
+              ]
+            }
+            `;
+
+            const openRouterContent: any[] = [{
+                type: "text",
+                text: `${prompt}\n\n${schemaInstructions}\n\nReturn EXACTLY 3 candidates in the "candidates" array.`
+            }];
+            if (image) {
+                openRouterContent.push({
+                    type: "image_url",
+                    image_url: { url: `data:image/jpeg;base64,${image}` }
+                });
+            } else if (audio) {
+                openRouterContent.push({
+                    type: "input_audio",
+                    input_audio: { data: audio, format: "mp3" }
+                });
+            }
+
+            identificationResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                    "HTTP-Referer": "https://github.com/Byk3y/bird-lens",
+                    "X-Title": "Bird Lens",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: openRouterModel,
+                    messages: [{ role: "user", content: openRouterContent }],
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!identificationResponse.ok) {
+                const errText = await identificationResponse.text();
+                throw new Error(`OpenRouter Error ${identificationResponse.status}: ${errText}`);
+            }
+
+        } catch (primaryError: any) {
+            console.warn("Primary Identification (OpenRouter) failed. Falling back to Direct Gemini...", primaryError.message);
+            isFallback = true;
+
             identificationResponse = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     contents: [{ parts }],
                     generationConfig: {
-                        // ... existing generationConfig ...
                         response_mime_type: "application/json",
                         response_schema: {
                             type: "ARRAY",
                             items: {
-                                // ... existing properties ...
                                 type: "OBJECT",
                                 properties: {
                                     name: { type: "STRING" },
@@ -294,191 +371,79 @@ Provide multiple specific diet and feeder tags to ensure a rich user experience.
                 }),
             });
 
-            if (identificationResponse.status === 429) {
-                console.warn("Direct Gemini Quota Hit. Checking for OpenRouter fallback...");
-                throw { status: 429 };
-            }
-        } catch (e: any) {
-            if (e.status === 429 && OPENROUTER_API_KEY) {
-                console.log(`Direct Gemini Quota Hit. Falling back to OpenRouter (google/gemini-2.5-flash)...`);
-                isOpenRouter = true;
-
-                const schemaInstructions = `
-                MANDATORY: Return a JSON object with a key "candidates" which is an array of objects. 
-                Each bird object in the "candidates" array MUST have these EXACT keys:
-                - "name": Common name of the bird.
-                - "scientific_name": Scientific name.
-                - "also_known_as": Array of strings.
-                - "taxonomy": Object with "family", "family_scientific", "genus", "genus_description", "order".
-                - "identification_tips": Object with "male", "female", "juvenile".
-                - "description": text.
-                - "diet": text.
-                - "diet_tags": Array of strings (specific items like 'Black Oil Sunflower Seeds').
-                - "habitat": text.
-                - "habitat_tags": Array of strings.
-                - "nesting_info": Object with "description", "location", "type".
-                - "feeder_info": Object with "attracted_by", "feeder_types".
-                - "behavior": text.
-                - "rarity": "Common", "Uncommon", "Rare", or "Very Rare".
-                - "fact": interesting fact.
-                - "distribution_area": text.
-                - "conservation_status": text.
-                - "key_facts": Object with "size", "wingspan", "wing_shape", "life_expectancy", "colors", "tail_shape", "weight".
-                - "confidence": number between 0 and 1.
-                
-                MANDATORY JSON STRUCTURE:
-                {
-                  "candidates": [
-                    { "name": "...", "scientific_name": "...", ... },
-                    { "name": "...", "scientific_name": "...", ... },
-                    { "name": "...", "scientific_name": "...", ... }
-                  ]
-                }
-                `;
-
-                const openRouterContent: any[] = [{
-                    type: "text",
-                    text: `${prompt}\n\n${schemaInstructions}\n\nReturn EXACTLY 3 candidates in the "candidates" array.`
-                }];
-                if (image) {
-                    openRouterContent.push({
-                        type: "image_url",
-                        image_url: { url: `data:image/jpeg;base64,${image}` }
-                    });
-                } else if (audio) {
-                    openRouterContent.push({
-                        type: "input_audio",
-                        input_audio: { data: audio, format: "mp3" }
-                    });
-                }
-
-                identificationResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                        "HTTP-Referer": "https://github.com/Byk3y/bird-lens",
-                        "X-Title": "Bird Lens",
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        model: "google/gemini-2.5-flash",
-                        messages: [{ role: "user", content: openRouterContent }],
-                        response_format: { type: "json_object" }
-                    })
-                });
-            } else {
-                console.error("Non-429 error from Gemini or no fallback available:", e);
-                if (!identificationResponse) throw e;
-            }
         }
 
         if (!identificationResponse.ok) {
             const errorRaw = await identificationResponse.text();
-            console.error(isOpenRouter ? "OpenRouter API Error:" : "Gemini API Error:", {
+            console.error(isFallback ? "Fallback Gemini Error:" : "Primary OpenRouter Error:", {
                 status: identificationResponse.status,
                 body: errorRaw
             });
 
-            let errorData;
-            try {
-                errorData = JSON.parse(errorRaw);
-            } catch (p) {
-                errorData = { message: errorRaw };
-            }
-
-            if (identificationResponse.status === 429 || (errorData.error?.status === "RESOURCE_EXHAUSTED")) {
-                return createErrorResponse(
-                    "AI Quota Exceeded. Please wait 30-60 seconds and try again.",
-                    429
-                );
-            }
-
-            const errorMessage = errorData.error?.message || identificationResponse.statusText;
-            return createErrorResponse(`AI Identification failed (${isOpenRouter ? "OpenRouter" : "Gemini"}): ${errorMessage}`, 502);
+            return createErrorResponse(`Identification failed: ${identificationResponse.statusText}`, 502);
         }
 
         const result = await identificationResponse.json();
         let birdData: BirdIdentificationResult[];
 
-        if (isOpenRouter) {
-            console.log("Parsing OpenRouter response...");
-
-            if (result.error) {
-                console.error("OpenRouter API returned error result:", JSON.stringify(result.error));
-                throw new Error(`OpenRouter error: ${result.error.message || "Unknown error"}`);
-            }
-
+        if (!isFallback) {
+            // OpenRouter Result Parsing
             if (!result.choices?.[0]?.message?.content) {
                 console.error("OpenRouter response missing content:", JSON.stringify(result));
                 throw new Error("OpenRouter response missing expected content structure");
             }
-
             const content = result.choices[0].message.content;
-            console.log("OpenRouter Raw Content:", content);
-
             const parsed = cleanAndParseJson(content, "OpenRouter");
-
-            // Handle both object-wrapped array and direct array (for future flexibility)
-            if (parsed.candidates && Array.isArray(parsed.candidates)) {
-                birdData = parsed.candidates;
-            } else if (Array.isArray(parsed)) {
-                birdData = parsed;
-            } else if (parsed.birds && Array.isArray(parsed.birds)) {
-                birdData = parsed.birds;
-            } else if (parsed.results && Array.isArray(parsed.results)) {
-                birdData = parsed.results;
-            } else {
-                birdData = [parsed];
-            }
-            console.log(`Parsed ${birdData.length} birds from OpenRouter.`);
+            birdData = parsed.candidates || parsed.birds || parsed.results || (Array.isArray(parsed) ? parsed : [parsed]);
         } else {
+            // Gemini Result Parsing
             console.log("Parsing Direct Gemini response...");
             birdData = cleanAndParseJson(result.candidates[0].content.parts[0].text, "Gemini");
         }
+
+        console.log(`Successfully identified ${birdData.length} bird candidates.`);
+
 
         // --- ENRICHMENT LAYER (No Caching) ---
         const enrichedResults = [];
         console.log(`Starting enrichment for ${birdData.length} birds sequentially...`);
 
-        // Loop through the results from Gemini
-        // Limit to 3 candidates, but ONLY enrich the first one to save memory
+        // Loop through all 3 candidates and enrich
         for (const [index, bird] of birdData.slice(0, 3).entries()) {
             const { scientific_name } = bird;
-            console.log(`[${index + 1}/3] Processing: ${bird.name} (${scientific_name})...`);
+            console.log(`[${index + 1}/3] Enriching: ${bird.name} (${scientific_name})...`);
 
-            if (index === 0) {
-                // Full enrichment for the top candidate
-                try {
-                    console.log(`Enriching top candidate: ${scientific_name}`);
-                    const enriched = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
-                    enrichedResults.push({
-                        ...bird,
-                        media: enriched
-                    });
-                } catch (enrichError) {
-                    console.error(`Error enriching ${scientific_name}:`, enrichError);
-                    enrichedResults.push({ ...bird, media: { inat_photos: [], sounds: [], male_image_url: null, female_image_url: null } });
-                }
-            } else {
-                // Skip enrichment for others to prevent Memory Limit Exceeded
-                console.log(`Skipping enrichment for secondary candidate: ${scientific_name}`);
+            try {
+                const enriched = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY!);
                 enrichedResults.push({
                     ...bird,
-                    media: {
-                        inat_photos: [],
-                        sounds: [],
-                        male_image_url: null,
-                        female_image_url: null
-                    }
+                    media: enriched
+                });
+            } catch (enrichError) {
+                console.error(`Error enriching ${scientific_name}:`, enrichError);
+                enrichedResults.push({
+                    ...bird,
+                    media: { inat_photos: [], sounds: [], male_image_url: null, female_image_url: null }
                 });
             }
         }
 
         const duration = Date.now() - startTime;
-        console.log(`Identification complete: ${enrichedResults[0].name} in ${duration}ms`);
+        if (enrichedResults.length > 0) {
+            console.log(`Identification complete: ${enrichedResults[0].name} in ${duration}ms`);
+        }
 
         return createResponse(enrichedResults);
     } catch (error: any) {
         console.error("Edge Function Error:", error);
+
+        if (error.status === 429 || error.message?.includes("RESOURCE_EXHAUSTED")) {
+            return createErrorResponse(
+                "AI Quota Exceeded. Please wait 30-60 seconds and try again.",
+                429
+            );
+        }
+
+        return createErrorResponse(`Edge Function Error: ${error.message}`, 500);
     }
 });

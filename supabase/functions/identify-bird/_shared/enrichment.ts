@@ -33,7 +33,8 @@ export async function enrichSpecies(scientificName: string, xenoCantoApiKey: str
 
 async function fetchINatPhotos(scientificName: string) {
     try {
-        const url = `${INAT_API_URL}/taxa?q=${encodeURIComponent(scientificName)}&per_page=1&only_id=false`;
+        // Use scientific_name search and filter by Aves (taxon_id 3 is Birds in iNat)
+        const url = `${INAT_API_URL}/taxa?scientific_name=${encodeURIComponent(scientificName)}&iconic_taxa=Aves&per_page=1`;
         console.log(`Fetching iNat photos for: ${scientificName} -> ${url}`);
         const res = await fetch(url);
 
