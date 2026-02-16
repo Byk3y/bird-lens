@@ -44,25 +44,36 @@ export interface EnrichedMedia {
 async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
     try {
         const query = scientificName.trim();
-        const url = `${INAT_API_URL}/taxa?q=${encodeURIComponent(query)}&per_page=5`;
-        const response = await fetch(url);
-        if (!response.ok) return [];
+        const searchUrl = `${INAT_API_URL}/taxa?q=${encodeURIComponent(query)}&per_page=1`;
+        const searchResponse = await fetch(searchUrl);
+        if (!searchResponse.ok) return [];
 
-        const data = await response.json();
+        const searchData = await searchResponse.json();
         // Try to find an exact match first, otherwise take the first result
-        const taxon = data.results?.find((t: any) => t.name.toLowerCase() === query.toLowerCase()) || data.results?.[0];
+        const taxon = searchData.results?.find((t: any) => t.name.toLowerCase() === query.toLowerCase()) || searchData.results?.[0];
 
-        if (!taxon) return [];
+        if (!taxon?.id) return [];
+
+        // Fetch full taxon details to get all taxon_photos
+        const detailUrl = `${INAT_API_URL}/taxa/${taxon.id}`;
+        const detailResponse = await fetch(detailUrl);
+        if (!detailResponse.ok) return [];
+
+        const detailData = await detailResponse.json();
+        const fullTaxon = detailData.results?.[0];
+
+        if (!fullTaxon) return [];
 
         // Collect all possible photos (taxon_photos or default_photo)
-        let photos = taxon.taxon_photos || [];
-        if (photos.length === 0 && taxon.default_photo) {
-            photos = [{ photo: taxon.default_photo }];
+        let photos = fullTaxon.taxon_photos || [];
+        if (photos.length === 0 && fullTaxon.default_photo) {
+            photos = [{ photo: fullTaxon.default_photo }];
         }
 
         if (photos.length === 0) return [];
 
-        return photos.slice(0, 8).map((tp: any) => {
+        // Limit to 6 images as requested (1 main + 5 gallery)
+        return photos.slice(0, 6).map((tp: any) => {
             const photo = tp.photo;
             const originalUrl = photo.url || photo.medium_url || photo.small_url || '';
             if (!originalUrl) return null;

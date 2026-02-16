@@ -3,12 +3,16 @@ import { HABITAT_ASSETS, NESTING_ASSETS } from '@/constants/bird-assets';
 import { BirdResult, BirdSound, INaturalistPhoto } from '@/types/scanner';
 import { Image } from 'expo-image';
 import {
+    ChevronDown,
     ChevronRight,
+    ChevronUp,
     Edit2,
+    FileText,
     HelpCircle,
     Image as ImageIcon,
     Info,
     LayoutGrid,
+    Leaf,
     Lightbulb,
     MoreHorizontal,
     Notebook,
@@ -48,6 +52,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
 }) => {
     const galleryRef = useRef<ScrollView>(null);
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
+    const [isFactsExpanded, setIsFactsExpanded] = useState(false);
 
     // Reset gallery scroll position when bird changes
     useEffect(() => {
@@ -328,46 +333,108 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                 </>
             )}
 
-            {/* Facts Section */}
-            <View style={styles.gutter} />
             <View style={styles.section}>
-                <View style={styles.sectionHeaderRow}>
+                <View style={[styles.sectionHeaderRow, { marginBottom: 12 }]}>
                     <View style={styles.sectionTitleLeft}>
-                        <Info size={22} color="#1A1A1A" />
-                        <Text style={styles.sectionTitle}>Facts</Text>
+                        <Leaf size={22} color="#1A1A1A" />
+                        <Text style={styles.sectionTitle}>Description</Text>
                     </View>
+                    <MoreHorizontal size={20} color="#999" />
                 </View>
                 <Text style={styles.descriptionText}>{bird.description}</Text>
             </View>
 
-            {/* Habits Section */}
-            {bird.behavior && (
+            {/* Key Facts Section */}
+            <View style={styles.section}>
+                <View style={[styles.sectionHeaderRow, { marginBottom: 12 }]}>
+                    <View style={styles.sectionTitleLeft}>
+                        <FileText size={22} color="#1A1A1A" />
+                        <Text style={styles.sectionTitle}>Key Facts</Text>
+                    </View>
+                    <MoreHorizontal size={20} color="#999" />
+                </View>
+
+                <View style={styles.factsContainer}>
+                    <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
+                        <Text style={styles.factLabel}>Size</Text>
+                        <Text style={styles.factValue}>{bird.key_facts?.size || 'N/A'}</Text>
+                    </View>
+                    <View style={styles.factRow}>
+                        <Text style={styles.factLabel}>Wing Span</Text>
+                        <Text style={styles.factValue}>{bird.key_facts?.wingspan || 'N/A'}</Text>
+                    </View>
+                    <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
+                        <Text style={[styles.factLabel, { opacity: 0.5 }]}>Life Expectancy</Text>
+                        <Text style={styles.factValue}>{bird.key_facts?.life_expectancy || 'N/A'}</Text>
+                    </View>
+
+                    {isFactsExpanded && (
+                        <>
+                            <View style={styles.factRow}>
+                                <Text style={styles.factLabel}>Weight</Text>
+                                <Text style={styles.factValue}>{bird.key_facts?.weight || 'N/A'}</Text>
+                            </View>
+                            <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
+                                <Text style={styles.factLabel}>Wing Shape</Text>
+                                <Text style={styles.factValue}>{bird.key_facts?.wing_shape || 'N/A'}</Text>
+                            </View>
+                            <View style={styles.factRow}>
+                                <Text style={styles.factLabel}>Tail Shape</Text>
+                                <Text style={styles.factValue}>{bird.key_facts?.tail_shape || 'N/A'}</Text>
+                            </View>
+                            <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
+                                <Text style={styles.factLabel}>Colors</Text>
+                                <Text style={styles.factValue}>{bird.key_facts?.colors?.join(', ') || 'N/A'}</Text>
+                            </View>
+                        </>
+                    )}
+
+                    <TouchableOpacity
+                        style={styles.expandButton}
+                        onPress={() => setIsFactsExpanded(!isFactsExpanded)}
+                    >
+                        <Text style={styles.expandButtonText}>
+                            {isFactsExpanded ? 'Show Less' : 'Learn More'}
+                        </Text>
+                        {isFactsExpanded ? (
+                            <ChevronUp size={16} color="#BA6526" />
+                        ) : (
+                            <ChevronDown size={16} color="#BA6526" />
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Habits & Behavior Section */}
+            {(bird.behavior || bird.diet) && (
                 <>
                     <View style={styles.gutter} />
                     <View style={styles.section}>
                         <View style={styles.sectionHeaderRow}>
                             <View style={styles.sectionTitleLeft}>
                                 <Lightbulb size={22} color="#1A1A1A" />
-                                <Text style={styles.sectionTitle}>Habits</Text>
+                                <Text style={styles.sectionTitle}>Habits & Behavior</Text>
                             </View>
                         </View>
-                        <Text style={styles.descriptionText}>{bird.behavior}</Text>
+                        <Text style={styles.descriptionText}>
+                            {bird.behavior || bird.diet}
+                        </Text>
                     </View>
                 </>
             )}
 
-            {/* Distribution Area Section */}
-            {bird.distribution_area && (
+            {/* Distribution Section */}
+            {bird.habitat && (
                 <>
                     <View style={styles.gutter} />
                     <View style={styles.section}>
                         <View style={styles.sectionHeaderRow}>
                             <View style={styles.sectionTitleLeft}>
                                 <LayoutGrid size={22} color="#1A1A1A" />
-                                <Text style={styles.sectionTitle}>Distribution Area</Text>
+                                <Text style={styles.sectionTitle}>Distribution & Habitat</Text>
                             </View>
                         </View>
-                        <Text style={styles.descriptionText}>{bird.distribution_area}</Text>
+                        <Text style={styles.descriptionText}>{bird.habitat}</Text>
                     </View>
                 </>
             )}
@@ -654,13 +721,50 @@ const styles = StyleSheet.create({
         lineHeight: 20,
     },
     section: {
-        marginBottom: 16,
+        marginBottom: 12,
         paddingHorizontal: 16,
     },
     descriptionText: {
+        fontSize: 15.5,
+        lineHeight: 23,
+        color: '#2C3E50',
+        paddingHorizontal: 0,
+        marginTop: 0,
+        marginBottom: 4,
+    },
+    factsContainer: {
+        marginTop: 8,
+    },
+    factRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        marginBottom: 1,
+    },
+    factLabel: {
+        fontSize: 15,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    factValue: {
+        fontSize: 15,
+        color: '#1E293B',
+        fontWeight: '600',
+    },
+    expandButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 20,
+        gap: 6,
+    },
+    expandButtonText: {
         fontSize: 16,
-        color: '#333333',
-        lineHeight: 24,
+        color: '#BA6526',
+        fontWeight: '500',
     },
     factCard: {
         backgroundColor: '#fefae0',

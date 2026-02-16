@@ -304,7 +304,8 @@ export const useBirdIdentification = () => {
                 female_image_url: bird.female_image_url,
                 sounds: bird.sounds || [],
                 wikipedia_image: bird.wikipedia_image,
-                gbif_taxon_key: bird.gbif_taxon_key
+                gbif_taxon_key: bird.gbif_taxon_key,
+                key_facts: bird.key_facts
             };
 
             const { error } = await supabase.from('sightings').insert({

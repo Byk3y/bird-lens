@@ -39,7 +39,8 @@ export default function BirdDetailScreen() {
         sightingDate?: string;
         imageUrl?: string;
     }>();
-    const bird = JSON.parse(params.birdData as string) as BirdResult;
+
+    const bird = React.useMemo(() => JSON.parse(params.birdData as string) as BirdResult, [params.birdData]);
     const sightingDate = params.sightingDate ? new Date(params.sightingDate) : new Date();
 
     const [media, setMedia] = useState<BirdMedia | null>(null);
@@ -83,7 +84,7 @@ export default function BirdDetailScreen() {
             }
         }
         loadData();
-    }, [bird.scientific_name, bird.inat_photos]);
+    }, [bird.scientific_name]);
 
     const handleShare = async () => {
         try {

@@ -199,7 +199,7 @@ JSON STRUCTURE TEMPLATE:
 
                     let identificationResponse: Response | undefined;
                     let isFallback = false;
-                    const openRouterModel = "google/gemini-2.5-flash";
+                    const openRouterModel = "openai/gpt-4o";
 
                     const attemptAI = async (isPrimary: boolean): Promise<Response> => {
                         if (isPrimary) {
@@ -315,7 +315,7 @@ JSON STRUCTURE TEMPLATE:
                                             }
                                         }
                                     },
-                                    provider: { order: ["Google", "Vertex", "Groq"], allow_fallbacks: true }
+                                    provider: { order: ["OpenAI", "Google", "Vertex", "Groq"], allow_fallbacks: true }
                                 }),
                             });
                         } else {
@@ -334,7 +334,15 @@ JSON STRUCTURE TEMPLATE:
                     try {
                         if (!OPENROUTER_API_KEY) throw new Error("OpenRouter Key missing");
                         identificationResponse = await attemptAI(true);
-                        if (!identificationResponse.ok && (identificationResponse.status === 429 || identificationResponse.status >= 500)) {
+
+                        // Check if primary succeeded but returned empty content (routing error)
+                        if (identificationResponse.ok) {
+                            const clone = identificationResponse.clone();
+                            const result = await clone.json();
+                            if (!result.choices?.[0]?.message?.content) {
+                                throw new Error("Primary returned empty content");
+                            }
+                        } else if (identificationResponse.status === 429 || identificationResponse.status >= 500) {
                             throw new Error(`Primary fail: ${identificationResponse.status}`);
                         }
                     } catch (error) {
