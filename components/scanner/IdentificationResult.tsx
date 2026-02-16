@@ -1,6 +1,7 @@
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { BirdResult } from '@/types/scanner';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
@@ -9,6 +10,7 @@ import { Skeleton } from 'moti/skeleton';
 import React, { useEffect } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
     ScrollView,
     StyleSheet,
@@ -33,7 +35,11 @@ interface IdentificationResultProps {
     onReset: () => void;
 }
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const ITEM_WIDTH = width * 0.48;
+const SPACER_WIDTH = (width - ITEM_WIDTH) / 2;
+const CIRCLE_SIZE = 150;
+const SIDE_CIRCLE_SIZE = 100;
 
 const SkeletonLoader = () => {
     return (
@@ -94,15 +100,21 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
         }
     }, []);
 
-    const onScroll = (event: any) => {
-        const slideSize = event.nativeEvent.layoutMeasurement.width;
-        const index = event.nativeEvent.contentOffset.x / slideSize;
-        const roundIndex = Math.round(index);
+    const scrollX = React.useRef(new Animated.Value(0)).current;
 
-        if (roundIndex >= 0 && roundIndex <= carouselItems.length && roundIndex !== activeIndex) {
-            setActiveIndex(roundIndex);
+    const onScroll = Animated.event(
+        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+        {
+            useNativeDriver: false, // Need to set for onScroll to trigger other things if not careful, but let's use it for animations
+            listener: (event: any) => {
+                const index = event.nativeEvent.contentOffset.x / ITEM_WIDTH;
+                const roundIndex = Math.round(index);
+                if (roundIndex >= 0 && roundIndex <= carouselItems.length && roundIndex !== activeIndex) {
+                    setActiveIndex(roundIndex);
+                }
+            }
         }
-    };
+    );
 
     const handleOpenTips = (bird: BirdResult) => {
         router.push({
@@ -130,11 +142,10 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             {/* Top Navigation */}
             <View style={styles.topNav}>
                 <TouchableOpacity onPress={onReset} style={styles.navButton}>
-                    <ChevronLeft color={Colors.text} size={28} />
+                    <ChevronLeft color={Colors.white} size={28} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Identification</Text>
                 <TouchableOpacity style={styles.navButton} onPress={onReset}>
-                    <Camera color={Colors.text} size={24} />
+                    <Camera color={Colors.white} size={24} />
                 </TouchableOpacity>
             </View>
 
@@ -144,62 +155,119 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                 contentContainerStyle={styles.scrollContent}
             >
                 {/* Image & Pagination Section */}
-                <View style={styles.heroSection}>
-                    <ScrollView
+                <View style={[styles.heroSection, { height: width * 0.76 }]}>
+                    {/* Blurred Background */}
+                    <View style={StyleSheet.absoluteFill}>
+                        {activeBird && heroImages[activeBird.scientific_name] ? (
+                            <Image
+                                source={{ uri: heroImages[activeBird.scientific_name] }}
+                                style={StyleSheet.absoluteFill}
+                                contentFit="cover"
+                                transition={500}
+                                cachePolicy="memory-disk"
+                            />
+                        ) : isComparisonTab && capturedImage ? (
+                            <Image
+                                source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                style={StyleSheet.absoluteFill}
+                                contentFit="cover"
+                                transition={500}
+                                cachePolicy="memory-disk"
+                            />
+                        ) : null}
+                        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+                    </View>
+
+                    <Animated.ScrollView
                         horizontal
-                        pagingEnabled
                         showsHorizontalScrollIndicator={false}
+                        snapToInterval={ITEM_WIDTH}
+                        decelerationRate="fast"
                         onScroll={onScroll}
                         scrollEventThrottle={16}
-                        contentContainerStyle={styles.carouselContent}
+                        contentContainerStyle={[
+                            styles.carouselContent,
+                            { paddingHorizontal: SPACER_WIDTH }
+                        ]}
                     >
-                        {/* Bird Candidates */}
-                        {carouselItems.map((bird, index) => (
-                            <View key={index} style={styles.birdSlide}>
-                                <View style={styles.mainCircle}>
-                                    {heroImages[bird.scientific_name] ? (
-                                        <Image
-                                            source={{ uri: heroImages[bird.scientific_name] }}
-                                            style={styles.circleImage}
-                                            cachePolicy="memory-disk"
-                                        />
-                                    ) : (
-                                        <View style={[styles.circleImage, { backgroundColor: '#E5E5E5', alignItems: 'center', justifyContent: 'center' }]}>
-                                            <ImageIcon color="#999" size={40} />
-                                        </View>
-                                    )}
-                                </View>
-                            </View>
-                        ))}
+                        {/* Bird Candidates + Comparison Tab */}
+                        {[...carouselItems, { type: 'comparison' }].map((item: any, index) => {
+                            const inputRange = [
+                                (index - 1) * ITEM_WIDTH,
+                                index * ITEM_WIDTH,
+                                (index + 1) * ITEM_WIDTH,
+                            ];
 
-                        {/* Comparison Tab */}
-                        <View style={styles.birdSlide}>
-                            <View style={[styles.mainCircle, { borderColor: Colors.primary }]}>
-                                {capturedImage ? (
-                                    <Image
-                                        source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
-                                        style={styles.circleImage}
-                                        cachePolicy="memory-disk"
-                                    />
-                                ) : (
-                                    <View style={[styles.circleImage, { backgroundColor: '#F8F7F4', alignItems: 'center', justifyContent: 'center' }]}>
-                                        <Camera color={Colors.primary} size={48} />
+                            const scale = scrollX.interpolate({
+                                inputRange,
+                                outputRange: [0.8, 1, 0.8],
+                                extrapolate: 'clamp',
+                            });
+
+                            const opacity = scrollX.interpolate({
+                                inputRange,
+                                outputRange: [0.8, 1, 0.8],
+                                extrapolate: 'clamp',
+                            });
+
+                            const isBird = item.scientific_name !== undefined;
+
+                            return (
+                                <Animated.View key={index} style={[
+                                    styles.birdSlide,
+                                    { transform: [{ scale }], opacity, width: ITEM_WIDTH }
+                                ]}>
+                                    <View style={styles.mainCircle}>
+                                        {isBird ? (
+                                            heroImages[item.scientific_name] ? (
+                                                <Image
+                                                    source={{ uri: heroImages[item.scientific_name] }}
+                                                    style={styles.circleImage}
+                                                    cachePolicy="memory-disk"
+                                                />
+                                            ) : (
+                                                <View style={[styles.circleImage, { backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' }]}>
+                                                    <ImageIcon color="#666" size={40} />
+                                                </View>
+                                            )
+                                        ) : (
+                                            capturedImage ? (
+                                                <Image
+                                                    source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                                    style={styles.circleImage}
+                                                    cachePolicy="memory-disk"
+                                                />
+                                            ) : (
+                                                <View style={[styles.circleImage, { backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' }]}>
+                                                    <Camera color="#666" size={48} />
+                                                </View>
+                                            )
+                                        )}
                                     </View>
-                                )}
-                            </View>
+                                </Animated.View>
+                            );
+                        })}
+                    </Animated.ScrollView>
+
+                    {/* User Captured Photo Thumbnail (Bottom Left) */}
+                    {capturedImage && (
+                        <View style={styles.thumbnailContainer}>
+                            <Image
+                                source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                style={styles.thumbnailImage}
+                            />
                         </View>
-                    </ScrollView>
+                    )}
 
                     {/* Pagination Tabs */}
                     <View style={styles.pagination}>
                         {Array.from({ length: carouselItems.length + 1 }).map((_, index) => (
-                            <TouchableOpacity
+                            <View
                                 key={index}
                                 style={[
                                     styles.tabIndicator,
                                     index === activeIndex && styles.activeTab
                                 ]}
-                                onPress={() => { }} // Could implement tapping to scroll
                             >
                                 <Text style={[
                                     styles.tabText,
@@ -207,29 +275,31 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                 ]}>
                                     {index === carouselItems.length ? '?' : index + 1}
                                 </Text>
-                            </TouchableOpacity>
+                            </View>
                         ))}
                     </View>
                 </View>
-                {!isComparisonTab && activeBird ? (
-                    <BirdProfileContent
-                        bird={activeBird}
-                        inatPhotos={activeBird.inat_photos}
-                        sounds={activeBird.sounds}
-                        onOpenTips={() => handleOpenTips(activeBird)}
-                        onPlaySound={playScientificName}
-                    />
-                ) : (
-                    <View style={styles.correctionSection}>
-                        <Text style={styles.correctionTitle}>Correct the result?</Text>
-                        <Text style={styles.correctionText}>
-                            Not the bird you're looking for? If the suggests above don't match your capture, you can view your collection or try again.
-                        </Text>
-                        <TouchableOpacity style={styles.correctBtn} onPress={() => router.push('/(tabs)/collection')}>
-                            <Text style={styles.correctBtnText}>View Collection</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+                <View style={styles.contentContainer}>
+                    {!isComparisonTab && activeBird ? (
+                        <BirdProfileContent
+                            bird={activeBird}
+                            inatPhotos={activeBird.inat_photos}
+                            sounds={activeBird.sounds}
+                            onOpenTips={() => handleOpenTips(activeBird)}
+                            onPlaySound={playScientificName}
+                        />
+                    ) : (
+                        <View style={styles.correctionSection}>
+                            <Text style={styles.correctionTitle}>Correct the result?</Text>
+                            <Text style={styles.correctionText}>
+                                Not the bird you're looking for? If the suggests above don't match your capture, you can view your collection or try again.
+                            </Text>
+                            <TouchableOpacity style={styles.correctBtn} onPress={() => router.push('/(tabs)/collection')}>
+                                <Text style={styles.correctBtnText}>View Collection</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
 
                 <View style={{ height: 120 }} />
             </ScrollView>
@@ -284,9 +354,13 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingTop: 60,
+        paddingTop: 50,
         paddingBottom: Spacing.sm,
-        zIndex: 10,
+        zIndex: 30,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
     },
     navButton: {
         width: 40,
@@ -296,73 +370,108 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         ...Typography.h3,
-        color: Colors.text,
+        color: Colors.white,
         fontWeight: '700',
+    },
+    contentContainer: {
+        backgroundColor: Colors.white,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        marginTop: -32,
+        paddingTop: 32,
+        paddingBottom: 40,
+        minHeight: height * 0.6,
     },
     scrollContent: {
         flexGrow: 1,
     },
     heroSection: {
         backgroundColor: Colors.surface,
-        paddingVertical: 24,
+        paddingTop: 40,
+        paddingBottom: 20,
         alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
     },
     carouselContent: {
         alignItems: 'center',
+        justifyContent: 'center',
     },
     birdSlide: {
-        width: width,
         alignItems: 'center',
         justifyContent: 'center',
     },
     mainCircle: {
-        width: 240,
-        height: 240,
-        borderRadius: 120,
+        width: CIRCLE_SIZE,
+        height: CIRCLE_SIZE,
+        borderRadius: CIRCLE_SIZE / 2,
         backgroundColor: Colors.white,
-        borderWidth: 8,
-        borderColor: Colors.surfaceLight,
+        borderWidth: 2,
+        borderColor: Colors.white,
         overflow: 'hidden',
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
+        shadowOpacity: 0.2,
+        shadowRadius: 15,
         elevation: 10,
     },
     circleImage: {
         width: '100%',
         height: '100%',
     },
+    thumbnailContainer: {
+        position: 'absolute',
+        bottom: 50,
+        left: 16,
+        width: 85,
+        height: 54,
+        borderRadius: 0,
+        borderWidth: 1,
+        borderColor: Colors.white,
+        overflow: 'hidden',
+        zIndex: 20,
+        backgroundColor: Colors.surface,
+    },
+    thumbnailImage: {
+        width: '100%',
+        height: '100%',
+    },
     pagination: {
         flexDirection: 'row',
-        marginTop: 24,
-        gap: 12,
-        backgroundColor: Colors.surfaceLight,
-        padding: 6,
-        borderRadius: 25,
+        position: 'absolute',
+        bottom: 20,
+        gap: 6,
+        paddingHorizontal: 8,
+        alignItems: 'center',
     },
     tabIndicator: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'transparent',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: Colors.white + '80', // Semi-transparent white
         justifyContent: 'center',
         alignItems: 'center',
     },
     activeTab: {
-        backgroundColor: Colors.primary,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        backgroundColor: Colors.white,
+        width: 32,
+        height: 38,
+        borderRadius: 16,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+        paddingBottom: 6,
+        bottom: -10, // Pull it into the white container notch area
+        zIndex: 10,
     },
     tabText: {
         ...Typography.label,
-        color: Colors.textTertiary,
-        fontSize: 14,
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: '700',
     },
     activeTabText: {
-        color: Colors.white,
+        color: Colors.primary,
+        fontSize: 16,
         fontWeight: '900',
     },
     correctionSection: {
