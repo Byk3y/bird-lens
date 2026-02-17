@@ -1,3 +1,5 @@
+import { CustomActionSheet } from '@/components/common/CustomActionSheet';
+import { CustomAlert } from '@/components/common/CustomAlert';
 import { SkeletonScreen } from '@/components/common/SkeletonScreen';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
@@ -11,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Forward, Gem, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -21,8 +23,12 @@ export default function MeScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const [sightings, setSightings] = useState<any[]>([]);
-    // Initialize loading only if we have no sightings yet
     const [loading, setLoading] = useState(sightings.length === 0);
+    const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
+    const [isAlertVisible, setIsAlertVisible] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [selectedSighting, setSelectedSighting] = useState<any>(null);
+    const [sightingToDelete, setSightingToDelete] = useState<string | null>(null);
 
     // Initial fetch and user changes
     React.useEffect(() => {
@@ -33,7 +39,7 @@ export default function MeScreen() {
                 const { data, error } = await supabase
                     .from('sightings')
                     .select('id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata')
-                    .eq('user_id', user.id)
+                    .eq('user_id', user?.id)
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -58,7 +64,7 @@ export default function MeScreen() {
                     const { data, error } = await supabase
                         .from('sightings')
                         .select('id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata')
-                        .eq('user_id', user.id)
+                        .eq('user_id', user?.id)
                         .order('created_at', { ascending: false });
 
                     if (!error && data) {
@@ -73,7 +79,6 @@ export default function MeScreen() {
     );
 
     const handleBirdPress = (sighting: any) => {
-        // Map database record to BirdResult structure
         const birdData: BirdResult = {
             name: sighting.species_name,
             scientific_name: sighting.scientific_name,
@@ -93,9 +98,41 @@ export default function MeScreen() {
         });
     };
 
+    const handleOptionsPress = (sighting: any) => {
+        setSelectedSighting(sighting);
+        setIsActionSheetVisible(true);
+    };
+
+    const handleDeleteConfirm = (id: string) => {
+        setSightingToDelete(id);
+        setIsAlertVisible(true);
+    };
+
+    const deleteSighting = async (id: string) => {
+        if (!user || isDeleting) return;
+
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase
+                .from('sightings')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
+            setSightings(prev => prev.filter(s => s.id !== id));
+            setIsAlertVisible(false);
+        } catch (err) {
+            console.error('Error deleting sighting:', err);
+            Alert.alert("Error", "Could not delete this sighting. Please try again.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <View style={styles.container}>
-            {/* Header with Cardinal Gradient (Now Fixed) */}
             <LinearGradient
                 colors={['#f97316', '#D4202C', '#D4202C']}
                 start={{ x: 0, y: 0 }}
@@ -115,7 +152,7 @@ export default function MeScreen() {
                     <MotiView
                         from={{ opacity: 0, scale: 0.9, translateY: 10 }}
                         animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                        transition={{ type: 'timing', duration: 800 }}
+                        transition={{ duration: 800 }}
                         style={styles.subscribeBanner}
                     >
                         <Gem color="#fbbf24" size={20} />
@@ -124,7 +161,6 @@ export default function MeScreen() {
                 </View>
             </LinearGradient>
 
-            {/* Main Content Area (Now Scrollable) */}
             <View style={styles.content}>
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>My Collections ({sightings.length})</Text>
@@ -156,8 +192,6 @@ export default function MeScreen() {
                                                 style={styles.cardImage}
                                                 contentFit="cover"
                                                 transition={500}
-                                                cachePolicy="disk"
-                                                placeholder={{ uri: 'https://via.placeholder.com/200?text=Loading...' }}
                                             />
                                         </View>
 
@@ -170,9 +204,12 @@ export default function MeScreen() {
                                                 <Text style={styles.cardDate}>
                                                     {format(new Date(sighting.created_at), 'yy-MM-dd')}
                                                 </Text>
-                                                <Pressable style={styles.moreBtn}>
-                                                    <MoreHorizontal color="#94a3b8" size={18} />
-                                                </Pressable>
+                                                <TouchableOpacity
+                                                    style={styles.moreBtn}
+                                                    onPress={() => handleOptionsPress(sighting)}
+                                                >
+                                                    <MoreHorizontal color="#64748b" size={18} strokeWidth={2} />
+                                                </TouchableOpacity>
                                             </View>
                                         </View>
                                     </Pressable>
@@ -182,7 +219,6 @@ export default function MeScreen() {
                             <MotiView
                                 from={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                transition={{ type: 'spring', damping: 15 }}
                             >
                                 <Pressable style={styles.plusCard} onPress={() => router.push('/scanner')}>
                                     <Plus color="#94a3b8" size={40} strokeWidth={1.5} />
@@ -192,6 +228,33 @@ export default function MeScreen() {
                     )}
                 </ScrollView>
             </View>
+
+            <CustomActionSheet
+                visible={isActionSheetVisible}
+                onClose={() => setIsActionSheetVisible(false)}
+                options={[
+                    {
+                        label: 'Correct the result',
+                        onPress: () => selectedSighting && handleBirdPress(selectedSighting),
+                    },
+                    {
+                        label: 'Delete',
+                        onPress: () => selectedSighting && handleDeleteConfirm(selectedSighting.id),
+                        isDestructive: true,
+                    },
+                ]}
+            />
+
+            <CustomAlert
+                visible={isAlertVisible}
+                title="Delete Sighting"
+                message="Are you sure you want to remove this bird from your collection?"
+                onClose={() => !isDeleting && setIsAlertVisible(false)}
+                onConfirm={() => sightingToDelete && deleteSighting(sightingToDelete)}
+                confirmText="Delete"
+                isDestructive={true}
+                isLoading={isDeleting}
+            />
         </View>
     );
 }
@@ -249,11 +312,12 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.background,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
-        paddingHorizontal: 12,
+        paddingHorizontal: 8,
         paddingTop: Spacing.xl,
     },
     sectionHeader: {
         marginBottom: Spacing.lg,
+        paddingHorizontal: 4,
     },
     sectionTitle: {
         ...Typography.h3,
@@ -267,7 +331,7 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     collectionCard: {
-        width: (width - 36) / 2, // (width - 12 padding * 2 - 12 gap) / 2
+        width: (width - 24) / 2,
         borderRadius: 12,
         backgroundColor: Colors.white,
         marginBottom: 12,
@@ -288,13 +352,6 @@ const styles = StyleSheet.create({
     cardImage: {
         width: '100%',
         height: '100%',
-        resizeMode: 'cover',
-    },
-    imagePlaceholder: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f1f5f9',
     },
     cardContent: {
         padding: 12,
@@ -320,7 +377,7 @@ const styles = StyleSheet.create({
         padding: 2,
     },
     plusCard: {
-        width: (width - 36) / 2,
+        width: (width - 24) / 2,
         aspectRatio: 0.75,
         borderRadius: 12,
         borderWidth: 2,
