@@ -23,14 +23,21 @@ export default function BirdingTipsScreen() {
     const renderAssetGrid = (title: string, tags: string[], assetMap: Record<string, any>) => {
         if (!tags || tags.length === 0) return null;
 
+        // Filter out useless tags like "None", "N/A", or "Nil"
+        const filteredTags = tags.filter(t => {
+            const low = t?.toLowerCase();
+            return low && low !== 'none' && low !== 'n/a' && low !== 'nil' && low !== 'unknown' && low !== 'none.';
+        });
+
+        if (filteredTags.length === 0) return null;
+
         // Resolve assets and filter out duplicates
         const resolvedItems: { tag: string; asset: any }[] = [];
         const seenAssets = new Set();
 
-        tags.forEach(tag => {
+        filteredTags.forEach(tag => {
             const normalizedTag = tag.toLowerCase().trim();
             let asset = assetMap[normalizedTag];
-
             if (!asset) {
                 // Priority Match: Sort keys by length (longest first) to find the most specific match
                 // This prevents "Dandelion Seeds" from matching a generic "Seeds" key if a "Dandelion" key exists
@@ -107,7 +114,28 @@ export default function BirdingTipsScreen() {
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Diet Section */}
-                {renderAssetGrid('Diet', bird.diet_tags || [bird.diet], DIET_ASSETS)}
+                {(() => {
+                    let tags = [...(bird.diet_tags || [])];
+                    if (tags.length === 0 && bird.diet) {
+                        tags = [bird.diet];
+                    }
+
+                    // If we have specific food tags and 'omnivore' is present, filter out the redundant generic tag
+                    if (tags.length > 1) {
+                        const hasSpecifics = tags.some(t => {
+                            const low = t.toLowerCase();
+                            return low !== 'omnivore' && low !== 'generalist' && low !== 'mixed';
+                        });
+                        if (hasSpecifics) {
+                            tags = tags.filter(t => {
+                                const low = t.toLowerCase();
+                                return low !== 'omnivore' && low !== 'generalist' && low !== 'mixed';
+                            });
+                        }
+                    }
+
+                    return renderAssetGrid('Diet', tags, DIET_ASSETS);
+                })()}
 
                 {/* Feeder Section */}
                 {renderAssetGrid('Feeder', bird.feeder_info?.feeder_types || [], FEEDER_ASSETS)}

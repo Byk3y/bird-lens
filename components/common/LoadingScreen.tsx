@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        marginTop: -120,
     },
     lottie: {
         width: 200,

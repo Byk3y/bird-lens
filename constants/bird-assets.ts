@@ -29,6 +29,7 @@ export const DIET_ASSETS: Record<string, any> = {
     'cracked corn': require('../assets/images/birding-tips/diet/cracked-corn.jpg'),
     'safflower': require('../assets/images/birding-tips/diet/safflower.jpg'),
     'white millet': require('../assets/images/birding-tips/diet/white-millet.jpg'),
+    'omnivore': require('../assets/images/birding-tips/diet/omnivore.jpg'),
 };
 
 export const FEEDER_ASSETS: Record<string, any> = {

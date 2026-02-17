@@ -154,30 +154,59 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                 <Text style={styles.cardLabel}>Diet</Text>
                             </View>
                             <View style={styles.cardRight}>
-                                <OverlapAvatars
-                                    tags={[...(bird.diet_tags || []), bird.diet].filter(Boolean)}
-                                    type="diet"
-                                />
+                                {(() => {
+                                    let tags = [...(bird.diet_tags || [])];
+                                    if (bird.diet && !tags.includes(bird.diet)) {
+                                        tags.push(bird.diet);
+                                    }
+                                    tags = tags.filter(t => {
+                                        const low = t?.toLowerCase();
+                                        return low && low !== 'none' && low !== 'n/a' && low !== 'nil' && low !== 'unknown' && low !== 'none.';
+                                    });
+
+                                    if (tags.length === 0) return null;
+
+                                    if (tags.length > 1) {
+                                        const hasSpecifics = tags.some(t => {
+                                            const low = t.toLowerCase();
+                                            return low !== 'omnivore' && low !== 'generalist' && low !== 'mixed';
+                                        });
+                                        if (hasSpecifics) {
+                                            tags = tags.filter(t => {
+                                                const low = t.toLowerCase();
+                                                return low !== 'omnivore' && low !== 'generalist' && low !== 'mixed';
+                                            });
+                                        }
+                                    }
+
+                                    return <OverlapAvatars tags={tags} type="diet" />;
+                                })()}
                                 <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
                             </View>
                         </TouchableOpacity>
                     )}
 
                     {/* Full Width Tip: Feeder */}
-                    {(bird.feeder_info?.feeder_types?.length > 0) && (
-                        <TouchableOpacity style={styles.wideCard} onPress={onOpenTips}>
-                            <View style={styles.cardContent}>
-                                <Text style={styles.cardLabel}>Feeder</Text>
-                            </View>
-                            <View style={styles.cardRight}>
-                                <OverlapAvatars
-                                    tags={bird.feeder_info?.feeder_types || []}
-                                    type="feeder"
-                                />
-                                <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
-                            </View>
-                        </TouchableOpacity>
-                    )}
+                    {(() => {
+                        const tags = (bird.feeder_info?.feeder_types || []).filter(t => {
+                            const low = t?.toLowerCase();
+                            return low && low !== 'none' && low !== 'n/a' && low !== 'nil' && low !== 'unknown' && low !== 'none.';
+                        });
+
+                        if (tags.length === 0) return null;
+
+                        return (
+                            <TouchableOpacity style={styles.wideCard} onPress={onOpenTips}>
+                                <View style={styles.cardContent}>
+                                    <Text style={styles.cardLabel}>Feeder</Text>
+                                </View>
+                                <View style={styles.cardRight}>
+                                    <OverlapAvatars tags={tags} type="feeder" />
+                                    <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })()}
 
                     {/* Two Column Row: Habitat & Nesting */}
                     <View style={styles.row}>
@@ -537,11 +566,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
     },
     metaLabel: {
-        fontSize: 15,
-        color: '#999',
+        fontSize: 17,
+        color: '#666',
     },
     metaValue: {
-        fontSize: 15,
+        fontSize: 17,
         fontWeight: '400',
         color: '#1A1A1A',
     },
@@ -555,11 +584,11 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     scientificNameLabel: {
-        fontSize: 15,
-        color: '#999',
+        fontSize: 17,
+        color: '#666',
     },
     scientificNameValue: {
-        fontSize: 15,
+        fontSize: 17,
         fontWeight: '500',
         color: '#1A1A1A',
         fontStyle: 'italic',
@@ -675,7 +704,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     halfCardValue: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
         color: '#1A1A1A',
         textAlign: 'center',
@@ -716,18 +745,18 @@ const styles = StyleSheet.create({
     },
     insightText: {
         flex: 1,
-        fontSize: 15,
-        color: '#444',
-        lineHeight: 20,
+        fontSize: 17.5,
+        color: '#333',
+        lineHeight: 25,
     },
     section: {
         marginBottom: 12,
         paddingHorizontal: 16,
     },
     descriptionText: {
-        fontSize: 15.5,
-        lineHeight: 23,
-        color: '#2C3E50',
+        fontSize: 18,
+        lineHeight: 28,
+        color: '#1A1A1A',
         paddingHorizontal: 0,
         marginTop: 0,
         marginBottom: 4,
@@ -740,17 +769,17 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingVertical: 10,
         borderRadius: 10,
         marginBottom: 1,
     },
     factLabel: {
-        fontSize: 15,
+        fontSize: 18,
         color: '#64748B',
         fontWeight: '500',
     },
     factValue: {
-        fontSize: 15,
+        fontSize: 18,
         color: '#1E293B',
         fontWeight: '600',
     },
@@ -788,9 +817,9 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     factText: {
-        fontSize: 16,
-        lineHeight: 24,
-        color: '#333333',
+        fontSize: 18,
+        lineHeight: 27,
+        color: '#1A1A1A',
     },
     habitatIcon: {
         width: 64,
@@ -815,7 +844,7 @@ const styles = StyleSheet.create({
         marginVertical: 4,
     },
     classificationLabel: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '600',
         color: '#666',
         flex: 1,
@@ -825,24 +854,24 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     classificationValue: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 18,
+        fontWeight: '700',
         color: '#1A1A1A',
         textAlign: 'right',
     },
     classificationScientific: {
-        fontSize: 14,
+        fontSize: 16,
         fontStyle: 'italic',
         color: '#666',
         marginTop: 2,
         textAlign: 'right',
     },
     classificationDescription: {
-        fontSize: 13,
+        fontSize: 15,
         color: '#666',
         marginTop: 4,
         textAlign: 'right',
-        lineHeight: 18,
+        lineHeight: 21,
     },
     subHeaderRow: {
         flexDirection: 'row',
