@@ -134,6 +134,12 @@ serve(async (req: Request) => {
 Identify this bird with maximum scientific precision. 
 Provide the **Top 3 most probable species** candidates. 
 
+FIELD GUIDE QUALITY STANDARDS:
+- "habitat": Provide a high-density ecological description. Include elevation ranges in meters, specific vegetation or forest types (e.g., subtropical highlands, montane forest gradients), and regional habitat variations. Focus on where a birder would physically find them.
+- "nesting_info": Describe the "description" with field-guide precision: mention specific materials (moss, twigs, spiderwebs), clutch size (number of eggs), and "location" details (e.g., 2-5m high in a tree fork).
+- "identification_tips": Provide actionable field marks (e.g., "look for the white eye-ring" or "flash of orange in flight").
+- "feeder_info": Be specific about best food types (e.g., "Black oil sunflower seeds" vs just "seeds").
+
 MANDATORY RULES:
 1. Return exactly 3 candidates.
 2. For measurements (size, wingspan), use the word "inches" or "cm" instead of symbols like " or '. (e.g., "5 inches" instead of 5"). This is critical for JSON stability.
@@ -159,11 +165,11 @@ JSON STRUCTURE TEMPLATE:
       "description": "General summary",
       "diet": "Detailed diet",
       "diet_tags": ["Keyword 1"],
-      "habitat": "Detailed habitat",
+      "habitat": "Detailed ecological habitat description (include elevation, forest types, regional variants)",
       "habitat_tags": ["Keyword 1"],
-      "nesting_info": { "description": "...", "location": "...", "type": "..." },
+      "nesting_info": { "description": "Construction materials and clutch details", "location": "Height and specific tree/ground placement", "type": "Cup, cavity, etc." },
       "feeder_info": { "attracted_by": ["Food 1"], "feeder_types": ["Type 1"] },
-      "behavior": "Key behaviors",
+      "behavior": "Key field behaviors",
       "rarity": "Status level",
       "fact": "Interesting trivia",
       "distribution_area": "Geographic range",

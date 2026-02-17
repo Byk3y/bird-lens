@@ -40,7 +40,31 @@ interface BirdProfileContentProps {
     onPlaySound?: () => void;
     onImagePress?: (index: number) => void;
     onOpenTips?: () => void;
+    onOpenIdentification?: () => void;
 }
+
+const BIRD_COLOR_MAP: Record<string, string> = {
+    'Black': '#1A1A1A',
+    'White': '#FFFFFF',
+    'Gray': '#8E8E93',
+    'Grey': '#8E8E93',
+    'Brown': '#8B4513',
+    'Red': '#FF3B30',
+    'Blue': '#007AFF',
+    'Yellow': '#FFCC00',
+    'Green': '#4CD964',
+    'Orange': '#FF9500',
+    'Pink': '#FF2D55',
+    'Purple': '#AF52DE',
+    'Rufous': '#A84E32',
+    'Buff': '#F0DC82',
+    'Olive': '#808000',
+};
+
+const getBirdColor = (color: string) => {
+    const name = color.trim().charAt(0).toUpperCase() + color.trim().slice(1).toLowerCase();
+    return BIRD_COLOR_MAP[name] || color.toLowerCase();
+};
 
 export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     bird,
@@ -49,10 +73,12 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     onPlaySound,
     onImagePress,
     onOpenTips,
+    onOpenIdentification,
 }) => {
     const galleryRef = useRef<ScrollView>(null);
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
     const [isFactsExpanded, setIsFactsExpanded] = useState(false);
+    const [isClassificationExpanded, setIsClassificationExpanded] = useState(false);
 
     // Reset gallery scroll position when bird changes
     useEffect(() => {
@@ -87,10 +113,17 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
 
             <View style={styles.scientificNameRow}>
                 <Text style={styles.scientificNameLabel}>Scientific name: </Text>
-                <Text style={styles.scientificNameValue}>{bird.scientific_name}</Text>
+                <Text style={styles.scientificNameValue}>
+                    {bird.scientific_name}
+                </Text>
                 <Pressable style={styles.speakerBtn} onPress={onPlaySound}>
                     <Volume2 size={12} color="#FFF" />
                 </Pressable>
+            </View>
+
+            <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Genus: </Text>
+                <Text style={styles.metaValue}>{bird.taxonomy?.genus || 'N/A'}</Text>
             </View>
 
             <View style={styles.gutter} />
@@ -284,19 +317,11 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    {/* Differences Row */}
-                    <TouchableOpacity style={styles.listItem} onPress={onOpenTips}>
-                        <View style={styles.listItemLeft}>
-                            <LayoutGrid size={20} color="#FF6B35" />
-                            <Text style={styles.listItemText}>Male-female differences</Text>
-                        </View>
-                        <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} />
-                    </TouchableOpacity>
 
                     {/* Insight Tip */}
                     <TouchableOpacity style={styles.insightCard} onPress={onOpenTips}>
                         <View style={styles.insightIconWrapper}>
-                            <Lightbulb size={20} color="#FFD166" />
+                            <Lightbulb size={24} color="#FF6B35" fill="#FF6B35" strokeWidth={3} />
                         </View>
                         <Text style={styles.insightText} numberOfLines={2}>
                             {bird.fact || bird.description}
@@ -362,6 +387,104 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                 </>
             )}
 
+            {/* How to identify it? Section */}
+            {(() => {
+                const hasMale = bird.identification_tips?.male && bird.identification_tips.male !== 'N/A';
+                const hasFemale = bird.identification_tips?.female && bird.identification_tips.female !== 'N/A' && !bird.identification_tips.female.toLowerCase().includes('similar to male');
+                const hasJuvenile = bird.identification_tips?.juvenile && bird.identification_tips.juvenile !== 'N/A';
+
+                if (!hasMale && !hasFemale && !hasJuvenile) return null;
+
+                return (
+                    <>
+                        <View style={styles.gutter} />
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <View style={styles.sectionTitleLeft}>
+                                    <Lightbulb size={22} color="#1A1A1A" />
+                                    <Text style={styles.sectionTitle}>How to identify it?</Text>
+                                </View>
+                                <MoreHorizontal size={20} color="#999" />
+                            </View>
+
+                            <View style={styles.idContainer}>
+                                {(() => {
+                                    const showMale = !!bird.male_image_url;
+                                    const showFemale = !!bird.female_image_url;
+
+                                    if (showMale || showFemale) {
+                                        return (
+                                            <>
+                                                {showMale && (
+                                                    <View style={styles.idItem}>
+                                                        <Text style={styles.idItemTitle}>Male</Text>
+                                                        <TouchableOpacity
+                                                            style={styles.idImageWrapper}
+                                                            onPress={onOpenIdentification}
+                                                            activeOpacity={0.9}
+                                                        >
+                                                            <Image
+                                                                source={{ uri: bird.male_image_url }}
+                                                                style={styles.idImage}
+                                                                cachePolicy="memory-disk"
+                                                            />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                )}
+                                                {showFemale && (
+                                                    <View style={styles.idItem}>
+                                                        <Text style={styles.idItemTitle}>Female</Text>
+                                                        <TouchableOpacity
+                                                            style={styles.idImageWrapper}
+                                                            onPress={onOpenIdentification}
+                                                            activeOpacity={0.9}
+                                                        >
+                                                            <Image
+                                                                source={{ uri: bird.female_image_url }}
+                                                                style={styles.idImage}
+                                                                cachePolicy="memory-disk"
+                                                            />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                )}
+                                            </>
+                                        );
+                                    }
+
+                                    // Fallback to single Adult view if no gendered images provideed
+                                    return (
+                                        <View style={styles.idItem}>
+                                            <Text style={styles.idItemTitle}>Adult</Text>
+                                            <TouchableOpacity
+                                                style={styles.idImageWrapper}
+                                                onPress={onOpenIdentification}
+                                                activeOpacity={0.9}
+                                            >
+                                                <Image
+                                                    source={{ uri: bird.images?.[0] }}
+                                                    style={styles.idImage}
+                                                    cachePolicy="memory-disk"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    );
+                                })()}
+
+                                <TouchableOpacity
+                                    style={styles.learnMoreCenterBtn}
+                                    onPress={onOpenIdentification}
+                                >
+                                    <Text style={styles.learnMoreText}>Learn More</Text>
+                                    <ChevronDown size={18} color="#FF6B35" strokeWidth={2.5} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </>
+                );
+            })()}
+
+            <View style={styles.gutter} />
+
             <View style={styles.section}>
                 <View style={[styles.sectionHeaderRow, { marginBottom: 12 }]}>
                     <View style={styles.sectionTitleLeft}>
@@ -372,6 +495,8 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                 </View>
                 <Text style={styles.descriptionText}>{bird.description}</Text>
             </View>
+
+            <View style={styles.gutter} />
 
             {/* Key Facts Section */}
             <View style={styles.section}>
@@ -393,7 +518,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Text style={styles.factValue}>{bird.key_facts?.wingspan || 'N/A'}</Text>
                     </View>
                     <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
-                        <Text style={[styles.factLabel, { opacity: 0.5 }]}>Life Expectancy</Text>
+                        <Text style={styles.factLabel}>Life Expectancy</Text>
                         <Text style={styles.factValue}>{bird.key_facts?.life_expectancy || 'N/A'}</Text>
                     </View>
 
@@ -413,7 +538,17 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             </View>
                             <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
                                 <Text style={styles.factLabel}>Colors</Text>
-                                <Text style={styles.factValue}>{bird.key_facts?.colors?.join(', ') || 'N/A'}</Text>
+                                <View style={styles.colorsContainer}>
+                                    {bird.key_facts?.colors?.map((color, idx) => (
+                                        <View
+                                            key={idx}
+                                            style={[
+                                                styles.colorCircle,
+                                                { backgroundColor: getBirdColor(color) }
+                                            ]}
+                                        />
+                                    )) || <Text style={styles.factValue}>N/A</Text>}
+                                </View>
                             </View>
                         </>
                     )}
@@ -478,32 +613,50 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     </View>
                 </View>
 
-                <View style={styles.classificationCard}>
-                    <View style={styles.classificationRow}>
-                        <Text style={styles.classificationLabel}>Order</Text>
-                        <Text style={styles.classificationValue}>{bird.taxonomy?.order || 'N/A'}</Text>
+                <View style={styles.classificationContainer}>
+                    <View style={styles.classificationItem}>
+                        <Text style={styles.classificationItemLabel}>Genus</Text>
+                        <Text style={styles.classificationItemValue}>{bird.taxonomy?.genus || 'N/A'}</Text>
                     </View>
-                    <View style={styles.classificationDivider} />
-                    <View style={styles.classificationRow}>
-                        <Text style={styles.classificationLabel}>Family</Text>
-                        <View style={styles.classificationValueContainer}>
-                            <Text style={styles.classificationValue}>{bird.taxonomy?.family || 'N/A'}</Text>
-                            {bird.taxonomy?.family_scientific && (
-                                <Text style={styles.classificationScientific}>({bird.taxonomy.family_scientific})</Text>
-                            )}
-                        </View>
+
+                    <View style={styles.classificationItem}>
+                        <Text style={styles.classificationItemLabel}>Family</Text>
+                        <Text style={styles.classificationItemValue}>{bird.taxonomy?.family || 'N/A'}</Text>
                     </View>
-                    <View style={styles.classificationDivider} />
-                    <View style={styles.classificationRow}>
-                        <Text style={styles.classificationLabel}>Genus</Text>
-                        <View style={styles.classificationValueContainer}>
-                            <Text style={styles.classificationValue}>{bird.taxonomy?.genus || 'N/A'}</Text>
-                            {bird.taxonomy?.genus_description && (
-                                <Text style={styles.classificationDescription}>{bird.taxonomy.genus_description}</Text>
-                            )}
-                        </View>
+
+                    <View style={styles.classificationItem}>
+                        <Text style={styles.classificationItemLabel}>Order</Text>
+                        <Text style={styles.classificationItemValue}>{bird.taxonomy?.order || 'N/A'}</Text>
                     </View>
+
+                    {isClassificationExpanded && (
+                        <>
+                            <View style={styles.classificationItem}>
+                                <Text style={styles.classificationItemLabel}>Class</Text>
+                                <Text style={styles.classificationItemValue}>Aves - Birds</Text>
+                            </View>
+
+                            <View style={styles.classificationItem}>
+                                <Text style={styles.classificationItemLabel}>Phylum</Text>
+                                <Text style={styles.classificationItemValue}>Chordata - Chordates</Text>
+                            </View>
+                        </>
+                    )}
                 </View>
+
+                <TouchableOpacity
+                    style={styles.expandButton}
+                    onPress={() => setIsClassificationExpanded(!isClassificationExpanded)}
+                >
+                    <Text style={styles.expandButtonText}>
+                        {isClassificationExpanded ? 'Show Less' : 'Learn More'}
+                    </Text>
+                    {isClassificationExpanded ? (
+                        <ChevronUp size={16} color="#BA6526" />
+                    ) : (
+                        <ChevronDown size={16} color="#BA6526" />
+                    )}
+                </TouchableOpacity>
             </View>
 
             <View style={styles.factCard}>
@@ -581,7 +734,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 4,
         borderRadius: 0,
-        marginBottom: 12,
+        marginBottom: 2,
     },
     scientificNameLabel: {
         fontSize: 17,
@@ -729,17 +882,19 @@ const styles = StyleSheet.create({
     },
     insightCard: {
         flexDirection: 'row',
-        backgroundColor: '#EFEFEF',
-        borderRadius: 8,
-        padding: 16,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 18,
         alignItems: 'center',
         gap: 12,
+        marginVertical: 4,
     },
     insightIconWrapper: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFF1E6',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFF2EE',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -751,7 +906,7 @@ const styles = StyleSheet.create({
     },
     section: {
         marginBottom: 12,
-        paddingHorizontal: 16,
+        paddingHorizontal: 13,
     },
     descriptionText: {
         fontSize: 18,
@@ -769,7 +924,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingVertical: 18,
         borderRadius: 10,
         marginBottom: 1,
     },
@@ -782,6 +937,18 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: '#1E293B',
         fontWeight: '600',
+    },
+    colorsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    colorCircle: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        marginLeft: 8,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
     },
     expandButton: {
         flexDirection: 'row',
@@ -827,51 +994,27 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
         marginVertical: 4,
     },
-    classificationCard: {
-        backgroundColor: '#EFEFEF',
-        borderRadius: 8,
-        padding: 16,
+    classificationContainer: {
+        gap: 8,
+        marginTop: 8,
     },
-    classificationRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingVertical: 8,
+    classificationItem: {
+        backgroundColor: '#F5F5F5',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 20,
     },
-    classificationDivider: {
-        height: 1,
-        backgroundColor: '#D1D1D1',
-        marginVertical: 4,
-    },
-    classificationLabel: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#666',
-        flex: 1,
-    },
-    classificationValueContainer: {
-        flex: 2,
-        alignItems: 'flex-end',
-    },
-    classificationValue: {
-        fontSize: 18,
+    classificationItemLabel: {
+        fontSize: 16,
         fontWeight: '700',
         color: '#1A1A1A',
-        textAlign: 'right',
+        marginBottom: 8,
     },
-    classificationScientific: {
+    classificationItemValue: {
         fontSize: 16,
-        fontStyle: 'italic',
         color: '#666',
-        marginTop: 2,
-        textAlign: 'right',
-    },
-    classificationDescription: {
-        fontSize: 15,
-        color: '#666',
-        marginTop: 4,
-        textAlign: 'right',
-        lineHeight: 21,
+        fontWeight: '500',
+        lineHeight: 22,
     },
     subHeaderRow: {
         flexDirection: 'row',
@@ -885,10 +1028,51 @@ const styles = StyleSheet.create({
         color: '#1A1A1A',
     },
     disclaimerText: {
-        fontSize: 13,
-        color: '#888',
+        fontSize: 15,
+        color: '#666',
         fontStyle: 'italic',
-        marginTop: 8,
-        lineHeight: 18,
+        marginTop: 12,
+        lineHeight: 22,
+    },
+    learnMoreBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    learnMoreText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FF6B35',
+    },
+    idContainer: {
+        marginTop: 12,
+        gap: 20,
+    },
+    idItem: {
+        width: '100%',
+    },
+    idItemTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1A1A1A',
+        marginBottom: 8,
+    },
+    idImageWrapper: {
+        width: '100%',
+        height: 220,
+        borderRadius: 16,
+        overflow: 'hidden',
+        backgroundColor: '#F8F8F8',
+    },
+    idImage: {
+        width: '100%',
+        height: '100%',
+    },
+    learnMoreCenterBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 8,
     },
 });

@@ -121,6 +121,13 @@ export default function BirdDetailScreen() {
         });
     };
 
+    const handleOpenIdentification = () => {
+        router.push({
+            pathname: '/identification-detail',
+            params: { birdData: JSON.stringify(bird) }
+        });
+    };
+
     if (loading) {
         return <LoadingScreen onBack={() => router.back()} message="Opening Profile..." />;
     }
@@ -172,6 +179,7 @@ export default function BirdDetailScreen() {
                             Haptics.selectionAsync();
                         }}
                         onOpenTips={handleOpenTips}
+                        onOpenIdentification={handleOpenIdentification}
                     />
                 </View>
                 <View style={{ height: 120 }} />

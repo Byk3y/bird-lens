@@ -57,7 +57,8 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
           <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
-          <Stack.Screen name="birding-tips" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
       </ThemeProvider>
