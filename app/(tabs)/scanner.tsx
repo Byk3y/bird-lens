@@ -28,6 +28,7 @@ import { ScannerViewfinder } from '@/components/scanner/ScannerViewfinder';
 import { SnapTipsModal } from '@/components/scanner/SnapTipsModal';
 import { SoundScanner } from '@/components/scanner/SoundScanner';
 import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 
 // Types
@@ -54,6 +55,7 @@ export default function ScannerScreen() {
     candidates,
     enrichedCandidates,
     heroImages,
+    error,
     identifyBird,
     enrichCandidate,
     updateHeroImage,
@@ -90,16 +92,23 @@ export default function ScannerScreen() {
 
   // Provide a way to clear the captured image when result is reset
   useEffect(() => {
-    if (!result && !isProcessing) {
+    if (!result && !isProcessing && !error) {
       setCapturedImage(null);
     }
-  }, [result, isProcessing]);
+  }, [result, isProcessing, error]);
+
+  const [isFlashing, setIsFlashing] = useState(false);
 
   const handleCapture = async () => {
     if (activeMode === 'photo') {
       if (!cameraRef.current || isProcessing) return;
 
       try {
+        // Immediate feedback: heavy haptic and flash
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        setIsFlashing(true);
+        setTimeout(() => setIsFlashing(false), 100);
+
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
           base64: false, // We will generate base64 after resizing
@@ -125,6 +134,7 @@ export default function ScannerScreen() {
       }
     } else {
       if (isRecording) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         await stopRecording();
       } else if (recordingUri) {
         // Handle upload/identification
@@ -137,6 +147,7 @@ export default function ScannerScreen() {
           console.error('Audio processing error:', error);
         }
       } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         await startRecording();
       }
     }
@@ -171,9 +182,10 @@ export default function ScannerScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" translucent />
       <View style={styles.container}>
-        {capturedImage && !result && isProcessing ? (
+        {capturedImage && !result && (isProcessing || error) ? (
           <ScannerPreview
             imageUri={capturedImage}
+            error={error}
             onClose={() => {
               resetResult();
               setCapturedImage(null);
@@ -192,6 +204,9 @@ export default function ScannerScreen() {
                     enableTorch={flash === 'on'}
                     zoom={zoom}
                   />
+                  {isFlashing && (
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#fff', zIndex: 999 }]} />
+                  )}
                   <View style={styles.overlay}>
                     <ScannerHeader
                       onBack={() => router.back()}
