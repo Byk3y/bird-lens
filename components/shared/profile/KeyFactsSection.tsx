@@ -35,32 +35,26 @@ export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird }) => {
 
     if (!bird.key_facts) return null;
 
-    // Determine total number of potential rows
-    const hasSize = !!bird.key_facts.size;
-    const hasWingspan = !!bird.key_facts.wingspan;
-    const hasWeight = !!bird.key_facts.weight;
-    const hasLife = !!bird.key_facts.life_expectancy;
-    const hasWingShape = !!bird.key_facts.wing_shape;
-    const hasTailShape = !!bird.key_facts.tail_shape;
-    const hasColors = bird.key_facts.colors && bird.key_facts.colors.length > 0;
+    // Define all potential rows in priority order
+    const allRows = [
+        { label: 'Size', value: bird.key_facts.size },
+        { label: 'Wing Span', value: bird.key_facts.wingspan },
+        { label: 'Conservation Status', value: bird.conservation_status },
+        { label: 'Wing Shape', value: bird.key_facts.wing_shape },
+        { label: 'Tail Shape', value: bird.key_facts.tail_shape },
+        { label: 'Primary Colors', value: bird.key_facts.colors, isColor: true },
+    ];
 
-    const totalRows = [
-        hasSize, hasWingspan, hasWeight, hasLife,
-        hasWingShape, hasTailShape, hasColors
-    ].filter(Boolean).length;
+    // Filter out rows that are missing or "N/A"
+    const visibleRows = allRows.filter(row => {
+        if (row.isColor) return row.value && Array.isArray(row.value) && row.value.length > 0;
+        return row.value && row.value !== 'N/A' && row.value !== '';
+    });
+
+    if (visibleRows.length === 0) return null;
 
     // Show "Learn More" if more than 3 items
-    const showLearnMore = totalRows > 3;
-
-    // Height calculation:
-    // 3 rows fully visible + partial 4th
-    // Row height approx 56px (padding 18*2 + line 20) + margin 1 = 57
-    // 3 rows = 171
-    // + peek of 4th (say 20px) = ~190-200
-    // Actually paddingVertical is 18. FontSize 18.
-    // Let's use a fixed height that covers 3 rows comfortably and cuts the 4th.
-    // Each row is roughly 60px height including margin.
-    // 3 rows = 180. Let's set max height to 200 to show a sliver of 4th.
+    const showLearnMore = visibleRows.length > 3;
     const collapsedMaxHeight = 175;
 
     return (
@@ -75,45 +69,29 @@ export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird }) => {
 
             <View style={(!isFactsExpanded && showLearnMore) ? { maxHeight: collapsedMaxHeight, overflow: 'hidden' } : undefined}>
                 <View style={styles.factsContainer}>
-                    <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
-                        <Text style={styles.factLabel}>Size</Text>
-                        <Text style={styles.factValue}>{bird.key_facts.size || 'N/A'}</Text>
-                    </View>
-                    <View style={styles.factRow}>
-                        <Text style={styles.factLabel}>Wing Span</Text>
-                        <Text style={styles.factValue}>{bird.key_facts.wingspan || 'N/A'}</Text>
-                    </View>
-                    <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
-                        <Text style={styles.factLabel}>Weight</Text>
-                        <Text style={styles.factValue}>{bird.key_facts.weight || 'N/A'}</Text>
-                    </View>
-                    <View style={styles.factRow}>
-                        <Text style={styles.factLabel}>Life Expectancy</Text>
-                        <Text style={styles.factValue}>{bird.key_facts.life_expectancy || 'N/A'}</Text>
-                    </View>
-
-                    {/* Render extra rows always, but hidden by overflow when collapsed */}
-                    <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
-                        <Text style={styles.factLabel}>Wing Shape</Text>
-                        <Text style={styles.factValue}>{bird.key_facts.wing_shape || 'N/A'}</Text>
-                    </View>
-                    <View style={styles.factRow}>
-                        <Text style={styles.factLabel}>Tail Shape</Text>
-                        <Text style={styles.factValue}>{bird.key_facts.tail_shape || 'N/A'}</Text>
-                    </View>
-                    {hasColors && (
-                        <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
-                            <Text style={styles.factLabel}>Primary Colors</Text>
-                            <View style={styles.colorsContainer}>
-                                {bird.key_facts.colors!.map((color, idx) => (
-                                    <View
-                                        key={idx}
-                                        style={[styles.colorCircle, { backgroundColor: getBirdColor(color) }]}
-                                    />
-                                ))}
-                            </View>
+                    {visibleRows.map((row, index) => (
+                        <View
+                            key={row.label}
+                            style={[
+                                styles.factRow,
+                                { backgroundColor: index % 2 === 0 ? '#F8F8F8' : 'transparent' }
+                            ]}
+                        >
+                            <Text style={styles.factLabel}>{row.label}</Text>
+                            {row.isColor ? (
+                                <View style={styles.colorsContainer}>
+                                    {(row.value as string[]).map((color, idx) => (
+                                        <View
+                                            key={idx}
+                                            style={[styles.colorCircle, { backgroundColor: getBirdColor(color) }]}
+                                        />
+                                    ))}
+                                </View>
+                            ) : (
+                                <Text style={styles.factValue}>{row.value as string}</Text>
+                            )}
                         </View>
-                    )}
+                    ))}
                 </View>
 
                 {(!isFactsExpanded && showLearnMore) && (

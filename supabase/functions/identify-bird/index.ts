@@ -141,7 +141,14 @@ Return a JSON object with a "birds" array. Each bird must include:
 - "description": 2-3 sentence overview.
 - "diet": Primary diet description.
 - "diet_tags": Array of simple dietary keywords.
-- "key_facts": { "size": "value", "wingspan": "value" }
+- "conservation_status": "Current global conservation status (e.g., Least Concern, Near Threatened, Vulnerable, Endangered)."
+- "key_facts": { 
+    "size": "value (e.g., 9-11 inches)", 
+    "wingspan": "value (e.g., 15-20 inches)",
+    "wing_shape": "value (e.g., Pointed, Broad)",
+    "tail_shape": "value (e.g., Notched, Square)",
+    "colors": ["Primary", "Colors", "As", "Array"]
+  }
 `;
 
         // Include current date for better seasonality-based identification
