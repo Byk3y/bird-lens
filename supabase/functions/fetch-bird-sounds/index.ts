@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-import { corsHeaders } from './_shared/cors.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { corsHeaders } from '../_shared/cors.ts';
+import { fixXenoCantoUrl } from "../_shared/utils.ts";
 
 interface XenoCantoRecording {
     id: string;
@@ -96,31 +97,7 @@ serve(async (req: Request) => {
             });
         }
 
-        // Function to fix and improve URLs
-        const fixUrl = (url: string, rec?: XenoCantoRecording) => {
-            if (!url) return '';
-
-            let finalUrl = url.startsWith('//') ? `https:${url}` : url;
-            const osciUrl = rec?.osci?.large || rec?.osci?.medium || rec?.osci?.small;
-
-            // If it's a generic xeno-canto.org/ID/download link, 
-            // try to construct the direct uploaded path which is more AVPlayer friendly.
-            if (finalUrl.includes('xeno-canto.org') && finalUrl.endsWith('/download') && osciUrl) {
-                const match = osciUrl.match(/sounds\/uploaded\/([^/]+)\//);
-                if (match && match[1]) {
-                    const dir = match[1];
-                    const idMatch = finalUrl.match(/xeno-canto\.org\/(\d+)\/download/);
-                    if (idMatch && idMatch[1]) {
-                        const id = idMatch[1];
-                        // If we have the exact filename, use it. Otherwise fallback to XC+ID.mp3
-                        const fileName = rec?.['file-name'] || `XC${id}.mp3`;
-                        return `https://xeno-canto.org/sounds/uploaded/${dir}/${fileName}`;
-                    }
-                }
-            }
-
-            return finalUrl;
-        };
+        // (Moved to ../_shared/utils.ts)
 
         // Specific Filtering: 2 Songs and 2 Calls
         const isSong = (rec: XenoCantoRecording) => rec.type.toLowerCase().includes('song');
@@ -135,8 +112,8 @@ serve(async (req: Request) => {
                     id: rec.id,
                     scientific_name: rec.gen + ' ' + rec.sp,
                     common_name: rec.en,
-                    url: fixUrl(rec.file, rec),
-                    waveform: fixUrl(osci),
+                    url: fixXenoCantoUrl(rec.file, rec),
+                    waveform: fixXenoCantoUrl(osci),
                     type: 'song',
                     quality: rec.q,
                     recorder: rec.rec,
@@ -158,8 +135,8 @@ serve(async (req: Request) => {
                     id: rec.id,
                     scientific_name: rec.gen + ' ' + rec.sp,
                     common_name: rec.en,
-                    url: fixUrl(rec.file, rec),
-                    waveform: fixUrl(osci),
+                    url: fixXenoCantoUrl(rec.file, rec),
+                    waveform: fixXenoCantoUrl(osci),
                     type: 'call',
                     quality: rec.q,
                     recorder: rec.rec,

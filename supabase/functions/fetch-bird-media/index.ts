@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { corsHeaders } from "./_shared/cors.ts";
+import { enrichSpecies } from "./_shared/enrichment.ts";
 
 interface MediaRequest {
     scientific_name: string;
@@ -8,6 +9,7 @@ interface MediaRequest {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const XENO_CANTO_API_KEY = Deno.env.get("XENO_CANTO_API_KEY");
 
 serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
@@ -34,7 +36,7 @@ serve(async (req: Request) => {
             .eq("scientific_name", scientific_name)
             .single();
 
-        const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 7 * 24 * 60 * 60 * 1000);
+        const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 14 * 24 * 60 * 60 * 1000); // 14 days
 
         if (cached && !isStale) {
             console.log(`Cache hit for media: ${scientific_name}`);
@@ -56,60 +58,63 @@ serve(async (req: Request) => {
 
         console.log(`Cache miss/stale for media: ${scientific_name}. Fetching fresh...`);
 
-        // 1. Wikipedia Search for Image & Attribution
-        const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages|pageprops|imageinfo&titles=${encodeURIComponent(scientific_name)}&generator=search&gsrsearch=${encodeURIComponent(scientific_name)}&gsrlimit=1&piprop=original&iiprop=extmetadata&iiextmetadatafilter=ObjectName|Artist|LicenseShortName|UsageTerms`;
+        // 1. GBIF TaxonMatch for Map Integration (fast)
+        const gbifMatchUrl = `https://api.gbif.org/v1/species/match?name=${encodeURIComponent(scientific_name)}`;
+        const gbifResponse = await fetch(gbifMatchUrl);
+        const gbifData = await gbifResponse.json();
+        const taxonKey = gbifData.usageKey;
 
-        const wikiResponse = await fetch(wikiSearchUrl);
-        const wikiData = await wikiResponse.json();
+        // 2. Full Enrichment (iNat photos, sounds, gendered images)
+        const media = await enrichSpecies(scientific_name, XENO_CANTO_API_KEY || "");
 
-        let imageUrl = null;
+        // 3. Wikipedia Search for Image & Attribution (as fallback for main image)
+        let wikipediaImage = media.wikipedia_image;
         let attribution = null;
 
-        if (wikiData.query && wikiData.query.pages) {
-            const pageId = Object.keys(wikiData.query.pages)[0];
-            const page = wikiData.query.pages[pageId];
+        if (!wikipediaImage) {
+            const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages|pageprops|imageinfo&titles=${encodeURIComponent(scientific_name)}&generator=search&gsrsearch=${encodeURIComponent(scientific_name)}&gsrlimit=1&piprop=original&iiprop=extmetadata&iiextmetadatafilter=ObjectName|Artist|LicenseShortName|UsageTerms`;
+            const wikiResponse = await fetch(wikiSearchUrl);
+            const wikiData = await wikiResponse.json();
 
-            if (page.original) {
-                imageUrl = page.original.source;
-            }
-
-            // Get attribution from imageinfo if available
-            // Note: This often requires a second call if the first one doesn't return full extmetadata for the specific file
-            const fileTitle = page.pageimage ? `File:${page.pageimage}` : null;
-            if (fileTitle) {
-                const attrUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=extmetadata`;
-                const attrRes = await fetch(attrUrl);
-                const attrData = await attrRes.json();
-                if (attrData.query && attrData.query.pages) {
-                    const attrPageId = Object.keys(attrData.query.pages)[0];
-                    const metadata = attrData.query.pages[attrPageId].imageinfo?.[0]?.extmetadata;
-                    if (metadata) {
-                        attribution = {
-                            artist: metadata.Artist?.value || "Unknown",
-                            license: metadata.LicenseShortName?.value || "CC BY-SA",
-                            license_url: metadata.UsageTerms?.value || ""
-                        };
-                    }
+            if (wikiData.query && wikiData.query.pages) {
+                const pageId = Object.keys(wikiData.query.pages)[0];
+                const page = wikiData.query.pages[pageId];
+                if (page.original) {
+                    wikipediaImage = page.original.source;
                 }
             }
         }
 
-        // 2. GBIF TaxonMatch for Map Integration
-        const gbifMatchUrl = `https://api.gbif.org/v1/species/match?name=${encodeURIComponent(scientific_name)}`;
-        const gbifResponse = await fetch(gbifMatchUrl);
-        const gbifData = await gbifResponse.json();
+        // 4. Update Cache in background (or foreground since we need to return the data anyway)
+        const { error: upsertError } = await supabase
+            .from("species_meta")
+            .upsert({
+                scientific_name: scientific_name,
+                inat_photos: media.inat_photos || [],
+                sounds: media.sounds || [],
+                male_image_url: media.male_image_url,
+                female_image_url: media.female_image_url,
+                juvenile_image_url: media.juvenile_image_url,
+                wikipedia_image: wikipediaImage,
+                gbif_taxon_key: taxonKey?.toString(),
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'scientific_name' });
 
-        const taxonKey = gbifData.usageKey;
+        if (upsertError) {
+            console.error("Cache update error:", upsertError);
+        }
 
         return new Response(JSON.stringify({
             image: {
-                url: imageUrl,
+                url: wikipediaImage || (media.inat_photos?.[0]?.url) || null,
                 attribution: attribution
             },
             map: {
                 taxonKey: taxonKey,
                 tileUrl: taxonKey ? `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?taxonKey=${taxonKey}&style=purpleYellow.poly` : null
-            }
+            },
+            inat_photos: media.inat_photos || [],
+            sounds: media.sounds || []
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -122,3 +127,4 @@ serve(async (req: Request) => {
         });
     }
 });
+

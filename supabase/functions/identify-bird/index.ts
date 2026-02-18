@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { corsHeaders, createStreamResponse } from "./_shared/cors.ts";
 import { enrichSpecies } from "./_shared/enrichment.ts";
+import { cleanAndParseJson } from "./_shared/utils.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
@@ -30,7 +31,7 @@ async function getCachedMedia(scientificName: string) {
     try {
         const { data, error } = await supabase
             .from('species_meta')
-            .select('inat_photos, sounds, male_image_url, female_image_url, wikipedia_image')
+            .select('inat_photos, sounds, male_image_url, female_image_url, juvenile_image_url, wikipedia_image')
             .eq('scientific_name', scientificName)
             .maybeSingle();
 
@@ -56,6 +57,7 @@ async function setCachedMedia(scientificName: string, name: string, mediaData: a
                 sounds: mediaData.sounds || [],
                 male_image_url: mediaData.male_image_url || null,
                 female_image_url: mediaData.female_image_url || null,
+                juvenile_image_url: mediaData.juvenile_image_url || null,
                 wikipedia_image: mediaData.wikipedia_image || null,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'scientific_name' });
@@ -68,44 +70,7 @@ async function setCachedMedia(scientificName: string, name: string, mediaData: a
 
 // ---------- Helper: JSON Cleaning ----------
 
-function cleanAndParseJson(text: string, source: string) {
-    let clean = text;
-    try {
-        // 1. Remove markdown blocks
-        clean = clean.replace(/```json\n?/, "").replace(/\n?```/, "").trim();
-
-        // 2. Handle unescaped internal quotes (common in bird measurements like 8" or 10-12")
-        // We replace any " that is preceded by a digit and not followed by a comma or closing brace
-        clean = clean.replace(/(\d+)"/g, '$1 inches');
-        clean = clean.replace(/(\d+)'/g, '$1 feet');
-
-        // 3. Fix unescaped newlines and tabs inside strings
-        clean = clean.replace(/(:\s*")([^"]*)(")/g, (match, p1, p2, p3) => {
-            return p1 + p2.replace(/\n/g, "\\n").replace(/\t/g, "\\t") + p3;
-        });
-
-        // 4. Fix trailing commas
-        clean = clean.replace(/,\s*([}\]])/g, "$1");
-
-        // 5. Structure extraction (ensure we only parse the JSON object/array part)
-        const firstBrace = clean.indexOf('{');
-        const firstBracket = clean.indexOf('[');
-        const start = (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) ? firstBrace : firstBracket;
-        const lastBrace = clean.lastIndexOf('}');
-        const lastBracket = clean.lastIndexOf(']');
-        const end = Math.max(lastBrace, lastBracket);
-
-        if (start !== -1 && end > start) {
-            clean = clean.substring(start, end + 1);
-        }
-
-        return JSON.parse(clean);
-    } catch (e: any) {
-        console.error(`JSON Parse Error (${source}):`, e);
-        console.error(`Attempted segment:`, clean.substring(0, 500) + "...");
-        throw new Error(`Failed to parse ${source} AI response: ${e.message}`);
-    }
-}
+// (Moved to _shared/utils.ts)
 
 // ---------- Main Handler ----------
 
@@ -113,6 +78,15 @@ serve(async (req: Request) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
     try {
+        // --- 1. Internal Auth Check ---
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: "No authorization header" }), {
+                status: 401,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
         if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is missing");
 
         let body: BirdIdentificationRequest = await req.json();
@@ -135,17 +109,24 @@ Identify this bird with maximum scientific precision.
 Provide the **Top 3 most probable species** candidates. 
 
 FIELD GUIDE QUALITY STANDARDS:
-- "habitat": Provide a high-density ecological description. Include elevation ranges in meters, specific vegetation or forest types (e.g., subtropical highlands, montane forest gradients), and regional habitat variations. Focus on where a birder would physically find them.
-- "nesting_info": Describe the "description" with field-guide precision: mention specific materials (moss, twigs, spiderwebs), clutch size (number of eggs), and "location" details (e.g., 2-5m high in a tree fork).
-- "identification_tips": Provide actionable field marks (e.g., "look for the white eye-ring" or "flash of orange in flight").
-- "feeder_info": Be specific about best food types (e.g., "Black oil sunflower seeds" vs just "seeds").
+- "habitat": Provide a high-density ecological description. Include elevation ranges in meters, specific vegetation, forest types, and regional variations in habitat. Mention if it's primary or secondary forest.
+- "nesting_info": Describe specific materials used (e.g., spider webs, mud, twigs), clutch size (typical number of eggs), and specific location details (e.g., "fork of a tree", "cliff ledge", "cavity").
+- "identification_tips": Provide clear, actionable field marks. 
+    - Describe the specific shape of the bill and tail.
+    - Mention prominent wing bars or eye rings.
+    - Describe the flight pattern if distinctive.
+- **SMART GENDER/AGE DIFFERENTIATION**: 
+    - Only provide "female" or "juvenile" identification tips if they differ significantly from the male/adult. 
+    - If genders are monomorphic (look identical), set "female" to null.
+    - If juveniles look like adults, set "juvenile" to null.
+    - NEVER provide filler like "Similar to male."
 
 MANDATORY RULES:
 1. Return exactly 3 candidates.
-2. For measurements (size, wingspan), use the word "inches" or "cm" instead of symbols like " or '. (e.g., "5 inches" instead of 5"). This is critical for JSON stability.
-3. Ensure every numeric confidence score is a decimal between 0 and 1.
-4. "also_known_as" MUST be an array of strings.
-5. "taxonomy", "identification_tips", "nesting_info", "feeder_info", and "key_facts" MUST be objects with the keys specified below.
+2. For measurements, use "inches" or "cm" only.
+3. confidence: decimal 0-1.
+4. "also_known_as": array of strings.
+5. "taxonomy", "identification_tips", "nesting_info", "feeder_info", and "key_facts" MUST be objects.
 
 JSON STRUCTURE TEMPLATE:
 {
@@ -165,22 +146,22 @@ JSON STRUCTURE TEMPLATE:
       "description": "General summary",
       "diet": "Detailed diet",
       "diet_tags": ["Keyword 1"],
-      "habitat": "Detailed ecological habitat description (include elevation, forest types, regional variants)",
+      "habitat": "Detailed ecological habitat description (include elevation, vegetation, regional variants)",
       "habitat_tags": ["Keyword 1"],
-      "nesting_info": { "description": "Construction materials and clutch details", "location": "Height and specific tree/ground placement", "type": "Cup, cavity, etc." },
+      "nesting_info": { "description": "Construction materials and clutch details", "location": "Precise placement details", "type": "Cup, cavity, etc." },
       "feeder_info": { "attracted_by": ["Food 1"], "feeder_types": ["Type 1"] },
       "behavior": "Key field behaviors",
-      "rarity": "Status level",
+      "rarity": "Status level (Common, Uncommon, Rare)",
       "fact": "Interesting trivia",
       "distribution_area": "Geographic range",
-      "conservation_status": "Status",
+      "conservation_status": "IUCN Status (e.g., Least Concern, Vulnerable)",
       "key_facts": {
         "size": "5-6 inches",
         "wingspan": "8-10 inches",
-        "wing_shape": "Rounded",
+        "wing_shape": "Rounded/Pointed/Broad",
         "life_expectancy": "10 years",
         "colors": ["Brown", "White"],
-        "tail_shape": "Notched",
+        "tail_shape": "Notched/Square/Forked",
         "weight": "20 grams"
       },
       "confidence": 0.98
@@ -259,9 +240,9 @@ JSON STRUCTURE TEMPLATE:
                                                                 identification_tips: {
                                                                     type: "object",
                                                                     properties: {
-                                                                        male: { type: "string" },
-                                                                        female: { type: "string" },
-                                                                        juvenile: { type: "string" }
+                                                                        male: { type: ["string", "null"] },
+                                                                        female: { type: ["string", "null"] },
+                                                                        juvenile: { type: ["string", "null"] }
                                                                     },
                                                                     required: ["male", "female", "juvenile"],
                                                                     additionalProperties: false
@@ -351,7 +332,7 @@ JSON STRUCTURE TEMPLATE:
                         } else if (identificationResponse.status === 429 || identificationResponse.status >= 500) {
                             throw new Error(`Primary fail: ${identificationResponse.status}`);
                         }
-                    } catch (error) {
+                    } catch (error: any) {
                         console.warn("Primary AI failed, trying fallback...", error.message);
                         isFallback = true;
                         identificationResponse = await attemptAI(false);

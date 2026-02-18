@@ -39,6 +39,9 @@ export interface BirdResult {
         female: string;
         juvenile?: string;
     };
+    male_image_url?: string;
+    female_image_url?: string;
+    juvenile_image_url?: string;
     description: string;
     diet: string;
     diet_tags: string[];
@@ -71,8 +74,6 @@ export interface BirdResult {
     error?: string;
     images?: string[]; // Array of image URLs for the species
     inat_photos?: INaturalistPhoto[];
-    male_image_url?: string;
-    female_image_url?: string;
     sounds?: BirdSound[];
     wikipedia_image?: string;
     gbif_taxon_key?: string;
