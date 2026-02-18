@@ -29,38 +29,40 @@ export const ScientificClassification: React.FC<ScientificClassificationProps> =
 
                 <View style={!isExpanded ? { maxHeight: collapsedMaxHeight, overflow: 'hidden' } : undefined}>
                     <View style={styles.classificationContainer}>
-                        <View style={styles.classificationItem}>
-                            <Text style={styles.classificationItemLabel}>Genus</Text>
-                            <Text style={styles.classificationItemValue}>
-                                {bird.taxonomy?.genus
-                                    ? bird.taxonomy.genus_description
+                        {bird.taxonomy?.genus && (
+                            <View style={styles.classificationItem}>
+                                <Text style={styles.classificationItemLabel}>Genus</Text>
+                                <Text style={styles.classificationItemValue}>
+                                    {bird.taxonomy.genus_description
                                         ? `${bird.taxonomy.genus} - ${bird.taxonomy.genus_description.replace(/^commonly called\s*/i, '')}`
-                                        : bird.taxonomy.genus
-                                    : 'N/A'}
-                            </Text>
-                        </View>
+                                        : bird.taxonomy.genus}
+                                </Text>
+                            </View>
+                        )}
 
-                        <View style={styles.classificationItem}>
-                            <Text style={styles.classificationItemLabel}>Family</Text>
-                            <Text style={styles.classificationItemValue}>
-                                {bird.taxonomy?.family_scientific
-                                    ? bird.taxonomy.family
-                                        ? `${bird.taxonomy.family_scientific} - ${bird.taxonomy.family}`
-                                        : bird.taxonomy.family_scientific
-                                    : bird.taxonomy?.family || 'N/A'}
-                            </Text>
-                        </View>
+                        {(bird.taxonomy?.family_scientific || bird.taxonomy?.family) && (
+                            <View style={styles.classificationItem}>
+                                <Text style={styles.classificationItemLabel}>Family</Text>
+                                <Text style={styles.classificationItemValue}>
+                                    {bird.taxonomy.family_scientific
+                                        ? bird.taxonomy.family
+                                            ? `${bird.taxonomy.family_scientific} - ${bird.taxonomy.family}`
+                                            : bird.taxonomy.family_scientific
+                                        : bird.taxonomy.family}
+                                </Text>
+                            </View>
+                        )}
 
-                        <View style={styles.classificationItem}>
-                            <Text style={styles.classificationItemLabel}>Order</Text>
-                            <Text style={styles.classificationItemValue}>
-                                {bird.taxonomy?.order
-                                    ? bird.taxonomy.order_description
+                        {bird.taxonomy?.order && (
+                            <View style={styles.classificationItem}>
+                                <Text style={styles.classificationItemLabel}>Order</Text>
+                                <Text style={styles.classificationItemValue}>
+                                    {bird.taxonomy.order_description
                                         ? `${bird.taxonomy.order} - ${bird.taxonomy.order_description}`
-                                        : bird.taxonomy.order
-                                    : 'N/A'}
-                            </Text>
-                        </View>
+                                        : bird.taxonomy.order}
+                                </Text>
+                            </View>
+                        )}
 
                         <View style={styles.classificationItem}>
                             <Text style={styles.classificationItemLabel}>Class</Text>

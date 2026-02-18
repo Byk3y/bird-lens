@@ -18,12 +18,14 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce 
                         {bird.name}
                         <Text style={styles.speciesOfText}>, a species of</Text>
                     </Text>
-                    <Text style={styles.familyText}>
-                        {bird.taxonomy?.family || 'N/A'}
-                        {bird.taxonomy?.family_scientific && (
-                            <Text style={styles.scientificFamilyText}> ({bird.taxonomy.family_scientific})</Text>
-                        )}
-                    </Text>
+                    {(bird.taxonomy?.family || bird.taxonomy?.family_scientific) && (
+                        <Text style={styles.familyText}>
+                            {bird.taxonomy.family || bird.taxonomy.family_scientific}
+                            {bird.taxonomy.family && bird.taxonomy.family_scientific && (
+                                <Text style={styles.scientificFamilyText}> ({bird.taxonomy.family_scientific})</Text>
+                            )}
+                        </Text>
+                    )}
                 </View>
                 <Pressable style={styles.editBtn}>
                     <Edit2 size={18} color="#999" />

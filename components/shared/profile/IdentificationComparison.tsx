@@ -66,7 +66,7 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
     }
 
     // Full variant (detail view)
-    const renderFullItem = (imageUrl: string, label: string, description?: string) => (
+    const renderFullItem = (label: string, imageUrl: string, description?: string) => (
         <View style={styles.detailSection} key={`${label}-${imageUrl}`}>
             <Text style={styles.sectionTitle}>{label}</Text>
             <View style={styles.imageContainer}>
@@ -75,7 +75,7 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
                     <Text style={styles.labelText}>{label}</Text>
                 </View>
             </View>
-            {description && (
+            {description && description !== 'N/A' && (
                 <View style={styles.descCard}>
                     <Text style={styles.descText}>{description}</Text>
                 </View>
@@ -87,17 +87,17 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
         <View style={styles.fullContainer}>
             {mode === 'gender' ? (
                 <>
-                    {hasMale && renderFullItem(bird.male_image_url!, 'Male', bird.identification_tips.male)}
+                    {hasMale && renderFullItem('Male', bird.male_image_url!, bird.identification_tips.male)}
                     {hasFemale && renderFullItem(isFemaleSimilar ? 'Female (Similar)' : 'Female', bird.female_image_url!, bird.identification_tips.female)}
                 </>
             ) : (
                 <>
                     {(bird.male_image_url || bird.images?.[0] || bird.female_image_url) && renderFullItem(
-                        (bird.male_image_url || bird.images?.[0] || bird.female_image_url)!,
                         'Adult',
+                        (bird.male_image_url || bird.images?.[0] || bird.female_image_url)!,
                         bird.identification_tips.male || bird.identification_tips.female
                     )}
-                    {hasJuvenile && renderFullItem(bird.juvenile_image_url!, 'Juvenile', bird.identification_tips.juvenile)}
+                    {hasJuvenile && renderFullItem('Juvenile', bird.juvenile_image_url!, bird.identification_tips.juvenile)}
                 </>
             )}
         </View>
