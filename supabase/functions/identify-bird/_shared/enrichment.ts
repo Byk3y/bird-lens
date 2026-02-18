@@ -262,22 +262,20 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
 export async function enrichSpecies(scientificName: string, xenoCantoApiKey: string): Promise<EnrichedMedia> {
     console.log(`Enriching data for: ${scientificName}`);
 
-    // 1. iNaturalist Taxon Photos
-    const inatPhotos = await fetchINatPhotos(scientificName);
+    // Fetch all media in parallel to drastically reduce latency
+    const [inatPhotos, malePhoto, femalePhoto, juvenilePhoto, sounds] = await Promise.all([
+        fetchINatPhotos(scientificName),
+        fetchINatGenderedPhoto(scientificName, "male"),
+        fetchINatGenderedPhoto(scientificName, "female"),
+        fetchINatJuvenilePhoto(scientificName),
+        fetchXenoCantoSounds(scientificName, xenoCantoApiKey)
+    ]);
 
-    // 2. Wikimedia Commons fallback if iNat photos are sparse
+    // Wikimedia Commons fallback only if iNat photos are sparse
     let wikipediaImage: string | null = null;
     if (inatPhotos.length < 3) {
         wikipediaImage = await fetchWikimediaImage(scientificName);
     }
-
-    // 3. Gendered & Life Stage Photos (lightweight)
-    const malePhoto = await fetchINatGenderedPhoto(scientificName, "male");
-    const femalePhoto = await fetchINatGenderedPhoto(scientificName, "female");
-    const juvenilePhoto = await fetchINatJuvenilePhoto(scientificName);
-
-    // 4. Xeno-Canto Sounds
-    const sounds = await fetchXenoCantoSounds(scientificName, xenoCantoApiKey);
 
     return {
         inat_photos: inatPhotos,

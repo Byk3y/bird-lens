@@ -79,7 +79,7 @@ serve(async (req: Request) => {
 
     try {
         // --- 1. Internal Auth Check ---
-        const authHeader = req.headers.get('Authorization');
+        const authHeader = req.headers.get('Authorization') || req.headers.get('apikey');
         if (!authHeader) {
             return new Response(JSON.stringify({ error: "No authorization header" }), {
                 status: 401,
@@ -110,29 +110,38 @@ serve(async (req: Request) => {
         const fastPromptInstructions = `
 Identify this bird with maximum scientific precision.
 Provide the **Top 3 most probable species** candidates.
-Return ONLY the common name, scientific name, and confidence.
+Return ONLY the following fields for each:
+- "name": Common name
+- "scientific_name": Scientific name
+- "confidence": A number from 0-1
+- "taxonomy": {
+    "family": "Common name of family",
+    "scientific_family": "Scientific name of family",
+    "genus": "Scientific name of genus",
+    "genus_description": "Commonly called [Common Name of Genus]"
+  }
 `;
 
         const enrichmentPromptInstructions = `
 For the following bird species, provide comprehensive field-guide quality metadata.
 Species: [[SPECIES_NAMES]]
 
-FIELD GUIDE QUALITY STANDARDS:
-- "habitat": Provide a high-density ecological description. Include elevation ranges in meters, specific vegetation, forest types, and regional variations in habitat. Mention if it's primary or secondary forest.
-- "nesting_info": Describe specific materials used (e.g., spider webs, mud, twigs), clutch size (typical number of eggs), and specific location details (e.g., "fork of a tree", "cliff ledge", "cavity").
-- "identification_tips": Provide clear, actionable field marks. 
-    - Describe the specific shape of the bill and tail.
-    - Mention prominent wing bars or eye rings.
-    - Describe the flight pattern if distinctive.
-- **SMART GENDER/AGE DIFFERENTIATION**: 
-    - Only provide "female" or "juvenile" identification tips if they differ significantly from the male/adult. 
-    - If genders are monomorphic (look identical), set "female" to null.
-    - If juveniles look like adults, set "juvenile" to null.
-- "behavior": A single punchy, memorable fact (1-2 sentences). 
-- "also_known_as": array of strings.
-- "taxonomy": family, genus, etc.
-
-Return exactly one entry for each species provided.
+Return a JSON object with a "birds" array. Each bird must include:
+- "name": Common name (for mapping)
+- "habitat": Detailed ecological habitat description.
+- "habitat_tags": Array of 1-3 short keywords for the habitat (e.g., ["Rainforest", "Montane"]).
+- "nesting_info": { 
+    "description": "Comprehensive materials/clutch info", 
+    "location": "A short 2-4 word summary of where it nests", 
+    "type": "Nest type" 
+  }
+- "identification_tips": { "male": "Tips for males", "female": "Tips for females", "juvenile": "Tips for juveniles" }
+- "behavior": "One memorably punchy behavioral fact, distinct from diet."
+- "also_known_as": Array of strings.
+- "description": 2-3 sentence overview.
+- "diet": Primary diet description.
+- "diet_tags": Array of simple dietary keywords.
+- "key_facts": { "size": "value", "wingspan": "value" }
 `;
 
         // Include current date for better seasonality-based identification
@@ -192,9 +201,19 @@ Return exactly one entry for each species provided.
                                                             properties: {
                                                                 name: { type: "string" },
                                                                 scientific_name: { type: "string" },
-                                                                confidence: { type: "number" }
+                                                                confidence: { type: "number" },
+                                                                taxonomy: {
+                                                                    type: "object",
+                                                                    properties: {
+                                                                        family: { type: "string" },
+                                                                        scientific_family: { type: "string" },
+                                                                        genus: { type: "string" }
+                                                                    },
+                                                                    required: ["family", "scientific_family", "genus"],
+                                                                    additionalProperties: false
+                                                                }
                                                             },
-                                                            required: ["name", "scientific_name", "confidence"],
+                                                            required: ["name", "scientific_name", "confidence", "taxonomy"],
                                                             additionalProperties: false
                                                         }
                                                     }
@@ -232,10 +251,12 @@ Return exactly one entry for each species provided.
 
                     if (!isFallback) {
                         const content = fastResult.choices?.[0]?.message?.content;
+                        if (!content) throw new Error("OpenRouter returned empty content");
                         const parsed = cleanAndParseJson(content, "OpenRouter");
                         candidates = parsed.candidates || [];
                     } else {
-                        const content = fastResult.candidates[0].content.parts[0].text;
+                        const content = fastResult.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!content) throw new Error("Gemini returned empty content");
                         const parsed = cleanAndParseJson(content, "Gemini");
                         candidates = parsed.candidates || [];
                     }
@@ -247,46 +268,79 @@ Return exactly one entry for each species provided.
                     // PHASE 2: Parallel Background Enrichment
                     const xenoKey = XENO_CANTO_API_KEY || "";
 
-                    // Helper for Deep Metadata Enrichment
-                    const fetchDeepMetadata = async () => {
-                        const speciesNames = candidates.map(c => c.scientific_name).join(", ");
-                        const deepPrompt = enrichmentPromptInstructions.replace("[[SPECIES_NAMES]]", speciesNames);
+                    const hasCandidates = candidates && candidates.length > 0;
 
+                    // Heartbeat helper to keep the stream alive
+                    const startHeartbeat = () => setInterval(() => {
+                        try { writeChunk(controller, { type: "heartbeat" }); } catch { }
+                    }, 5000);
+
+                    // Helper for prioritized metadata enrichment
+                    const fetchPrioritizedMetadata = async () => {
+                        if (!hasCandidates) return;
+
+                        const heartbeatId = startHeartbeat();
                         try {
-                            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                            // 1. Prioritize Top Candidate for instant UI satisfaction
+                            const topCandidate = candidates[0];
+                            const topPrompt = enrichmentPromptInstructions.replace("[[SPECIES_NAMES]]", topCandidate.scientific_name);
+                            const topResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                                 method: "POST",
-                                headers: {
-                                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                                    "Content-Type": "application/json",
-                                },
+                                headers: { "Authorization": `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
                                 body: JSON.stringify({
                                     model: openRouterModel,
-                                    messages: [{ role: "user", content: deepPrompt }],
+                                    messages: [{ role: "user", content: topPrompt }],
                                     response_format: { type: "json_object" }
                                 }),
                             });
 
-                            if (response.ok) {
-                                const data = await response.json();
-                                const parsed = cleanAndParseJson(data.choices[0].message.content, "Enrichment");
-                                const metadataList = parsed.candidates || parsed.birds || (Array.isArray(parsed) ? parsed : []);
-
-                                metadataList.forEach((meta: any, idx: number) => {
-                                    writeChunk(controller, { type: "metadata", index: idx, data: meta });
-                                });
-                            } else {
-                                const errorText = await response.text();
-                                console.error(`Deep Metadata Enrichment API error (${response.status}): ${errorText}`);
+                            if (topResponse.ok) {
+                                const data = await topResponse.json();
+                                const parsed = cleanAndParseJson(data.choices[0].message.content, "Enrichment-Top");
+                                const meta = parsed.birds?.[0] || parsed.candidates?.[0] || (Array.isArray(parsed) ? parsed[0] : parsed);
+                                if (meta) writeChunk(controller, { type: "metadata", index: 0, data: meta });
                             }
-                        } catch (e) {
-                            console.error("Deep Metadata Enrichment failed", e);
+
+                            // 2. Fetch others in the background if they exist
+                            if (candidates.length > 1) {
+                                const others = candidates.slice(1);
+                                const speciesNames = others.map(c => c.scientific_name).join(", ");
+                                const othersPrompt = enrichmentPromptInstructions.replace("[[SPECIES_NAMES]]", speciesNames);
+
+                                const othersResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                                    method: "POST",
+                                    headers: { "Authorization": `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        model: openRouterModel,
+                                        messages: [{ role: "user", content: othersPrompt }],
+                                        response_format: { type: "json_object" }
+                                    }),
+                                });
+
+                                if (othersResponse.ok) {
+                                    const data = await othersResponse.json();
+                                    const parsed = cleanAndParseJson(data.choices[0].message.content, "Enrichment-Others");
+                                    const metadataList = parsed.birds || parsed.candidates || (Array.isArray(parsed) ? parsed : []);
+
+                                    others.forEach((cand, i) => {
+                                        const idx = i + 1;
+                                        const meta = metadataList.find((m: any) =>
+                                            m.name?.toLowerCase() === cand.name.toLowerCase() ||
+                                            m.scientific_name?.toLowerCase() === cand.scientific_name.toLowerCase()
+                                        ) || metadataList[i];
+                                        if (meta) writeChunk(controller, { type: "metadata", index: idx, data: meta });
+                                    });
+                                }
+                            }
+                        } finally {
+                            clearInterval(heartbeatId);
                         }
                     };
 
-                    // Run everything else in parallel
+                    // Run everything in parallel
                     await Promise.all([
-                        fetchDeepMetadata(),
-                        ...candidates.map(async (bird, index) => {
+                        fetchPrioritizedMetadata(),
+                        ...(hasCandidates ? candidates.map(async (bird, index) => {
                             const { scientific_name, name } = bird;
                             try {
                                 const cached = await getCachedMedia(scientific_name);
@@ -301,7 +355,7 @@ Return exactly one entry for each species provided.
                                 console.error(`Media enrichment failed for ${scientific_name}`, err);
                                 writeChunk(controller, { type: "media", index, data: { inat_photos: [], sounds: [] } });
                             }
-                        })
+                        }) : [])
                     ]);
 
                     writeChunk(controller, { type: "done", duration: Date.now() - startTime });

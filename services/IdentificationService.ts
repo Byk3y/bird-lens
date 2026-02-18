@@ -6,6 +6,7 @@ export type IdentificationChunk =
     | { type: 'candidates'; data: any[] }
     | { type: 'media'; index: number; data: any }
     | { type: 'metadata'; index: number; data: any }
+    | { type: 'heartbeat' }
     | { type: 'done'; duration: number }
     | { type: 'error'; message: string };
 
