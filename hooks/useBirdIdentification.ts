@@ -30,32 +30,11 @@ export const useBirdIdentification = () => {
             // Light feedback for identification start (shutter already handled in UI)
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-            // Wait for auth session if it's still initializing
-            if (isAuthLoading || !user) {
-                console.log('Waiting for auth session before identification...');
-                let attempts = 0;
-                while ((isAuthLoading || !user) && attempts < 10) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    attempts++;
-                }
+            // Get session if it exists, but don't block for ghost users
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || SUPABASE_ANON_KEY;
 
-                if (isAuthLoading || !user) {
-                    throw new Error('Authentication timed out. Please try again.');
-                }
-                console.log('Auth session ready after', attempts * 0.5, 's');
-            }
-
-            // Get a fresh session to ensure the JWT hasn't expired
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-            if (sessionError || !session?.access_token) {
-                console.warn('Session retrieval failed:', sessionError);
-                const msg = 'No active session. Please try logging in again.';
-                setError(msg);
-                throw new Error(msg);
-            }
-
-            console.log('Identification request with token:', session.access_token.substring(0, 10) + '...');
+            console.log('Identification request initiated...');
 
             // --- STREAMING FETCH ---
             const url = `${SUPABASE_URL}/functions/v1/identify-bird`;
@@ -63,7 +42,7 @@ export const useBirdIdentification = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
+                    'Authorization': `Bearer ${token}`,
                     'apikey': SUPABASE_ANON_KEY,
                     'x-client-info': 'supabase-js-expo',
                 },
