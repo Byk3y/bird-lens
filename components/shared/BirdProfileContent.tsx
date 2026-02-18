@@ -27,6 +27,7 @@ import { WaveformPlayer } from '../scanner/WaveformPlayer';
 // Modular Components
 import { BirdingTipsGrid } from './profile/BirdingTipsGrid';
 import { IdentificationComparison } from './profile/IdentificationComparison';
+import { IdentificationSkeleton } from './profile/IdentificationSkeleton';
 import { KeyFactsSection } from './profile/KeyFactsSection';
 import { ProfileHeader } from './profile/ProfileHeader';
 import { ScientificClassification } from './profile/ScientificClassification';
@@ -37,6 +38,7 @@ interface BirdProfileContentProps {
     bird: BirdResult;
     inatPhotos?: INaturalistPhoto[];
     sounds?: BirdSound[];
+    isLoadingSounds?: boolean;
     onPlaySound?: () => void;
     onImagePress?: (index: number) => void;
     onOpenTips?: (section?: string) => void;
@@ -47,6 +49,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     bird,
     inatPhotos = [],
     sounds = [],
+    isLoadingSounds = false,
     onPlaySound,
     onImagePress,
     onOpenTips,
@@ -65,7 +68,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
         const songs = targetSounds.filter(s => s.type?.toLowerCase().includes('song'));
         const calls = targetSounds.filter(s => s.type?.toLowerCase().includes('call'));
         const others = targetSounds.filter(s => !s.type?.toLowerCase().includes('song') && !s.type?.toLowerCase().includes('call'));
-        return { songs, calls, others };
+        return { songs, calls, others, total: targetSounds.length };
     }, [sounds, bird.sounds]);
 
     // Reset gallery scroll position when bird changes
@@ -145,7 +148,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Text style={styles.insightText}>{bird.behavior}</Text>
                     </View>
                 </View>
-            ) : !isMedialoaded ? (
+            ) : (!isMedialoaded || isLoadingSounds) ? (
                 <View style={styles.section}>
                     <View style={[styles.insightCard, { opacity: 0.5 }]}>
                         <ActivityIndicator size="small" color="#FF6B35" />
@@ -157,7 +160,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             <View style={styles.gutter} />
 
             {/* Sound Section */}
-            {(sounds && sounds.length > 0) ? (
+            {groupedSounds.total > 0 ? (
                 <View style={styles.section}>
                     <View style={[styles.sectionHeaderRow, { marginBottom: 16 }]}>
                         <View style={styles.sectionTitleLeft}>
@@ -234,7 +237,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         * Please note that same bird species can sound different due to dialect or mimicry.
                     </Text>
                 </View>
-            ) : (bird.inat_photos && bird.inat_photos.length > 0) ? (
+            ) : isLoadingSounds ? (
                 <View style={styles.section}>
                     <View style={styles.sectionHeaderRow}>
                         <View style={styles.sectionTitleLeft}>
@@ -263,10 +266,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     {bird.identification_tips ? (
                         <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
                     ) : (
-                        <View style={{ height: 200, backgroundColor: '#FAFAFA', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
-                            <ActivityIndicator size="small" color="#999" />
-                            <Text style={{ color: '#999', marginTop: 12 }}>Summarizing field marks...</Text>
-                        </View>
+                        <IdentificationSkeleton />
                     )}
                     <LinearGradient
                         colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}

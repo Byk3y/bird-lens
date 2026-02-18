@@ -302,6 +302,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             bird={activeBird}
                             inatPhotos={activeBird.inat_photos}
                             sounds={activeBird.sounds}
+                            isLoadingSounds={!activeBird.sounds?.length && !activeBird.inat_photos?.length}
                             onOpenTips={(section) => handleOpenTips(activeBird, section)}
                             onPlaySound={playScientificName}
                             onOpenIdentification={() => {

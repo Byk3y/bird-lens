@@ -9,6 +9,7 @@ import 'react-native-url-polyfill/auto';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider } from '@/lib/auth';
+import { Audio } from 'expo-av';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -49,6 +50,15 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    // Basic setup for audio playback across the app
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+    }).catch(err => console.warn('Audio.setAudioModeAsync error:', err));
+  }, []);
 
   return (
     <AuthProvider>

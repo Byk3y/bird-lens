@@ -174,53 +174,68 @@ export const useBirdIdentification = () => {
     const saveSighting = async (bird: BirdResult, capturedImage?: string | null) => {
         if (isSaving) return;
 
-        try {
-            setIsSaving(true);
-            let imageUrl = null;
+        let attempts = 0;
+        const maxAttempts = 3;
 
-            // Upload image if provided
-            if (capturedImage) {
-                const fileName = `${user?.id}/${Date.now()}.jpg`;
+        while (attempts < maxAttempts) {
+            attempts++;
+            try {
+                setIsSaving(true);
+                let imageUrl = null;
 
-                const { Buffer } = require('buffer');
-                const bytes = Buffer.from(capturedImage, 'base64');
+                // Upload image if provided
+                if (capturedImage) {
+                    const fileName = `${user?.id}/${Date.now()}.jpg`;
 
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('sightings')
-                    .upload(fileName, bytes, {
-                        contentType: 'image/jpeg',
-                        upsert: true
-                    });
+                    const { Buffer } = require('buffer');
+                    const bytes = Buffer.from(capturedImage, 'base64');
 
-                if (uploadError) throw uploadError;
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('sightings')
+                        .upload(fileName, bytes, {
+                            contentType: 'image/jpeg',
+                            upsert: true
+                        });
 
-                const { data: { publicUrl } } = supabase.storage
-                    .from('sightings')
-                    .getPublicUrl(fileName);
+                    if (uploadError) throw uploadError;
 
-                imageUrl = publicUrl;
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('sightings')
+                        .getPublicUrl(fileName);
+
+                    imageUrl = publicUrl;
+                }
+
+                // Map bird result to sighting structure
+                const sightingData = IdentificationService.mapBirdToSighting(bird, user?.id || '');
+
+                // Add image_url if uploaded
+                if (imageUrl) {
+                    sightingData.image_url = imageUrl;
+                }
+
+                const { error } = await supabase.from('sightings').insert(sightingData);
+
+                if (error) throw error;
+
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                return true;
+            } catch (error: any) {
+                console.error(`Save error (attempt ${attempts}):`, error);
+
+                // Only alert on final attempt or if error is not a network timeout
+                const isRetryable = error.message?.includes('timed out') || error.status === 408 || error.name === 'StorageUnknownError';
+
+                if (attempts >= maxAttempts || !isRetryable) {
+                    Alert.alert('Save Error', attempts >= maxAttempts ? 'Saving timed out after multiple attempts. Please check your connection and try again.' : error.message);
+                    return false;
+                }
+
+                // Wait a bit before retrying
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+            } finally {
+                setIsSaving(false);
             }
-
-            // Map bird result to sighting structure
-            const sightingData = IdentificationService.mapBirdToSighting(bird, user?.id || '');
-
-            // Add image_url if uploaded
-            if (imageUrl) {
-                sightingData.image_url = imageUrl;
-            }
-
-            const { error } = await supabase.from('sightings').insert(sightingData);
-
-            if (error) throw error;
-
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            return true;
-        } catch (error: any) {
-            console.error('Save error:', error);
-            Alert.alert('Error', error.message);
-            return false;
-        } finally {
-            setIsSaving(false);
         }
     };
 

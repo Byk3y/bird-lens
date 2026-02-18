@@ -191,6 +191,7 @@ export default function BirdDetailScreen() {
                         bird={bird}
                         inatPhotos={inatPhotos}
                         sounds={sounds}
+                        isLoadingSounds={sounds.length === 0 && !media}
                         onPlaySound={handlePronounce}
                         onImagePress={(idx) => {
                             setSelectedImageIndex(idx);

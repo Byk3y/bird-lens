@@ -61,9 +61,9 @@ export type IdentificationMode = 'gender' | 'age' | 'fallback';
 export const getIdentificationMode = (bird: BirdResult): IdentificationMode => {
     const tips = getIdentificationTipsAvailability(bird);
 
-    // Prefer Age comparison (Adult vs Juvenile) if Juvenile exists AND
+    // Prefer Age comparison (Adult vs Juvenile) if Juvenile exists (both text AND image) AND
     // (Female is missing OR Female is visually similar to Male)
-    if (tips.hasJuvenile && (tips.isFemaleSimilar || !bird.female_image_url)) {
+    if (tips.hasJuvenile && bird.juvenile_image_url && (tips.isFemaleSimilar || !bird.female_image_url)) {
         return 'age';
     }
 
@@ -72,9 +72,9 @@ export const getIdentificationMode = (bird: BirdResult): IdentificationMode => {
         return 'gender';
     }
 
-    // Final fallback to whatever is available
-    if (bird.juvenile_image_url && tips.any) return 'age';
-    if (bird.male_image_url || bird.female_image_url) return 'gender';
+    // Final fallback logic
+    if (bird.juvenile_image_url && tips.hasJuvenile) return 'age';
+    if (bird.male_image_url && bird.female_image_url) return 'gender';
 
     return 'fallback';
 };
@@ -87,7 +87,7 @@ export const getIdentificationTipsAvailability = (bird: BirdResult) => {
     const femaleText = bird.identification_tips?.female?.toLowerCase() || '';
     const isFemaleSimilar = femaleText.includes('similar to male') || femaleText.includes('similar to the male');
 
-    // hasFemale is true if we have data, regardless of similarity (caller decides how to filter)
+    // hasFemale is true if we have data, regardless of similarity
     const hasFemale = !!(bird.identification_tips?.female && bird.identification_tips.female !== 'N/A');
     const hasJuvenile = !!(bird.identification_tips?.juvenile && bird.identification_tips.juvenile !== 'N/A');
 
@@ -96,6 +96,10 @@ export const getIdentificationTipsAvailability = (bird: BirdResult) => {
         hasFemale,
         hasJuvenile,
         isFemaleSimilar,
+        // Added checks for image availability to help caller decide
+        hasMaleImage: !!bird.male_image_url,
+        hasFemaleImage: !!bird.female_image_url,
+        hasJuvenileImage: !!bird.juvenile_image_url,
         any: hasMale || hasFemale || hasJuvenile
     };
 };

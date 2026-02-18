@@ -50,14 +50,16 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({ sound, activeSou
         if (!playback) {
             try {
                 setLoading(true);
-                console.log(`Loading sound: ${sound.url}`);
+
+                // Add MP3 extension hint for Xeno-Canto URLs to help iOS AVPlayer
+                let loadUrl = sound.url;
+                if (loadUrl.includes('xeno-canto.org') && !loadUrl.toLowerCase().includes('.mp3')) {
+                    loadUrl = loadUrl.includes('?') ? `${loadUrl}&ext=.mp3` : `${loadUrl}?ext=.mp3`;
+                }
+
+                console.log(`Loading sound: ${loadUrl}`);
                 const { sound: audioInstance } = await Audio.Sound.createAsync(
-                    {
-                        uri: sound.url,
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
-                        }
-                    },
+                    { uri: loadUrl },
                     { shouldPlay: true, volume: 1.0 },
                     onPlaybackStatusUpdate
                 );
