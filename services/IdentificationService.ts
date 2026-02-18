@@ -5,6 +5,7 @@ export type IdentificationChunk =
     | { type: 'progress'; message: string }
     | { type: 'candidates'; data: any[] }
     | { type: 'media'; index: number; data: any }
+    | { type: 'metadata'; index: number; data: any }
     | { type: 'done'; duration: number }
     | { type: 'error'; message: string };
 
@@ -99,9 +100,9 @@ export class IdentificationService {
             user_id: userId,
             species_name: bird.name,
             scientific_name: bird.scientific_name,
-            family: bird.taxonomy?.family,
-            order: bird.taxonomy?.order,
+            rarity: bird.rarity,
             confidence: bird.confidence,
+            image_url: bird.inat_photos?.[0]?.url || bird.wikipedia_image || null,
             metadata: {
                 also_known_as: bird.also_known_as,
                 taxonomy: bird.taxonomy,
@@ -115,7 +116,6 @@ export class IdentificationService {
                 feeder_info: bird.feeder_info,
                 behavior: bird.behavior,
                 rarity: bird.rarity,
-                fact: bird.fact,
                 key_facts: bird.key_facts,
                 distribution_area: bird.distribution_area,
                 conservation_status: bird.conservation_status,

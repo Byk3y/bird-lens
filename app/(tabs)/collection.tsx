@@ -21,7 +21,7 @@ const { width } = Dimensions.get('window');
 const CACHE_KEY = 'bird_lens_collection_cache';
 const REFRESH_COOLDOWN_MS = 30 * 1000; // Don't refetch within 30 seconds
 
-const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata';
+const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, scientific_name, rarity, confidence, metadata';
 
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
@@ -121,7 +121,6 @@ export default function MeScreen() {
             name: sighting.species_name,
             scientific_name: sighting.scientific_name,
             rarity: sighting.rarity,
-            fact: sighting.fact,
             confidence: sighting.confidence,
             ...sighting.metadata
         };

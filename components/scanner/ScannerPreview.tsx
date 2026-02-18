@@ -2,7 +2,7 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import { X } from 'lucide-react-native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
     Easing,
@@ -14,15 +14,46 @@ import Animated, {
 
 interface ScannerPreviewProps {
     imageUri: string;
+    isProcessing: boolean;
+    progressMessage: string | null;
     error: string | null;
-    onClose: () => void;
+    onReset: () => void;
 }
 
 const { width, height } = Dimensions.get('window');
 
-export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, error, onClose }) => {
+const DISCOVERY_MESSAGES = [
+    "Analyzing plumage and patterns...",
+    "Scanning bill and eye markings...",
+    "Comparing against local species...",
+    "Consulting field guide records...",
+    "Refining taxonomic matches...",
+    "Identifying unique field marks...",
+];
+
+export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
+    imageUri,
+    isProcessing,
+    progressMessage,
+    error,
+    onReset
+}) => {
     const scanLineY = useSharedValue(0);
     const ringRotation = useSharedValue(0);
+    const [statusIndex, setStatusIndex] = useState(0);
+
+    useEffect(() => {
+        if (isProcessing) {
+            const interval = setInterval(() => {
+                setStatusIndex((prev: number) => (prev + 1) % DISCOVERY_MESSAGES.length);
+            }, 1800);
+            return () => clearInterval(interval);
+        } else {
+            setStatusIndex(0);
+        }
+    }, [isProcessing]);
+
+    const displayMessage = progressMessage || DISCOVERY_MESSAGES[statusIndex];
 
     useEffect(() => {
         scanLineY.value = withRepeat(
@@ -54,8 +85,8 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, error,
         <View style={styles.container}>
             {/* Header / Close Button */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                    <X color={Colors.text} size={28} />
+                <TouchableOpacity onPress={onReset} style={styles.closeButton}>
+                    <X size={24} color="#FFF" />
                 </TouchableOpacity>
             </View>
 

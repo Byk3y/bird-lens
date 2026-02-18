@@ -155,7 +155,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             >
                 {/* Image & Pagination Section */}
                 <View style={[styles.heroSection, { height: width * 0.76 }]}>
-                    {/* Blurred Background */}
+                    {/* Blurred Background - Instant-feel: Use captured image as backdrop until hero image arrives */}
                     <View style={StyleSheet.absoluteFill}>
                         {activeBird && heroImages[activeBird.scientific_name] ? (
                             <Image
@@ -163,6 +163,14 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                 style={StyleSheet.absoluteFill}
                                 contentFit="cover"
                                 transition={500}
+                                cachePolicy="memory-disk"
+                            />
+                        ) : capturedImage ? (
+                            <Image
+                                source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                style={StyleSheet.absoluteFill}
+                                contentFit="cover"
+                                transition={300}
                                 cachePolicy="memory-disk"
                             />
                         ) : isComparisonTab && capturedImage ? (
@@ -174,7 +182,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                 cachePolicy="memory-disk"
                             />
                         ) : null}
-                        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
+                        <BlurView intensity={70} style={StyleSheet.absoluteFill} tint="dark" />
                     </View>
 
                     <Animated.ScrollView

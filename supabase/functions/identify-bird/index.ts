@@ -104,9 +104,18 @@ serve(async (req: Request) => {
 
         const startTime = Date.now();
         const persona = "You are a world-class Expert Field Ornithologist and Nature Educator.";
-        const promptInstructions = `
-Identify this bird with maximum scientific precision. 
-Provide the **Top 3 most probable species** candidates. 
+
+        // --- 2. Prompt Definitions ---
+
+        const fastPromptInstructions = `
+Identify this bird with maximum scientific precision.
+Provide the **Top 3 most probable species** candidates.
+Return ONLY the common name, scientific name, and confidence.
+`;
+
+        const enrichmentPromptInstructions = `
+For the following bird species, provide comprehensive field-guide quality metadata.
+Species: [[SPECIES_NAMES]]
 
 FIELD GUIDE QUALITY STANDARDS:
 - "habitat": Provide a high-density ecological description. Include elevation ranges in meters, specific vegetation, forest types, and regional variations in habitat. Mention if it's primary or secondary forest.
@@ -119,62 +128,22 @@ FIELD GUIDE QUALITY STANDARDS:
     - Only provide "female" or "juvenile" identification tips if they differ significantly from the male/adult. 
     - If genders are monomorphic (look identical), set "female" to null.
     - If juveniles look like adults, set "juvenile" to null.
-    - NEVER provide filler like "Similar to male."
+- "behavior": A single punchy, memorable fact (1-2 sentences). 
+- "also_known_as": array of strings.
+- "taxonomy": family, genus, etc.
 
-MANDATORY RULES:
-1. Return exactly 3 candidates.
-2. For measurements, use "inches" or "cm" only.
-3. confidence: decimal 0-1.
-4. "also_known_as": array of strings.
-5. "taxonomy", "identification_tips", "nesting_info", "feeder_info", and "key_facts" MUST be objects.
-
-JSON STRUCTURE TEMPLATE:
-{
-  "candidates": [
-    {
-      "name": "Common Name",
-      "scientific_name": "Scientific Name",
-      "also_known_as": ["Alt Name 1"],
-      "taxonomy": {
-        "family": "Family Name",
-        "family_scientific": "Scientific Family",
-        "genus": "Genus Name",
-        "genus_description": "Brief genus overview",
-        "order": "Order Name"
-      },
-      "identification_tips": { "male": "...", "female": "...", "juvenile": "..." },
-      "description": "General summary",
-      "diet": "Detailed diet",
-      "diet_tags": ["Keyword 1"],
-      "habitat": "Detailed ecological habitat description (include elevation, vegetation, regional variants)",
-      "habitat_tags": ["Keyword 1"],
-      "nesting_info": { "description": "Construction materials and clutch details", "location": "Precise placement details", "type": "Cup, cavity, etc." },
-      "feeder_info": { "attracted_by": ["Food 1"], "feeder_types": ["Type 1"] },
-      "behavior": "Key field behaviors",
-      "rarity": "Status level (Common, Uncommon, Rare)",
-      "fact": "Interesting trivia",
-      "distribution_area": "Geographic range",
-      "conservation_status": "IUCN Status (e.g., Least Concern, Vulnerable)",
-      "key_facts": {
-        "size": "5-6 inches",
-        "wingspan": "8-10 inches",
-        "wing_shape": "Rounded/Pointed/Broad",
-        "life_expectancy": "10 years",
-        "colors": ["Brown", "White"],
-        "tail_shape": "Notched/Square/Forked",
-        "weight": "20 grams"
-      },
-      "confidence": 0.98
-    }
-  ]
-}
+Return exactly one entry for each species provided.
 `;
 
-        const prompt = image
-            ? `${persona}\n\nIdentify the bird in this image.\n${promptInstructions}`
-            : `${persona}\n\nIdentify the bird in this audio clip.\n${promptInstructions}`;
+        // Include current date for better seasonality-based identification
+        const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const contextPrompt = `Current Date: ${currentDate}.\n\n`;
 
-        let parts: any[] = [{ text: prompt }];
+        const fastPrompt = image
+            ? `${persona}\n\n${contextPrompt}Identify the bird in this image.\n${fastPromptInstructions}`
+            : `${persona}\n\n${contextPrompt}Identify the bird in this audio clip.\n${fastPromptInstructions}`;
+
+        let parts: any[] = [{ text: fastPrompt }];
         if (image) parts.push({ inline_data: { mime_type: "image/jpeg", data: image } });
         else if (audio) parts.push({ inline_data: { mime_type: "audio/mp3", data: audio } });
 
@@ -182,15 +151,14 @@ JSON STRUCTURE TEMPLATE:
             async start(controller) {
                 try {
                     // HEARTBEAT: Send immediate "waiting" signal
-                    writeChunk(controller, { type: "progress", message: "AI is analyzing data..." });
+                    writeChunk(controller, { type: "progress", message: "Analyzing plumage and patterns..." });
 
                     let identificationResponse: Response | undefined;
                     let isFallback = false;
                     const openRouterModel = "openai/gpt-4o";
 
-                    const attemptAI = async (isPrimary: boolean): Promise<Response> => {
+                    const attemptAI = async (isPrimary: boolean, promptText: string): Promise<Response> => {
                         if (isPrimary) {
-                            console.log(`[STREAM] Primary: OpenRouter (${openRouterModel})...`);
                             return await fetch("https://openrouter.ai/api/v1/chat/completions", {
                                 method: "POST",
                                 headers: {
@@ -204,7 +172,7 @@ JSON STRUCTURE TEMPLATE:
                                     messages: [{
                                         role: "user",
                                         content: [
-                                            { type: "text", text: `${prompt}\n\nMANDATORY: Return a JSON object with a key "candidates".` },
+                                            { type: "text", text: `${promptText}\n\nMANDATORY: Return a JSON object.` },
                                             ...(image ? [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : []),
                                             ...(audio ? [{ type: "audio_url", audio_url: { url: `data:audio/mp3;base64,${audio}` } }] : [])
                                         ]
@@ -224,75 +192,9 @@ JSON STRUCTURE TEMPLATE:
                                                             properties: {
                                                                 name: { type: "string" },
                                                                 scientific_name: { type: "string" },
-                                                                also_known_as: { type: "array", items: { type: "string" } },
-                                                                taxonomy: {
-                                                                    type: "object",
-                                                                    properties: {
-                                                                        family: { type: "string" },
-                                                                        family_scientific: { type: "string" },
-                                                                        genus: { type: "string" },
-                                                                        genus_description: { type: "string" },
-                                                                        order: { type: "string" }
-                                                                    },
-                                                                    required: ["family", "family_scientific", "genus", "genus_description", "order"],
-                                                                    additionalProperties: false
-                                                                },
-                                                                identification_tips: {
-                                                                    type: "object",
-                                                                    properties: {
-                                                                        male: { type: ["string", "null"] },
-                                                                        female: { type: ["string", "null"] },
-                                                                        juvenile: { type: ["string", "null"] }
-                                                                    },
-                                                                    required: ["male", "female", "juvenile"],
-                                                                    additionalProperties: false
-                                                                },
-                                                                description: { type: "string" },
-                                                                diet: { type: "string" },
-                                                                diet_tags: { type: "array", items: { type: "string" } },
-                                                                habitat: { type: "string" },
-                                                                habitat_tags: { type: "array", items: { type: "string" } },
-                                                                nesting_info: {
-                                                                    type: "object",
-                                                                    properties: {
-                                                                        description: { type: "string" },
-                                                                        location: { type: "string" },
-                                                                        type: { type: "string" }
-                                                                    },
-                                                                    required: ["description", "location", "type"],
-                                                                    additionalProperties: false
-                                                                },
-                                                                feeder_info: {
-                                                                    type: "object",
-                                                                    properties: {
-                                                                        attracted_by: { type: "array", items: { type: "string" } },
-                                                                        feeder_types: { type: "array", items: { type: "string" } }
-                                                                    },
-                                                                    required: ["attracted_by", "feeder_types"],
-                                                                    additionalProperties: false
-                                                                },
-                                                                behavior: { type: "string" },
-                                                                rarity: { type: "string" },
-                                                                fact: { type: "string" },
-                                                                distribution_area: { type: "string" },
-                                                                conservation_status: { type: "string" },
-                                                                key_facts: {
-                                                                    type: "object",
-                                                                    properties: {
-                                                                        size: { type: "string" },
-                                                                        wingspan: { type: "string" },
-                                                                        wing_shape: { type: "string" },
-                                                                        life_expectancy: { type: "string" },
-                                                                        colors: { type: "array", items: { type: "string" } },
-                                                                        tail_shape: { type: "string" },
-                                                                        weight: { type: "string" }
-                                                                    },
-                                                                    required: ["size", "wingspan", "wing_shape", "life_expectancy", "colors", "tail_shape", "weight"],
-                                                                    additionalProperties: false
-                                                                },
                                                                 confidence: { type: "number" }
                                                             },
-                                                            required: ["name", "scientific_name", "also_known_as", "taxonomy", "identification_tips", "description", "diet", "diet_tags", "habitat", "habitat_tags", "nesting_info", "feeder_info", "behavior", "rarity", "fact", "distribution_area", "conservation_status", "key_facts", "confidence"],
+                                                            required: ["name", "scientific_name", "confidence"],
                                                             additionalProperties: false
                                                         }
                                                     }
@@ -301,89 +203,106 @@ JSON STRUCTURE TEMPLATE:
                                                 additionalProperties: false
                                             }
                                         }
-                                    },
-                                    provider: { order: ["OpenAI", "Google", "Vertex", "Groq"], allow_fallbacks: true }
+                                    }
                                 }),
                             });
                         } else {
-                            console.log(`[STREAM] Fallback: Direct Gemini (${GEMINI_MODEL})...`);
                             return await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                    contents: [{ parts }],
+                                    contents: [{ parts: [{ text: promptText }, ...(image ? [{ inline_data: { mime_type: "image/jpeg", data: image } }] : []), ...(audio ? [{ inline_data: { mime_type: "audio/mp3", data: audio } }] : [])] }],
                                     generationConfig: { responseMimeType: "application/json" }
                                 }),
                             });
                         }
                     };
 
+                    // PHASE 1: Fast Identification
                     try {
-                        if (!OPENROUTER_API_KEY) throw new Error("OpenRouter Key missing");
-                        identificationResponse = await attemptAI(true);
-
-                        // Check if primary succeeded but returned empty content (routing error)
-                        if (identificationResponse.ok) {
-                            const clone = identificationResponse.clone();
-                            const result = await clone.json();
-                            if (!result.choices?.[0]?.message?.content) {
-                                throw new Error("Primary returned empty content");
-                            }
-                        } else if (identificationResponse.status === 429 || identificationResponse.status >= 500) {
-                            throw new Error(`Primary fail: ${identificationResponse.status}`);
-                        }
-                    } catch (error: any) {
-                        console.warn("Primary AI failed, trying fallback...", error.message);
+                        identificationResponse = await attemptAI(true, fastPrompt);
+                        if (!identificationResponse.ok) throw new Error("Primary Fast ID failed");
+                    } catch {
                         isFallback = true;
-                        identificationResponse = await attemptAI(false);
+                        identificationResponse = await attemptAI(false, fastPrompt);
                     }
 
-                    // CLEAR LARGE VARS
-                    // @ts-ignore
-                    image = null; audio = null; parts = null;
-
-                    if (!identificationResponse || !identificationResponse.ok) {
-                        const status = identificationResponse?.status;
-                        const errorRaw = identificationResponse ? await identificationResponse.text() : "No response";
-                        throw new Error(`AI error (${status}): ${errorRaw.substring(0, 100)}`);
-                    }
-
-                    const result = await identificationResponse.json();
-                    let birdData: any[];
+                    const fastResult = await identificationResponse.json();
+                    let candidates: any[];
 
                     if (!isFallback) {
-                        const content = result.choices?.[0]?.message?.content;
-                        if (!content) throw new Error("Response content empty");
+                        const content = fastResult.choices?.[0]?.message?.content;
                         const parsed = cleanAndParseJson(content, "OpenRouter");
-                        birdData = parsed.candidates || parsed.birds || (Array.isArray(parsed) ? parsed : [parsed]);
+                        candidates = parsed.candidates || [];
                     } else {
-                        birdData = cleanAndParseJson(result.candidates[0].content.parts[0].text, "Gemini");
+                        const content = fastResult.candidates[0].content.parts[0].text;
+                        const parsed = cleanAndParseJson(content, "Gemini");
+                        candidates = parsed.candidates || [];
                     }
 
-                    const candidates = birdData.slice(0, 3);
-                    console.log(`Identified ${candidates.length} candidates.`);
-
-                    // STEP 3: Send real candidates
+                    candidates = candidates.slice(0, 3);
                     writeChunk(controller, { type: "candidates", data: candidates });
+                    writeChunk(controller, { type: "progress", message: "Writing your field guide..." });
 
-                    // STEP 4: Enrich and Stream Media Chunks
+                    // PHASE 2: Parallel Background Enrichment
                     const xenoKey = XENO_CANTO_API_KEY || "";
-                    for (const [index, bird] of candidates.entries()) {
-                        const { scientific_name, name } = bird;
+
+                    // Helper for Deep Metadata Enrichment
+                    const fetchDeepMetadata = async () => {
+                        const speciesNames = candidates.map(c => c.scientific_name).join(", ");
+                        const deepPrompt = enrichmentPromptInstructions.replace("[[SPECIES_NAMES]]", speciesNames);
+
                         try {
-                            const cached = await getCachedMedia(scientific_name);
-                            if (cached) {
-                                writeChunk(controller, { type: "media", index, data: cached });
+                            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                                method: "POST",
+                                headers: {
+                                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                    model: openRouterModel,
+                                    messages: [{ role: "user", content: deepPrompt }],
+                                    response_format: { type: "json_object" }
+                                }),
+                            });
+
+                            if (response.ok) {
+                                const data = await response.json();
+                                const parsed = cleanAndParseJson(data.choices[0].message.content, "Enrichment");
+                                const metadataList = parsed.candidates || parsed.birds || (Array.isArray(parsed) ? parsed : []);
+
+                                metadataList.forEach((meta: any, idx: number) => {
+                                    writeChunk(controller, { type: "metadata", index: idx, data: meta });
+                                });
                             } else {
-                                const media = await enrichSpecies(scientific_name, xenoKey);
-                                writeChunk(controller, { type: "media", index, data: media });
-                                setCachedMedia(scientific_name, name, media).catch(() => { });
+                                const errorText = await response.text();
+                                console.error(`Deep Metadata Enrichment API error (${response.status}): ${errorText}`);
                             }
-                        } catch (err) {
-                            console.error(`Enrichment failed for ${scientific_name}`, err);
-                            writeChunk(controller, { type: "media", index, data: { inat_photos: [], sounds: [] } });
+                        } catch (e) {
+                            console.error("Deep Metadata Enrichment failed", e);
                         }
-                    }
+                    };
+
+                    // Run everything else in parallel
+                    await Promise.all([
+                        fetchDeepMetadata(),
+                        ...candidates.map(async (bird, index) => {
+                            const { scientific_name, name } = bird;
+                            try {
+                                const cached = await getCachedMedia(scientific_name);
+                                if (cached) {
+                                    writeChunk(controller, { type: "media", index, data: cached });
+                                } else {
+                                    const media = await enrichSpecies(scientific_name, xenoKey);
+                                    writeChunk(controller, { type: "media", index, data: media });
+                                    setCachedMedia(scientific_name, name, media).catch(() => { });
+                                }
+                            } catch (err) {
+                                console.error(`Media enrichment failed for ${scientific_name}`, err);
+                                writeChunk(controller, { type: "media", index, data: { inat_photos: [], sounds: [] } });
+                            }
+                        })
+                    ]);
 
                     writeChunk(controller, { type: "done", duration: Date.now() - startTime });
                     controller.close();

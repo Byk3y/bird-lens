@@ -14,6 +14,7 @@ import {
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Dimensions,
     ScrollView,
     StyleSheet,
@@ -131,7 +132,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             </View>
 
             {/* Insight Tip */}
-            {bird.behavior && (
+            {bird.behavior ? (
                 <View style={styles.section}>
                     <View style={styles.insightCard}>
                         <View style={styles.insightIconWrapper}>
@@ -140,7 +141,15 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Text style={styles.insightText}>{bird.behavior}</Text>
                     </View>
                 </View>
-            )}
+            ) : !bird.inat_photos?.length ? (
+                // Only show if media hasn't arrived either, otherwise it looks too busy
+                <View style={styles.section}>
+                    <View style={[styles.insightCard, { opacity: 0.5 }]}>
+                        <ActivityIndicator size="small" color="#FF6B35" />
+                        <Text style={[styles.insightText, { color: '#999' }]}>Gathering behavioral insights...</Text>
+                    </View>
+                </View>
+            ) : null}
 
             <View style={styles.gutter} />
 
@@ -222,6 +231,18 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         * Please note that same bird species can sound different due to dialect or mimicry.
                     </Text>
                 </View>
+            ) : (bird.inat_photos && bird.inat_photos.length > 0) ? (
+                <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                        <View style={styles.sectionTitleLeft}>
+                            <Activity size={22} color="#CCC" />
+                            <Text style={[styles.sectionTitle, { color: '#999' }]}>Sounds</Text>
+                        </View>
+                    </View>
+                    <View style={{ height: 40, justifyContent: 'center' }}>
+                        <Text style={{ color: '#BBB', fontSize: 14 }}>Searching archives for vocalizations...</Text>
+                    </View>
+                </View>
             ) : null}
 
             <View style={styles.gutter} />
@@ -236,7 +257,14 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     <MoreHorizontal size={20} color="#999" />
                 </View>
                 <View style={styles.clippedIdContainer}>
-                    <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
+                    {bird.identification_tips ? (
+                        <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
+                    ) : (
+                        <View style={{ height: 200, backgroundColor: '#FAFAFA', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator size="small" color="#999" />
+                            <Text style={{ color: '#999', marginTop: 12 }}>Summarizing field marks...</Text>
+                        </View>
+                    )}
                     <LinearGradient
                         colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}
                         style={styles.fadeOverlay}
@@ -256,26 +284,36 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
 
             {/* Description Section */}
             <View style={styles.section}>
-                <Text
-                    style={styles.descriptionText}
-                    numberOfLines={isExpanded ? 0 : 5}
-                >
-                    {bird.description}
-                </Text>
-                {bird.description && bird.description.length > 200 && (
-                    <TouchableOpacity
-                        style={styles.expandButton}
-                        onPress={() => setIsExpanded(!isExpanded)}
-                    >
-                        <Text style={styles.expandButtonText}>
-                            {isExpanded ? 'Show Less' : 'Read Full Description'}
+                {bird.description ? (
+                    <>
+                        <Text
+                            style={styles.descriptionText}
+                            numberOfLines={isExpanded ? 0 : 5}
+                        >
+                            {bird.description}
                         </Text>
-                        {isExpanded ? (
-                            <ChevronUp size={16} color="#BA6526" />
-                        ) : (
-                            <ChevronDown size={16} color="#BA6526" />
+                        {bird.description.length > 200 && (
+                            <TouchableOpacity
+                                style={styles.expandButton}
+                                onPress={() => setIsExpanded(!isExpanded)}
+                            >
+                                <Text style={styles.expandButtonText}>
+                                    {isExpanded ? 'Show Less' : 'Read Full Description'}
+                                </Text>
+                                {isExpanded ? (
+                                    <ChevronUp size={16} color="#BA6526" />
+                                ) : (
+                                    <ChevronDown size={16} color="#BA6526" />
+                                )}
+                            </TouchableOpacity>
                         )}
-                    </TouchableOpacity>
+                    </>
+                ) : (
+                    <View style={{ paddingVertical: 20 }}>
+                        <View style={{ height: 18, width: '90%', backgroundColor: '#F0F0F0', borderRadius: 4, marginBottom: 8 }} />
+                        <View style={{ height: 18, width: '95%', backgroundColor: '#F0F0F0', borderRadius: 4, marginBottom: 8 }} />
+                        <View style={{ height: 18, width: '70%', backgroundColor: '#F0F0F0', borderRadius: 4, marginBottom: 8 }} />
+                    </View>
                 )}
             </View>
 

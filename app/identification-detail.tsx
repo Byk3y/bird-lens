@@ -1,6 +1,6 @@
+import { IdentificationComparison } from '@/components/shared/profile/IdentificationComparison';
 import { BirdResult } from '@/types/scanner';
 import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
@@ -47,10 +47,6 @@ export default function IdentificationDetailScreen() {
         })
     ).current;
 
-    const hasMale = bird.identification_tips?.male && bird.identification_tips.male !== 'N/A';
-    const hasFemale = bird.identification_tips?.female && bird.identification_tips.female !== 'N/A' && !bird.identification_tips.female.toLowerCase().includes('similar to male');
-    const hasJuvenile = bird.identification_tips?.juvenile && bird.identification_tips.juvenile !== 'N/A';
-
     return (
         <View style={styles.screenWrapper}>
             <BlurView
@@ -83,124 +79,7 @@ export default function IdentificationDetailScreen() {
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                 >
-                    {(() => {
-                        const showMale = !!bird.male_image_url;
-                        const showFemale = !!bird.female_image_url;
-                        const showJuvenile = !!bird.juvenile_image_url;
-
-                        // Case 1: Gender Comparison
-                        if (showMale && showFemale) {
-                            return (
-                                <>
-                                    {hasMale && (
-                                        <View style={styles.section}>
-                                            <View style={styles.imageContainer}>
-                                                <Image
-                                                    source={{ uri: bird.male_image_url }}
-                                                    style={styles.image}
-                                                    contentFit="cover"
-                                                />
-                                                <View style={styles.labelBadge}>
-                                                    <Text style={styles.labelText}>Male</Text>
-                                                </View>
-                                            </View>
-                                            <Text style={styles.sectionTitle}>Male Identification</Text>
-                                            <View style={styles.descCard}>
-                                                <Text style={styles.descText}>{bird.identification_tips.male}</Text>
-                                            </View>
-                                        </View>
-                                    )}
-
-                                    {hasFemale && (
-                                        <View style={styles.section}>
-                                            <View style={styles.imageContainer}>
-                                                <Image
-                                                    source={{ uri: bird.female_image_url }}
-                                                    style={styles.image}
-                                                    contentFit="cover"
-                                                />
-                                                <View style={styles.labelBadge}>
-                                                    <Text style={styles.labelText}>Female</Text>
-                                                </View>
-                                            </View>
-                                            <Text style={styles.sectionTitle}>Female Identification</Text>
-                                            <View style={styles.descCard}>
-                                                <Text style={styles.descText}>{bird.identification_tips.female}</Text>
-                                            </View>
-                                        </View>
-                                    )}
-                                </>
-                            );
-                        }
-
-                        // Case 2: Age Comparison (Adult vs Juvenile)
-                        if (showJuvenile) {
-                            return (
-                                <>
-                                    <View style={styles.section}>
-                                        <View style={styles.imageContainer}>
-                                            <Image
-                                                source={{ uri: bird.images?.[0] }}
-                                                style={styles.image}
-                                                contentFit="cover"
-                                            />
-                                            <View style={styles.labelBadge}>
-                                                <Text style={styles.labelText}>Adult</Text>
-                                            </View>
-                                        </View>
-                                        <Text style={styles.sectionTitle}>Adult Identification</Text>
-                                        <View style={styles.descCard}>
-                                            <Text style={styles.descText}>{bird.identification_tips.male}</Text>
-                                        </View>
-                                    </View>
-
-                                    {hasJuvenile && (
-                                        <View style={styles.section}>
-                                            <View style={styles.imageContainer}>
-                                                <Image
-                                                    source={{ uri: bird.juvenile_image_url }}
-                                                    style={styles.image}
-                                                    contentFit="cover"
-                                                />
-                                                <View style={styles.labelBadge}>
-                                                    <Text style={styles.labelText}>Juvenile</Text>
-                                                </View>
-                                            </View>
-                                            <Text style={styles.sectionTitle}>Juvenile Identification</Text>
-                                            <View style={styles.descCard}>
-                                                <Text style={styles.descText}>{bird.identification_tips.juvenile}</Text>
-                                            </View>
-                                        </View>
-                                    )}
-                                </>
-                            );
-                        }
-
-                        // Fallback: Single Adult view (or Male if only that exists)
-                        const fallbackImage = bird.male_image_url || bird.images?.[0];
-                        const fallbackLabel = bird.male_image_url ? "Male" : "Adult";
-                        const fallbackTips = bird.identification_tips.male || bird.identification_tips.female;
-
-                        return (
-                            <View style={styles.section}>
-                                <View style={styles.imageContainer}>
-                                    <Image
-                                        source={{ uri: fallbackImage }}
-                                        style={styles.image}
-                                        contentFit="cover"
-                                    />
-                                    <View style={styles.labelBadge}>
-                                        <Text style={styles.labelText}>{fallbackLabel}</Text>
-                                    </View>
-                                </View>
-                                <Text style={styles.sectionTitle}>{fallbackLabel} Identification</Text>
-                                <View style={styles.descCard}>
-                                    <Text style={styles.descText}>{fallbackTips}</Text>
-                                </View>
-                            </View>
-                        );
-                    })()}
-
+                    <IdentificationComparison bird={bird} variant="full" />
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </Animated.View>
@@ -245,54 +124,5 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: 13,
         paddingTop: 0,
-    },
-    section: {
-        marginBottom: 32,
-    },
-    imageContainer: {
-        width: '100%',
-        height: 240,
-        borderRadius: 24,
-        overflow: 'hidden',
-        marginBottom: 16,
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    image: {
-        width: '100%',
-        height: '100%',
-    },
-    labelBadge: {
-        position: 'absolute',
-        top: 16,
-        left: 16,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    labelText: {
-        color: '#FFF',
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1A1A1A',
-        marginBottom: 12,
-    },
-    descCard: {
-        backgroundColor: '#F8FAFC',
-        padding: 20,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    descText: {
-        fontSize: 17,
-        lineHeight: 26,
-        color: '#334155',
     },
 });

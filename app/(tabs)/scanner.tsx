@@ -40,7 +40,7 @@ export default function ScannerScreen() {
   const [flash, setFlash] = useState<'off' | 'on'>('off');
   const [showSnapTips, setShowSnapTips] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [isSaved, setIsSaved] = useState(false);
+  const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const { isLoading: isAuthLoading } = useAuth();
 
@@ -185,8 +185,10 @@ export default function ScannerScreen() {
         {capturedImage && !result && (isProcessing || error) ? (
           <ScannerPreview
             imageUri={capturedImage}
+            isProcessing={isProcessing}
+            progressMessage={null} // We are using dynamic messages now
             error={error}
-            onClose={() => {
+            onReset={() => {
               resetResult();
               setCapturedImage(null);
             }}
@@ -250,7 +252,7 @@ export default function ScannerScreen() {
             heroImages={heroImages}
             capturedImage={capturedImage}
             isSaving={isSaving}
-            isSaved={isSaved}
+            savedIndices={savedIndices}
             activeIndex={activeIndex}
             setActiveIndex={setActiveIndex}
             enrichCandidate={enrichCandidate}
@@ -258,21 +260,22 @@ export default function ScannerScreen() {
             onSave={async (bird, image) => {
               const success = await saveSighting(bird, image);
               if (success) {
-                setIsSaved(true);
-                // Wait 1s to show success state before navigating
+                setSavedIndices(prev => new Set(prev).add(activeIndex));
+
+                // Navigate to collection after a brief delay to show success state
                 setTimeout(() => {
                   resetResult();
                   setCapturedImage(null);
-                  setIsSaved(false);
+                  setSavedIndices(new Set());
                   setActiveIndex(0);
                   router.replace('/(tabs)/collection');
-                }, 1000);
+                }, 1200);
               }
             }}
             onReset={() => {
               resetResult();
               setCapturedImage(null);
-              setIsSaved(false);
+              setSavedIndices(new Set());
               setActiveIndex(0);
             }}
           />

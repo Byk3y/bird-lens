@@ -105,7 +105,7 @@ export const useBirdIdentification = () => {
                         setEnrichedCandidates(prev => {
                             const next = [...prev];
                             if (next[index]) {
-                                next[index] = IdentificationService.toBirdResult(rawCandidates[index], media);
+                                next[index] = IdentificationService.toBirdResult(next[index], media);
                             }
                             return next;
                         });
@@ -118,9 +118,26 @@ export const useBirdIdentification = () => {
                         }
 
                         if (index === 0) {
-                            setResult(prev => prev ? IdentificationService.toBirdResult(rawCandidates[0], media) : null);
+                            setResult(prev => prev ? IdentificationService.toBirdResult(prev, media) : null);
                         }
                         console.log(`Received media for candidate ${index}: ${media.inat_photos?.length || 0} photos`);
+                        break;
+                    }
+
+                    case 'metadata': {
+                        const { index, data: metadata } = chunk;
+                        setEnrichedCandidates(prev => {
+                            const next = [...prev];
+                            if (next[index]) {
+                                next[index] = { ...next[index], ...metadata };
+                            }
+                            return next;
+                        });
+
+                        if (index === 0) {
+                            setResult(prev => prev ? { ...prev, ...metadata } : null);
+                        }
+                        console.log(`Received metadata enrichment for candidate ${index}`);
                         break;
                     }
 

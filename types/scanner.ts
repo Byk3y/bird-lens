@@ -33,6 +33,7 @@ export interface BirdResult {
         genus: string;
         genus_description: string;
         order?: string;
+        order_description?: string;
     };
     identification_tips: {
         male: string;
@@ -58,7 +59,6 @@ export interface BirdResult {
     };
     behavior: string;
     rarity: string;
-    fact: string;
     distribution_area?: string;
     conservation_status?: string;
     key_facts?: {
