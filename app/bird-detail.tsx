@@ -43,10 +43,18 @@ export default function BirdDetailScreen() {
     const bird = React.useMemo(() => JSON.parse(params.birdData as string) as BirdResult, [params.birdData]);
     const sightingDate = params.sightingDate ? new Date(params.sightingDate) : new Date();
 
-    const [media, setMedia] = useState<BirdMedia | null>(null);
-    const [inatPhotos, setInatPhotos] = useState<INaturalistPhoto[]>([]);
-    const [sounds, setSounds] = useState<BirdSound[]>([]);
-    const [loading, setLoading] = useState(true);
+    // Initialize state from saved metadata immediately — no loading screen needed
+    const savedInatPhotos = React.useMemo(() => bird.inat_photos || [], [bird.inat_photos]);
+    const savedSounds = React.useMemo(() => bird.sounds || [], [bird.sounds]);
+    const hasSavedData = savedInatPhotos.length > 0 || savedSounds.length > 0;
+
+    const [media, setMedia] = useState<BirdMedia | null>(
+        // Pre-populate from in-memory cache if available
+        MediaService.getCached(bird.scientific_name)
+    );
+    const [inatPhotos, setInatPhotos] = useState<INaturalistPhoto[]>(savedInatPhotos);
+    const [sounds, setSounds] = useState<BirdSound[]>(savedSounds);
+    const [loading, setLoading] = useState(!hasSavedData && !media);
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const scrollRef = useRef<ScrollView>(null);
@@ -60,30 +68,38 @@ export default function BirdDetailScreen() {
     };
 
     useEffect(() => {
+        // If we already have cached media data, skip the fetch entirely
+        if (media) {
+            setLoading(false);
+            return;
+        }
+
+        let isMounted = true;
+
         async function loadData() {
             try {
-                const savedInatPhotos = bird.inat_photos || [];
-                const savedSounds = bird.sounds || [];
-
-                // 1. Fetch media (hits cache first)
                 const mediaData = await MediaService.fetchBirdMedia(bird.scientific_name);
+                if (!isMounted) return;
 
                 setMedia(mediaData);
 
-                // 2. Use saved data OR data from the enriched media response
-                // This ensures we never hit iNaturalist directly from the client
-                const finalSounds = savedSounds.length > 0 ? savedSounds : (mediaData.sounds || []);
-                const finalPhotos = savedInatPhotos.length > 0 ? savedInatPhotos : (mediaData.inat_photos || []);
-
-                setSounds(finalSounds);
-                setInatPhotos(finalPhotos);
+                // Only update photos/sounds if we didn't already have saved data
+                if (savedInatPhotos.length === 0 && mediaData.inat_photos?.length) {
+                    setInatPhotos(mediaData.inat_photos);
+                }
+                if (savedSounds.length === 0 && mediaData.sounds?.length) {
+                    setSounds(mediaData.sounds);
+                }
             } catch (error) {
-                console.error('Failed to load detail data:', error);
+                console.warn('Background media fetch failed (non-blocking):', error);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         }
+
         loadData();
+
+        return () => { isMounted = false; };
     }, [bird.scientific_name]);
 
     const handleShare = async () => {

@@ -5,6 +5,7 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { BirdResult } from '@/types/scanner';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { Image } from 'expo-image';
@@ -12,63 +13,99 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Forward, Gem, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
+const CACHE_KEY = 'bird_lens_collection_cache';
+const REFRESH_COOLDOWN_MS = 30 * 1000; // Don't refetch within 30 seconds
+
+const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata';
 
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { user } = useAuth();
     const [sightings, setSightings] = useState<any[]>([]);
-    const [loading, setLoading] = useState(sightings.length === 0);
+    const [loading, setLoading] = useState(true);
     const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
     const [isAlertVisible, setIsAlertVisible] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [selectedSighting, setSelectedSighting] = useState<any>(null);
     const [sightingToDelete, setSightingToDelete] = useState<string | null>(null);
+    const lastFetchRef = useRef<number>(0);
 
-    // Initial fetch and user changes
+    // Load cached data instantly on mount, then fetch fresh data
     React.useEffect(() => {
         if (!user) return;
 
-        async function fetchInitial() {
+        let isMounted = true;
+
+        async function loadCachedThenFetch() {
+            // 1. Load from AsyncStorage cache instantly
+            try {
+                const cachedJson = await AsyncStorage.getItem(CACHE_KEY);
+                if (cachedJson && isMounted) {
+                    const cached = JSON.parse(cachedJson);
+                    if (cached?.data?.length > 0) {
+                        setSightings(cached.data);
+                        setLoading(false); // Show cached data immediately, no skeleton
+                    }
+                }
+            } catch (e) {
+                // Cache read failed, continue to network fetch
+            }
+
+            // 2. Fetch fresh data from Supabase
             try {
                 const { data, error } = await supabase
                     .from('sightings')
-                    .select('id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata')
+                    .select(SIGHTINGS_QUERY)
                     .eq('user_id', user?.id)
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
-                if (data) setSightings(data);
+                if (data && isMounted) {
+                    setSightings(data);
+                    lastFetchRef.current = Date.now();
+                    // Persist to cache
+                    AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
+                }
             } catch (err) {
                 console.error('Error fetching sightings:', err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         }
 
-        fetchInitial();
+        loadCachedThenFetch();
+
+        return () => { isMounted = false; };
     }, [user]);
 
-    // Refresh data silently when screen comes into focus
+    // Refresh data silently when screen comes into focus (with cooldown)
     useFocusEffect(
         useCallback(() => {
             if (!user) return;
+
+            // Skip if we fetched recently (within cooldown)
+            const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+            if (timeSinceLastFetch < REFRESH_COOLDOWN_MS) return;
 
             async function refreshCollections() {
                 try {
                     const { data, error } = await supabase
                         .from('sightings')
-                        .select('id, species_name, created_at, image_url, scientific_name, rarity, fact, confidence, metadata')
+                        .select(SIGHTINGS_QUERY)
                         .eq('user_id', user?.id)
                         .order('created_at', { ascending: false });
 
                     if (!error && data) {
                         setSightings(data);
+                        lastFetchRef.current = Date.now();
+                        // Update cache
+                        AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
                     }
                 } catch (err) {
                     console.error('Silent refresh failed:', err);
@@ -77,6 +114,7 @@ export default function MeScreen() {
             refreshCollections();
         }, [user])
     );
+
 
     const handleBirdPress = (sighting: any) => {
         const birdData: BirdResult = {
@@ -121,8 +159,11 @@ export default function MeScreen() {
 
             if (error) throw error;
 
-            setSightings(prev => prev.filter(s => s.id !== id));
+            const updated = sightings.filter(s => s.id !== id);
+            setSightings(updated);
             setIsAlertVisible(false);
+            // Update cache to reflect deletion
+            AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: updated, timestamp: Date.now() })).catch(() => { });
         } catch (err) {
             console.error('Error deleting sighting:', err);
             Alert.alert("Error", "Could not delete this sighting. Please try again.");
