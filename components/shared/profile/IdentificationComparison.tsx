@@ -16,11 +16,11 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
     variant = 'inline'
 }) => {
     const mode = getIdentificationMode(bird);
-    const { hasMale, hasFemale, hasJuvenile } = getIdentificationTipsAvailability(bird);
+    const { hasMale, hasFemale, hasJuvenile, isFemaleSimilar } = getIdentificationTipsAvailability(bird);
 
     if (variant === 'inline') {
         const renderInlineItem = (title: string, imageUrl: string) => (
-            <View style={styles.idItem}>
+            <View style={styles.idItem} key={`${title}-${imageUrl}`}>
                 <Text style={styles.idItemTitle}>{title}</Text>
                 <TouchableOpacity
                     style={styles.idImageWrapper}
@@ -40,24 +40,24 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
             return (
                 <View style={styles.idContainer}>
                     {hasMale && renderInlineItem('Male', bird.male_image_url!)}
-                    {hasFemale && renderInlineItem('Female', bird.female_image_url!)}
+                    {hasFemale && renderInlineItem(isFemaleSimilar ? 'Female (Similar)' : 'Female', bird.female_image_url!)}
                 </View>
             );
         }
 
         if (mode === 'age') {
+            const adultImage = bird.male_image_url || bird.images?.[0] || bird.female_image_url;
             return (
                 <View style={styles.idContainer}>
-                    {bird.male_image_url && renderInlineItem('Adult', bird.male_image_url)}
-                    {!bird.male_image_url && bird.images?.[0] && renderInlineItem('Adult', bird.images[0])}
+                    {adultImage && renderInlineItem('Adult', adultImage)}
                     {hasJuvenile && renderInlineItem('Juvenile', bird.juvenile_image_url!)}
                 </View>
             );
         }
 
         // Fallback
-        const fallbackImage = bird.male_image_url || bird.images?.[0];
-        const fallbackLabel = bird.male_image_url ? "Male" : "Adult";
+        const fallbackImage = bird.male_image_url || bird.female_image_url || bird.juvenile_image_url || bird.images?.[0];
+        const fallbackLabel = bird.juvenile_image_url && !bird.male_image_url ? "Juvenile" : "Adult";
         return (
             <View style={styles.idContainer}>
                 {fallbackImage && renderInlineItem(fallbackLabel, fallbackImage)}
@@ -67,7 +67,7 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
 
     // Full variant (detail view)
     const renderFullItem = (imageUrl: string, label: string, description?: string) => (
-        <View style={styles.detailSection}>
+        <View style={styles.detailSection} key={`${label}-${imageUrl}`}>
             <Text style={styles.sectionTitle}>{label}</Text>
             <View style={styles.imageContainer}>
                 <Image source={{ uri: imageUrl }} style={styles.fullImage} cachePolicy="memory-disk" />
@@ -88,12 +88,15 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
             {mode === 'gender' ? (
                 <>
                     {hasMale && renderFullItem(bird.male_image_url!, 'Male', bird.identification_tips.male)}
-                    {hasFemale && renderFullItem(bird.female_image_url!, 'Female', bird.identification_tips.female)}
+                    {hasFemale && renderFullItem(isFemaleSimilar ? 'Female (Similar)' : 'Female', bird.female_image_url!, bird.identification_tips.female)}
                 </>
             ) : (
                 <>
-                    {bird.male_image_url && renderFullItem(bird.male_image_url, 'Adult', bird.identification_tips.male)}
-                    {!bird.male_image_url && bird.images?.[0] && renderFullItem(bird.images[0], 'Adult', bird.identification_tips.male)}
+                    {(bird.male_image_url || bird.images?.[0] || bird.female_image_url) && renderFullItem(
+                        (bird.male_image_url || bird.images?.[0] || bird.female_image_url)!,
+                        'Adult',
+                        bird.identification_tips.male || bird.identification_tips.female
+                    )}
                     {hasJuvenile && renderFullItem(bird.juvenile_image_url!, 'Juvenile', bird.identification_tips.juvenile)}
                 </>
             )}

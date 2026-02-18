@@ -140,7 +140,7 @@ Return a JSON object with a "birds" array. Each bird must include:
 - "also_known_as": Array of strings.
 - "description": 2-3 sentence overview.
 - "diet": Primary diet description.
-- "diet_tags": Array of simple dietary keywords.
+- "diet_tags": Array of simple dietary keywords. Use specific terms like ["Aquatic plants", "Small fish", "Invertebrates", "Small mammals", "Crustaceans", "Reptiles & Amphibians", "Carrion", "Grains", "Buds & Shoots", "Insects", "Fruit", "Seeds", "Nectar"] where applicable for consistent visual mapping.
 - "conservation_status": "Current global conservation status (e.g., Least Concern, Near Threatened, Vulnerable, Endangered)."
 - "key_facts": { 
     "size": "value (e.g., 9-11 inches)", 

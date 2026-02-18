@@ -56,25 +56,46 @@ export type IdentificationMode = 'gender' | 'age' | 'fallback';
 
 /**
  * Determines which identification comparison images to show.
+ * Prioritizes visually distinct comparisons (e.g., Age) if genders are similar.
  */
 export const getIdentificationMode = (bird: BirdResult): IdentificationMode => {
-    if (bird.male_image_url && bird.female_image_url) return 'gender';
-    if (bird.juvenile_image_url) return 'age';
+    const tips = getIdentificationTipsAvailability(bird);
+
+    // Prefer Age comparison (Adult vs Juvenile) if Juvenile exists AND
+    // (Female is missing OR Female is visually similar to Male)
+    if (tips.hasJuvenile && (tips.isFemaleSimilar || !bird.female_image_url)) {
+        return 'age';
+    }
+
+    // Otherwise, prefer Gender if both exist and are distinct
+    if (bird.male_image_url && bird.female_image_url && !tips.isFemaleSimilar && tips.hasFemale) {
+        return 'gender';
+    }
+
+    // Final fallback to whatever is available
+    if (bird.juvenile_image_url && tips.any) return 'age';
+    if (bird.male_image_url || bird.female_image_url) return 'gender';
+
     return 'fallback';
 };
 
 /**
- * Checks if a bird has any valid identification tips.
+ * Checks if a bird has any valid identification tips and identifies similarities.
  */
 export const getIdentificationTipsAvailability = (bird: BirdResult) => {
     const hasMale = !!(bird.identification_tips?.male && bird.identification_tips.male !== 'N/A');
-    const hasFemale = !!(bird.identification_tips?.female && bird.identification_tips.female !== 'N/A' && !bird.identification_tips.female.toLowerCase().includes('similar to male'));
+    const femaleText = bird.identification_tips?.female?.toLowerCase() || '';
+    const isFemaleSimilar = femaleText.includes('similar to male') || femaleText.includes('similar to the male');
+
+    // hasFemale is true if we have data, regardless of similarity (caller decides how to filter)
+    const hasFemale = !!(bird.identification_tips?.female && bird.identification_tips.female !== 'N/A');
     const hasJuvenile = !!(bird.identification_tips?.juvenile && bird.identification_tips.juvenile !== 'N/A');
 
     return {
         hasMale,
         hasFemale,
         hasJuvenile,
+        isFemaleSimilar,
         any: hasMale || hasFemale || hasJuvenile
     };
 };

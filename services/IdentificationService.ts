@@ -20,6 +20,7 @@ export class IdentificationService {
             inat_photos: media?.inat_photos || [],
             male_image_url: media?.male_image_url,
             female_image_url: media?.female_image_url,
+            juvenile_image_url: media?.juvenile_image_url,
             sounds: media?.sounds || [],
             wikipedia_image: media?.wikipedia_image,
             gbif_taxon_key: media?.gbif_taxon_key,
