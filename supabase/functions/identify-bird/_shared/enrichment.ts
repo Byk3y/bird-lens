@@ -129,10 +129,12 @@ async function fetchINatJuvenilePhoto(scientificName: string): Promise<string | 
         const fields = "photos.url,photos.license_code,photos.attribution";
         const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=1&term_value_id=8&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
 
+        console.log(`[Enrichment] Fetching juvenile photo: ${url}`);
         const response = await fetch(url);
         if (!response.ok) return null;
 
         const data = await response.json();
+        console.log(`[Enrichment] Found ${data.results?.length || 0} juvenile observation results`);
         const photo = data.results?.[0]?.photos?.[0];
         if (!photo?.url) return null;
 

@@ -116,9 +116,11 @@ Return ONLY the following fields for each:
 - "confidence": A number from 0-1
 - "taxonomy": {
     "family": "Common name of family",
-    "scientific_family": "Scientific name of family",
+    "family_scientific": "Scientific name of family",
     "genus": "Scientific name of genus",
-    "genus_description": "Commonly called [Common Name of Genus]"
+    "genus_description": "Commonly called [Common Name of Genus]",
+    "order": "Scientific name of order",
+    "order_description": "Common name of order"
   }
 `;
 
@@ -213,10 +215,13 @@ Return a JSON object with a "birds" array. Each bird must include:
                                                                     type: "object",
                                                                     properties: {
                                                                         family: { type: "string" },
-                                                                        scientific_family: { type: "string" },
-                                                                        genus: { type: "string" }
+                                                                        family_scientific: { type: "string" },
+                                                                        genus: { type: "string" },
+                                                                        genus_description: { type: "string" },
+                                                                        order: { type: "string" },
+                                                                        order_description: { type: "string" }
                                                                     },
-                                                                    required: ["family", "scientific_family", "genus"],
+                                                                    required: ["family", "family_scientific", "genus", "genus_description", "order", "order_description"],
                                                                     additionalProperties: false
                                                                 }
                                                             },
@@ -244,13 +249,35 @@ Return a JSON object with a "birds" array. Each bird must include:
                         }
                     };
 
-                    // PHASE 1: Fast Identification
+                    // PHASE 1: Fast Identification (OpenRouter primary with retry, Gemini fallback)
+                    let primaryError = "";
+
+                    // Attempt 1: OpenRouter
                     try {
                         identificationResponse = await attemptAI(true, fastPrompt);
-                        if (!identificationResponse.ok) throw new Error("Primary Fast ID failed");
-                    } catch {
-                        isFallback = true;
-                        identificationResponse = await attemptAI(false, fastPrompt);
+                        if (!identificationResponse.ok) {
+                            const errBody = await identificationResponse.text().catch(() => "unknown");
+                            primaryError = `OpenRouter ${identificationResponse.status}: ${errBody.substring(0, 200)}`;
+                            console.warn("[PHASE1] OpenRouter attempt 1 failed:", primaryError);
+                            throw new Error(primaryError);
+                        }
+                    } catch (err1: any) {
+                        // Attempt 2: Retry OpenRouter after a brief pause
+                        try {
+                            await new Promise(r => setTimeout(r, 1000));
+                            identificationResponse = await attemptAI(true, fastPrompt);
+                            if (!identificationResponse.ok) {
+                                const errBody = await identificationResponse.text().catch(() => "unknown");
+                                primaryError = `OpenRouter retry ${identificationResponse.status}: ${errBody.substring(0, 200)}`;
+                                console.warn("[PHASE1] OpenRouter attempt 2 failed:", primaryError);
+                                throw new Error(primaryError);
+                            }
+                        } catch (err2: any) {
+                            // Attempt 3: Gemini fallback
+                            console.warn("[PHASE1] Falling back to Gemini. OpenRouter errors:", err1?.message?.substring(0, 100));
+                            isFallback = true;
+                            identificationResponse = await attemptAI(false, fastPrompt);
+                        }
                     }
 
                     const fastResult = await identificationResponse.json();
@@ -258,14 +285,32 @@ Return a JSON object with a "birds" array. Each bird must include:
 
                     if (!isFallback) {
                         const content = fastResult.choices?.[0]?.message?.content;
-                        if (!content) throw new Error("OpenRouter returned empty content");
+                        if (!content) throw new Error("OpenRouter returned empty content – response had no message");
                         const parsed = cleanAndParseJson(content, "OpenRouter");
                         candidates = parsed.candidates || [];
                     } else {
                         const content = fastResult.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!content) throw new Error("Gemini returned empty content");
-                        const parsed = cleanAndParseJson(content, "Gemini");
-                        candidates = parsed.candidates || [];
+                        if (!content) {
+                            // Last resort: try OpenRouter one final time
+                            console.warn("[PHASE1] Gemini also empty. Trying OpenRouter as last resort...");
+                            const lastResort = await attemptAI(true, fastPrompt);
+                            if (lastResort.ok) {
+                                const lrResult = await lastResort.json();
+                                const lrContent = lrResult.choices?.[0]?.message?.content;
+                                if (lrContent) {
+                                    isFallback = false;
+                                    const parsed = cleanAndParseJson(lrContent, "OpenRouter-LastResort");
+                                    candidates = parsed.candidates || [];
+                                } else {
+                                    throw new Error("All AI providers failed – OpenRouter and Gemini both returned empty content. Please try again.");
+                                }
+                            } else {
+                                throw new Error(`All AI providers failed. OpenRouter: ${primaryError || "unavailable"}. Gemini: empty response. Please try again.`);
+                            }
+                        } else {
+                            const parsed = cleanAndParseJson(content, "Gemini");
+                            candidates = parsed.candidates || [];
+                        }
                     }
 
                     candidates = candidates.slice(0, 3);
