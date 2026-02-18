@@ -14,12 +14,13 @@ import Animated, {
 
 interface ScannerPreviewProps {
     imageUri: string;
+    error: string | null;
     onClose: () => void;
 }
 
 const { width, height } = Dimensions.get('window');
 
-export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, onClose }) => {
+export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, error, onClose }) => {
     const scanLineY = useSharedValue(0);
     const ringRotation = useSharedValue(0);
 
@@ -99,7 +100,11 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, onClos
                         {/* Scanning Laser */}
                         <Animated.View style={[styles.scanLine, scanLineStyle]}>
                             <LinearGradient
-                                colors={['rgba(249, 115, 22, 0)', 'rgba(249, 115, 22, 0.8)', 'rgba(249, 115, 22, 0)']}
+                                colors={
+                                    error
+                                        ? ['rgba(239, 68, 68, 0)', 'rgba(239, 68, 68, 0.4)', 'rgba(239, 68, 68, 0)'] // Red if error
+                                        : ['rgba(249, 115, 22, 0)', 'rgba(249, 115, 22, 0.8)', 'rgba(249, 115, 22, 0)'] // Orange if scanning
+                                }
                                 style={styles.gradient}
                             />
                         </Animated.View>
@@ -123,7 +128,16 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({ imageUri, onClos
                         </View>
                     </View>
                 </View>
-                <Text style={styles.analyzingText}>Scanning species...</Text>
+                <View style={styles.textContainer}>
+                    <Text style={[styles.analyzingText, error ? styles.errorTitle : null]}>
+                        {error ? "Service Unavailable" : "Scanning species..."}
+                    </Text>
+                    {error && (
+                        <Text style={styles.errorMessage}>
+                            {error}
+                        </Text>
+                    )}
+                </View>
             </View>
         </View>
     );
@@ -275,11 +289,25 @@ const styles = StyleSheet.create({
         borderTopWidth: 2,
         borderColor: 'rgba(255,255,255,0.4)',
     },
+    textContainer: {
+        alignItems: 'center',
+        paddingHorizontal: Spacing.xl,
+        gap: 4,
+    },
     analyzingText: {
         ...Typography.h3,
         color: Colors.text,
         fontWeight: 'bold',
-        marginTop: 0,
+        textAlign: 'center',
+    },
+    errorTitle: {
+        color: '#EF4444',
+    },
+    errorMessage: {
+        ...Typography.body,
+        color: Colors.textSecondary,
+        textAlign: 'center',
+        fontSize: 14,
     },
     lensOverlay: {
         ...StyleSheet.absoluteFillObject,

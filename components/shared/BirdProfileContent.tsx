@@ -61,9 +61,17 @@ const BIRD_COLOR_MAP: Record<string, string> = {
     'Olive': '#808000',
 };
 
+const getRarityColor = (rarity: string) => {
+    const low = rarity.toLowerCase();
+    if (low.includes('common')) return '#4CD964';
+    if (low.includes('uncommon')) return '#FF9500';
+    if (low.includes('rare')) return '#FF3B30';
+    if (low.includes('extinct')) return '#000000';
+    return '#8E8E93';
+};
+
 const getBirdColor = (color: string) => {
-    const name = color.trim().charAt(0).toUpperCase() + color.trim().slice(1).toLowerCase();
-    return BIRD_COLOR_MAP[name] || color.toLowerCase();
+    return BIRD_COLOR_MAP[color] || '#8E8E93';
 };
 
 export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
@@ -97,38 +105,58 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     <Text style={styles.familyText}>
                         {bird.taxonomy?.family || 'N/A'}
                         {bird.taxonomy?.family_scientific && (
-                            <Text style={styles.scientificFamilyText}>({bird.taxonomy.family_scientific})</Text>
+                            <Text style={styles.scientificFamilyText}> ({bird.taxonomy.family_scientific})</Text>
                         )}
                     </Text>
+                    {bird.taxonomy?.order && (
+                        <Text style={styles.orderText}>
+                            Order: <Text style={styles.orderValue}>{bird.taxonomy.order}</Text>
+                        </Text>
+                    )}
                 </View>
                 <Pressable style={styles.editBtn}>
                     <Edit2 size={18} color="#999" />
                 </Pressable>
             </View>
-
-            <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Also known as: </Text>
-                <Text style={styles.metaValue}>{bird.also_known_as?.join(', ') || 'N/A'}</Text>
-            </View>
-
             <View style={styles.scientificNameRow}>
-                <Text style={styles.scientificNameLabel}>Scientific name: </Text>
-                <Text style={styles.scientificNameValue}>
-                    {bird.scientific_name}
-                </Text>
-                <Pressable style={styles.speakerBtn} onPress={onPlaySound}>
-                    <Volume2 size={12} color="#FFF" />
-                </Pressable>
+                <View style={styles.metaContainer}>
+                    {bird.scientific_name && (
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Scientific name: </Text>
+                            <Text style={[styles.metaValue, { fontStyle: 'italic' }]}>{bird.scientific_name}</Text>
+                        </View>
+                    )}
+                    {bird.also_known_as && bird.also_known_as.length > 0 && (
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Also known as: </Text>
+                            <Text style={styles.metaValue}>{bird.also_known_as.join(', ')}</Text>
+                        </View>
+                    )}
+                    {bird.taxonomy?.genus && (
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Genus: </Text>
+                            <Text style={styles.metaValue}>{bird.taxonomy.genus}</Text>
+                        </View>
+                    )}
+                    {bird.rarity && (
+                        <View style={styles.metaRow}>
+                            <Text style={styles.metaLabel}>Rarity: </Text>
+                            <Text style={[styles.metaValue, { color: getRarityColor(bird.rarity) }]}>{bird.rarity}</Text>
+                        </View>
+                    )}
+                </View>
             </View>
 
-            <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Genus: </Text>
-                <Text style={styles.metaValue}>{bird.taxonomy?.genus || 'N/A'}</Text>
-            </View>
+            {
+                bird.taxonomy?.genus_description && (
+                    <View style={styles.genusDescriptionBox}>
+                        <Text style={styles.genusDescriptionText}>{bird.taxonomy.genus_description}</Text>
+                    </View>
+                )
+            }
 
             <View style={styles.gutter} />
 
-            {/* Gallery Section */}
             {/* Gallery Section */}
             <View style={styles.gallerySection}>
                 <View style={styles.sectionHeaderRow}>
@@ -144,8 +172,8 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     showsHorizontalScrollIndicator={false}
                     style={styles.galleryScroll}
                 >
-                    {(inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).length > 0 ? (
-                        (inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).map((photo, idx) => (
+                    {(inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).length > 0 ? (
+                        (inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).map((photo, idx) => (
                             <TouchableOpacity
                                 key={idx}
                                 style={styles.galleryItem}
@@ -274,34 +302,37 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <View style={styles.halfCardMain}>
                                 {(() => {
                                     const loc = (bird.nesting_info?.location || '').toLowerCase();
+                                    const type = (bird.nesting_info?.type || '').toLowerCase();
+                                    const combined = `${loc} ${type}`;
+
                                     let asset = NESTING_ASSETS.cup;
                                     let name = 'Cup';
 
-                                    if (loc.includes('cavity') || loc.includes('hole')) {
+                                    if (combined.includes('cavity') || combined.includes('hole')) {
                                         asset = NESTING_ASSETS.cavity;
                                         name = 'Cavity';
-                                    } else if (loc.includes('burrow') || loc.includes('tunnel')) {
+                                    } else if (combined.includes('burrow') || combined.includes('tunnel')) {
                                         asset = NESTING_ASSETS.burrow;
                                         name = 'Burrow';
-                                    } else if (loc.includes('dome') || loc.includes('spherical') || loc.includes('enclosed')) {
+                                    } else if (combined.includes('dome') || combined.includes('spherical') || combined.includes('enclosed')) {
                                         asset = NESTING_ASSETS.dome;
                                         name = 'Dome';
-                                    } else if (loc.includes('ground') || loc.includes('shrub')) {
+                                    } else if (combined.includes('ground') || combined.includes('shrub')) {
                                         asset = NESTING_ASSETS.ground;
                                         name = 'Ground';
-                                    } else if (loc.includes('platform') || loc.includes('ledge') || loc.includes('building')) {
+                                    } else if (combined.includes('platform') || combined.includes('ledge') || combined.includes('building')) {
                                         asset = NESTING_ASSETS.platform;
                                         name = 'Platform';
-                                    } else if (loc.includes('scrape') || loc.includes('sand') || loc.includes('pebbles')) {
+                                    } else if (combined.includes('scrape') || combined.includes('sand') || combined.includes('pebbles')) {
                                         asset = NESTING_ASSETS.scrape;
                                         name = 'Scrape';
-                                    } else if (loc.includes('hanging') || loc.includes('pouch') || loc.includes('pendant')) {
+                                    } else if (combined.includes('hanging') || combined.includes('pouch') || combined.includes('pendant')) {
                                         asset = NESTING_ASSETS.hanging;
                                         name = 'Hanging';
-                                    } else if (loc.includes('none') || loc.includes('parasitic') || loc.includes('no nest')) {
+                                    } else if (combined.includes('none') || combined.includes('parasitic') || combined.includes('no nest')) {
                                         asset = NESTING_ASSETS.none;
                                         name = 'No Nest';
-                                    } else if (loc.includes('tree') || loc.includes('branch') || loc.includes('cup')) {
+                                    } else if (combined.includes('tree') || combined.includes('branch') || combined.includes('cup')) {
                                         asset = NESTING_ASSETS.cup;
                                         name = 'Cup';
                                     }
@@ -332,90 +363,94 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             </View>
 
             {/* Sound Section */}
-            {sounds.length > 0 && (
-                <>
-                    <View style={styles.gutter} />
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeaderRow}>
-                            <View style={styles.sectionTitleLeft}>
-                                <Volume2 size={22} color="#1A1A1A" />
-                                <Text style={styles.sectionTitle}>Sounds</Text>
-                            </View>
-                            <MoreHorizontal size={20} color="#999" />
-                        </View>
-
-                        {/* Songs */}
-                        {sounds.filter(s => s.type === 'song').length > 0 && (
-                            <View style={{ marginBottom: 8 }}>
-                                <View style={styles.subHeaderRow}>
-                                    <Text style={styles.subHeaderTitle}>Song</Text>
-                                    <HelpCircle size={16} color="#666" style={{ marginLeft: 6 }} />
-                                </View>
-                                {sounds.filter(s => s.type === 'song').map((sound) => (
-                                    <WaveformPlayer
-                                        key={sound.id}
-                                        sound={sound}
-                                        activeSoundId={activeSoundId}
-                                        onPlay={setActiveSoundId}
-                                    />
-                                ))}
-                            </View>
-                        )}
-
-                        {/* Calls */}
-                        {sounds.filter(s => s.type === 'call').length > 0 && (
-                            <View style={{ marginBottom: 8 }}>
-                                <View style={styles.subHeaderRow}>
-                                    <Text style={styles.subHeaderTitle}>Call</Text>
-                                    <HelpCircle size={16} color="#666" style={{ marginLeft: 6 }} />
-                                </View>
-                                {sounds.filter(s => s.type === 'call').map((sound) => (
-                                    <WaveformPlayer
-                                        key={sound.id}
-                                        sound={sound}
-                                        activeSoundId={activeSoundId}
-                                        onPlay={setActiveSoundId}
-                                    />
-                                ))}
-                            </View>
-                        )}
-
-                        <Text style={styles.disclaimerText}>
-                            * Please note that same bird species can sound different due to dialect or mimicry.
-                        </Text>
-                    </View>
-                </>
-            )}
-
-            {/* How to identify it? Section */}
-            {(() => {
-                const hasMale = bird.identification_tips?.male && bird.identification_tips.male !== 'N/A';
-                const hasFemale = bird.identification_tips?.female && bird.identification_tips.female !== 'N/A' && !bird.identification_tips.female.toLowerCase().includes('similar to male');
-                const hasJuvenile = bird.identification_tips?.juvenile && bird.identification_tips.juvenile !== 'N/A';
-
-                if (!hasMale && !hasFemale && !hasJuvenile) return null;
-
-                return (
+            {
+                sounds.length > 0 && (
                     <>
                         <View style={styles.gutter} />
                         <View style={styles.section}>
                             <View style={styles.sectionHeaderRow}>
                                 <View style={styles.sectionTitleLeft}>
-                                    <Lightbulb size={22} color="#1A1A1A" />
-                                    <Text style={styles.sectionTitle}>How to identify it?</Text>
+                                    <Volume2 size={22} color="#1A1A1A" />
+                                    <Text style={styles.sectionTitle}>Sounds</Text>
                                 </View>
                                 <MoreHorizontal size={20} color="#999" />
                             </View>
 
-                            <View style={styles.idContainer}>
-                                {(() => {
-                                    const showMale = !!bird.male_image_url;
-                                    const showFemale = !!bird.female_image_url;
+                            {/* Songs */}
+                            {sounds.filter(s => s.type === 'song').length > 0 && (
+                                <View style={{ marginBottom: 8 }}>
+                                    <View style={styles.subHeaderRow}>
+                                        <Text style={styles.subHeaderTitle}>Song</Text>
+                                        <HelpCircle size={16} color="#666" style={{ marginLeft: 6 }} />
+                                    </View>
+                                    {sounds.filter(s => s.type === 'song').map((sound) => (
+                                        <WaveformPlayer
+                                            key={sound.id}
+                                            sound={sound}
+                                            activeSoundId={activeSoundId}
+                                            onPlay={setActiveSoundId}
+                                        />
+                                    ))}
+                                </View>
+                            )}
 
-                                    if (showMale || showFemale) {
-                                        return (
-                                            <>
-                                                {showMale && (
+                            {/* Calls */}
+                            {sounds.filter(s => s.type === 'call').length > 0 && (
+                                <View style={{ marginBottom: 8 }}>
+                                    <View style={styles.subHeaderRow}>
+                                        <Text style={styles.subHeaderTitle}>Call</Text>
+                                        <HelpCircle size={16} color="#666" style={{ marginLeft: 6 }} />
+                                    </View>
+                                    {sounds.filter(s => s.type === 'call').map((sound) => (
+                                        <WaveformPlayer
+                                            key={sound.id}
+                                            sound={sound}
+                                            activeSoundId={activeSoundId}
+                                            onPlay={setActiveSoundId}
+                                        />
+                                    ))}
+                                </View>
+                            )}
+
+                            <Text style={styles.disclaimerText}>
+                                * Please note that same bird species can sound different due to dialect or mimicry.
+                            </Text>
+                        </View>
+                    </>
+                )
+            }
+
+            {/* How to identify it? Section */}
+            {
+                (() => {
+                    const hasMale = bird.identification_tips?.male && bird.identification_tips.male !== 'N/A';
+                    const hasFemale = bird.identification_tips?.female && bird.identification_tips.female !== 'N/A' && !bird.identification_tips.female.toLowerCase().includes('similar to male');
+                    const hasJuvenile = bird.identification_tips?.juvenile && bird.identification_tips.juvenile !== 'N/A';
+
+                    if (!hasMale && !hasFemale && !hasJuvenile) return null;
+
+                    return (
+                        <>
+                            <View style={styles.gutter} />
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeaderRow}>
+                                    <View style={styles.sectionTitleLeft}>
+                                        <Lightbulb size={22} color="#1A1A1A" />
+                                        <Text style={styles.sectionTitle}>How to identify it?</Text>
+                                    </View>
+                                    <MoreHorizontal size={20} color="#999" />
+                                </View>
+
+                                <View style={styles.idContainer}>
+                                    {(() => {
+                                        const showMale = !!bird.male_image_url;
+                                        const showFemale = !!bird.female_image_url;
+                                        const showJuvenile = !!bird.juvenile_image_url;
+
+                                        // Preference 1: Gender Comparison
+                                        if (showMale && showFemale) {
+                                            return (
+                                                <>
                                                     <View style={styles.idItem}>
                                                         <Text style={styles.idItemTitle}>Male</Text>
                                                         <TouchableOpacity
@@ -430,8 +465,6 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                                             />
                                                         </TouchableOpacity>
                                                     </View>
-                                                )}
-                                                {showFemale && (
                                                     <View style={styles.idItem}>
                                                         <Text style={styles.idItemTitle}>Female</Text>
                                                         <TouchableOpacity
@@ -446,42 +479,81 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                                             />
                                                         </TouchableOpacity>
                                                     </View>
-                                                )}
-                                            </>
+                                                </>
+                                            );
+                                        }
+
+                                        // Preference 2: Age Comparison (Adult vs Juvenile)
+                                        if (showJuvenile) {
+                                            return (
+                                                <>
+                                                    <View style={styles.idItem}>
+                                                        <Text style={styles.idItemTitle}>Adult</Text>
+                                                        <TouchableOpacity
+                                                            style={styles.idImageWrapper}
+                                                            onPress={onOpenIdentification}
+                                                            activeOpacity={0.9}
+                                                        >
+                                                            <Image
+                                                                source={{ uri: bird.images?.[0] }}
+                                                                style={styles.idImage}
+                                                                cachePolicy="memory-disk"
+                                                            />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                    <View style={styles.idItem}>
+                                                        <Text style={styles.idItemTitle}>Juvenile</Text>
+                                                        <TouchableOpacity
+                                                            style={styles.idImageWrapper}
+                                                            onPress={onOpenIdentification}
+                                                            activeOpacity={0.9}
+                                                        >
+                                                            <Image
+                                                                source={{ uri: bird.juvenile_image_url }}
+                                                                style={styles.idImage}
+                                                                cachePolicy="memory-disk"
+                                                            />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </>
+                                            );
+                                        }
+
+                                        // Default/Fallback: Single View (Adult or Male if only one)
+                                        const fallbackImage = bird.male_image_url || bird.images?.[0];
+                                        const fallbackLabel = bird.male_image_url ? "Male" : "Adult";
+
+                                        return (
+                                            <View style={styles.idItem}>
+                                                <Text style={styles.idItemTitle}>{fallbackLabel}</Text>
+                                                <TouchableOpacity
+                                                    style={styles.idImageWrapper}
+                                                    onPress={onOpenIdentification}
+                                                    activeOpacity={0.9}
+                                                >
+                                                    <Image
+                                                        source={{ uri: fallbackImage }}
+                                                        style={styles.idImage}
+                                                        cachePolicy="memory-disk"
+                                                    />
+                                                </TouchableOpacity>
+                                            </View>
                                         );
-                                    }
+                                    })()}
 
-                                    // Fallback to single Adult view if no gendered images provideed
-                                    return (
-                                        <View style={styles.idItem}>
-                                            <Text style={styles.idItemTitle}>Adult</Text>
-                                            <TouchableOpacity
-                                                style={styles.idImageWrapper}
-                                                onPress={onOpenIdentification}
-                                                activeOpacity={0.9}
-                                            >
-                                                <Image
-                                                    source={{ uri: bird.images?.[0] }}
-                                                    style={styles.idImage}
-                                                    cachePolicy="memory-disk"
-                                                />
-                                            </TouchableOpacity>
-                                        </View>
-                                    );
-                                })()}
-
-                                <TouchableOpacity
-                                    style={styles.learnMoreCenterBtn}
-                                    onPress={onOpenIdentification}
-                                >
-                                    <Text style={styles.learnMoreText}>Learn More</Text>
-                                    <ChevronDown size={18} color="#FF6B35" strokeWidth={2.5} />
-                                </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.learnMoreCenterBtn}
+                                        onPress={onOpenIdentification}
+                                    >
+                                        <Text style={styles.learnMoreText}>Learn More</Text>
+                                        <ChevronDown size={18} color="#FF6B35" strokeWidth={2.5} />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
-                    </>
-                );
-            })()}
+                        </>
+                    );
+                })()
+            }
 
             <View style={styles.gutter} />
 
@@ -518,24 +590,16 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Text style={styles.factValue}>{bird.key_facts?.wingspan || 'N/A'}</Text>
                     </View>
                     <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
+                        <Text style={styles.factLabel}>Weight</Text>
+                        <Text style={styles.factValue}>{bird.key_facts?.weight || 'N/A'}</Text>
+                    </View>
+                    <View style={styles.factRow}>
                         <Text style={styles.factLabel}>Life Expectancy</Text>
                         <Text style={styles.factValue}>{bird.key_facts?.life_expectancy || 'N/A'}</Text>
                     </View>
 
                     {isFactsExpanded && (
                         <>
-                            <View style={styles.factRow}>
-                                <Text style={styles.factLabel}>Weight</Text>
-                                <Text style={styles.factValue}>{bird.key_facts?.weight || 'N/A'}</Text>
-                            </View>
-                            <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
-                                <Text style={styles.factLabel}>Wing Shape</Text>
-                                <Text style={styles.factValue}>{bird.key_facts?.wing_shape || 'N/A'}</Text>
-                            </View>
-                            <View style={styles.factRow}>
-                                <Text style={styles.factLabel}>Tail Shape</Text>
-                                <Text style={styles.factValue}>{bird.key_facts?.tail_shape || 'N/A'}</Text>
-                            </View>
                             <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
                                 <Text style={styles.factLabel}>Colors</Text>
                                 <View style={styles.colorsContainer}>
@@ -549,6 +613,14 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                         />
                                     )) || <Text style={styles.factValue}>N/A</Text>}
                                 </View>
+                            </View>
+                            <View style={styles.factRow}>
+                                <Text style={styles.factLabel}>Wing Shape</Text>
+                                <Text style={styles.factValue}>{bird.key_facts?.wing_shape || 'N/A'}</Text>
+                            </View>
+                            <View style={[styles.factRow, { backgroundColor: '#F8F8F8' }]}>
+                                <Text style={styles.factLabel}>Tail Shape</Text>
+                                <Text style={styles.factValue}>{bird.key_facts?.tail_shape || 'N/A'}</Text>
                             </View>
                         </>
                     )}
@@ -570,38 +642,42 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             </View>
 
             {/* Habits & Behavior Section */}
-            {(bird.behavior || bird.diet) && (
-                <>
-                    <View style={styles.gutter} />
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeaderRow}>
-                            <View style={styles.sectionTitleLeft}>
-                                <Lightbulb size={22} color="#1A1A1A" />
-                                <Text style={styles.sectionTitle}>Habits & Behavior</Text>
+            {
+                (bird.behavior || bird.diet) && (
+                    <>
+                        <View style={styles.gutter} />
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <View style={styles.sectionTitleLeft}>
+                                    <Lightbulb size={22} color="#1A1A1A" />
+                                    <Text style={styles.sectionTitle}>Habits & Behavior</Text>
+                                </View>
                             </View>
+                            <Text style={styles.descriptionText}>
+                                {bird.behavior || bird.diet}
+                            </Text>
                         </View>
-                        <Text style={styles.descriptionText}>
-                            {bird.behavior || bird.diet}
-                        </Text>
-                    </View>
-                </>
-            )}
+                    </>
+                )
+            }
 
             {/* Distribution Section */}
-            {bird.habitat && (
-                <>
-                    <View style={styles.gutter} />
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeaderRow}>
-                            <View style={styles.sectionTitleLeft}>
-                                <LayoutGrid size={22} color="#1A1A1A" />
-                                <Text style={styles.sectionTitle}>Distribution & Habitat</Text>
+            {
+                bird.habitat && (
+                    <>
+                        <View style={styles.gutter} />
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <View style={styles.sectionTitleLeft}>
+                                    <LayoutGrid size={22} color="#1A1A1A" />
+                                    <Text style={styles.sectionTitle}>Distribution & Habitat</Text>
+                                </View>
                             </View>
+                            <Text style={styles.descriptionText}>{bird.habitat}</Text>
                         </View>
-                        <Text style={styles.descriptionText}>{bird.habitat}</Text>
-                    </View>
-                </>
-            )}
+                    </>
+                )
+            }
 
             {/* Scientific Classification Section */}
             <View style={styles.gutter} />
@@ -702,6 +778,30 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '400',
         color: '#999',
+        fontStyle: 'italic',
+    },
+    orderText: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 4,
+    },
+    orderValue: {
+        fontWeight: '600',
+        color: '#333',
+    },
+    genusDescriptionBox: {
+        backgroundColor: '#F7FAFC',
+        padding: 12,
+        marginHorizontal: 12,
+        borderRadius: 12,
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    genusDescriptionText: {
+        fontSize: 14,
+        lineHeight: 20,
+        color: '#4A5568',
         fontStyle: 'italic',
     },
     editBtn: {

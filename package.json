@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:backend": "npx deno test --no-check --sloppy-imports services/IdentificationService.test.ts supabase/functions/identify-bird/helpers.test.ts",
+    "test:frontend": "npx deno test --no-check --sloppy-imports lib/utils.test.ts",
+    "test": "npm run test:backend && npm run test:frontend"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

@@ -15,6 +15,7 @@ async function verifyIdentification() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': 'Bearer dummy_token_for_verification',
         },
         body: JSON.stringify({
             image: base64Image
