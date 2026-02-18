@@ -1,9 +1,10 @@
 import { BirdResult, BirdSound, INaturalistPhoto } from '@/types/scanner';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Speech from 'expo-speech';
 import {
     Activity,
     ChevronDown,
-    ChevronRight,
     ChevronUp,
     HelpCircle,
     Image as ImageIcon,
@@ -37,7 +38,7 @@ interface BirdProfileContentProps {
     sounds?: BirdSound[];
     onPlaySound?: () => void;
     onImagePress?: (index: number) => void;
-    onOpenTips?: () => void;
+    onOpenTips?: (section?: string) => void;
     onOpenIdentification?: () => void;
 }
 
@@ -168,7 +169,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                     activeSoundId={activeSoundId}
                                     onPlay={(id) => {
                                         setActiveSoundId(id);
-                                        onPlaySound?.();
+                                        Speech.stop();
                                     }}
                                 />
                             ))}
@@ -189,7 +190,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                     activeSoundId={activeSoundId}
                                     onPlay={(id) => {
                                         setActiveSoundId(id);
-                                        onPlaySound?.();
+                                        Speech.stop();
                                     }}
                                 />
                             ))}
@@ -210,7 +211,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                     activeSoundId={activeSoundId}
                                     onPlay={(id) => {
                                         setActiveSoundId(id);
-                                        onPlaySound?.();
+                                        Speech.stop();
                                     }}
                                 />
                             ))}
@@ -232,12 +233,23 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <HelpCircle size={22} color="#1A1A1A" />
                         <Text style={styles.sectionTitle}>How to identify it?</Text>
                     </View>
-                    <TouchableOpacity onPress={onOpenIdentification} style={styles.learnMoreBtn}>
-                        <Text style={styles.learnMoreText}>Learn More</Text>
-                        <ChevronRight size={18} color="#FF6B35" />
-                    </TouchableOpacity>
+                    <MoreHorizontal size={20} color="#999" />
                 </View>
-                <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
+                <View style={styles.clippedIdContainer}>
+                    <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
+                    <LinearGradient
+                        colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}
+                        style={styles.fadeOverlay}
+                    />
+                </View>
+                <TouchableOpacity
+                    onPress={onOpenIdentification}
+                    style={styles.expandButton}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.expandButtonText}>Learn More</Text>
+                    <ChevronDown size={16} color="#BA6526" />
+                </TouchableOpacity>
             </View>
 
             <View style={styles.gutter} />
@@ -374,23 +386,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 20,
+        paddingTop: 14,
+        paddingBottom: 6,
         gap: 6,
     },
     expandButtonText: {
         fontSize: 16,
         color: '#BA6526',
-        fontWeight: '500',
-    },
-    learnMoreBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    learnMoreText: {
-        fontSize: 15,
         fontWeight: '600',
-        color: '#FF6B35',
     },
     // Sound Section Grouping
     soundGroup: {
@@ -412,5 +415,17 @@ const styles = StyleSheet.create({
         marginTop: 12,
         lineHeight: 20,
         fontStyle: 'normal',
+    },
+    clippedIdContainer: {
+        maxHeight: 440,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    fadeOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 80,
     },
 });

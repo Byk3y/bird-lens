@@ -26,7 +26,7 @@ interface IdentificationResultProps {
     heroImages: Record<string, string>;
     capturedImage: string | null;
     isSaving: boolean;
-    isSaved?: boolean;
+    savedIndices: Set<number>;
     activeIndex: number;
     setActiveIndex: (index: number) => void;
     enrichCandidate: (index: number, data: Partial<BirdResult>) => void;
@@ -66,7 +66,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     heroImages,
     capturedImage,
     isSaving,
-    isSaved,
+    savedIndices,
     activeIndex,
     setActiveIndex,
     enrichCandidate,
@@ -94,6 +94,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     const carouselItems = enrichedCandidates.slice(0, 3);
     const isComparisonTab = activeIndex === carouselItems.length;
     const activeBird = !isComparisonTab ? carouselItems[activeIndex] : null;
+    const isSavedForActive = savedIndices.has(activeIndex);
 
     const scrollX = React.useRef(new Animated.Value(0)).current;
 
@@ -111,10 +112,13 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
         }
     );
 
-    const handleOpenTips = (bird: BirdResult) => {
+    const handleOpenTips = (bird: BirdResult, section?: string) => {
         router.push({
             pathname: '/birding-tips',
-            params: { birdData: JSON.stringify(bird) }
+            params: {
+                birdData: JSON.stringify(bird),
+                initialSection: section
+            }
         });
     };
 
@@ -290,8 +294,14 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             bird={activeBird}
                             inatPhotos={activeBird.inat_photos}
                             sounds={activeBird.sounds}
-                            onOpenTips={() => handleOpenTips(activeBird)}
+                            onOpenTips={(section) => handleOpenTips(activeBird, section)}
                             onPlaySound={playScientificName}
+                            onOpenIdentification={() => {
+                                router.push({
+                                    pathname: '/identification-detail',
+                                    params: { birdData: JSON.stringify(activeBird) }
+                                });
+                            }}
                         />
                     ) : (
                         <View style={styles.correctionSection}>
@@ -316,17 +326,17 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         <TouchableOpacity
                             style={styles.actionItem}
                             onPress={() => onSave(activeBird, capturedImage)}
-                            disabled={isSaving || isSaved}
+                            disabled={isSaving || isSavedForActive}
                         >
                             {isSaving ? (
                                 <ActivityIndicator size="small" color={Colors.primary} />
-                            ) : isSaved ? (
+                            ) : isSavedForActive ? (
                                 <Check color={Colors.primary} size={24} />
                             ) : (
                                 <Save color={Colors.text} size={24} />
                             )}
-                            <Text style={[styles.actionText, (isSaving || isSaved) && { color: Colors.primary }]}>
-                                {isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
+                            <Text style={[styles.actionText, (isSaving || isSavedForActive) && { color: Colors.primary }]}>
+                                {isSaving ? 'Saving...' : isSavedForActive ? 'Saved' : 'Save'}
                             </Text>
                         </TouchableOpacity>
 

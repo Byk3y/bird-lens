@@ -130,10 +130,13 @@ export default function BirdDetailScreen() {
         }
     };
 
-    const handleOpenTips = () => {
+    const handleOpenTips = (section?: string) => {
         router.push({
             pathname: '/birding-tips',
-            params: { birdData: JSON.stringify(bird) }
+            params: {
+                birdData: JSON.stringify(bird),
+                initialSection: section
+            }
         });
     };
 

@@ -1,5 +1,6 @@
-import { DIET_ASSETS, FEEDER_ASSETS, HABITAT_ASSETS, NESTING_ASSETS } from '@/constants/bird-assets';
+import { DIET_ASSETS, FEEDER_ASSETS } from '@/constants/bird-assets';
 import { BirdResult } from '@/types/scanner';
+import { getHabitatIcon, getNestingIcon } from '@/utils/bird-profile-helpers';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,7 +21,10 @@ const { width, height } = Dimensions.get('window');
 
 export default function BirdingTipsScreen() {
     const router = useRouter();
-    const params = useLocalSearchParams<{ birdData: string }>();
+    const params = useLocalSearchParams<{ birdData: string; initialSection?: string }>();
+    const scrollViewRef = React.useRef<ScrollView>(null);
+    const sectionLayouts = React.useRef<Record<string, number>>({});
+    const [layoutsReady, setLayoutsReady] = React.useState(false);
 
     const bird = React.useMemo(() => {
         try {
@@ -44,7 +48,7 @@ export default function BirdingTipsScreen() {
     const panResponder = React.useMemo(() => PanResponder.create({
         onStartShouldSetPanResponder: () => false,
         onMoveShouldSetPanResponder: (evt, gestureState) => {
-            const isHeaderTouch = evt.nativeEvent.pageY < 150; // Adjusted for new top position
+            const isHeaderTouch = evt.nativeEvent.pageY < 150;
             return isHeaderTouch && gestureState.dy > 5;
         },
         onPanResponderMove: (_, gestureState) => {
@@ -69,7 +73,7 @@ export default function BirdingTipsScreen() {
         },
     }), [height, router, translateY]);
 
-    const renderAssetGrid = (title: string, tags: string[], assetMap: Record<string, any>) => {
+    const renderAssetGrid = (title: string, tags: string[], assetMap: Record<string, any>, onLayout?: (event: any) => void) => {
         if (!tags || tags.length === 0) return null;
 
         const filteredTags = tags.filter(t => {
@@ -96,7 +100,7 @@ export default function BirdingTipsScreen() {
         }, []);
 
         return (
-            <View style={styles.section}>
+            <View style={styles.section} onLayout={onLayout}>
                 <Text style={styles.sectionTitle}>{title}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalGrid}>
                     {resolvedItems.map((item, index) => (
@@ -118,37 +122,27 @@ export default function BirdingTipsScreen() {
         );
     };
 
-    const getHabitatIcon = () => {
-        const h = (bird.habitat_tags?.[0] || bird.habitat || '').toLowerCase();
-        const mappings = [
-            { keys: ['forest', 'wood'], asset: HABITAT_ASSETS.forest },
-            { keys: ['wetland', 'river', 'lake'], asset: HABITAT_ASSETS.wetland },
-            { keys: ['grass', 'field', 'meadow'], asset: HABITAT_ASSETS.grassland },
-            { keys: ['mountain', 'rock'], asset: HABITAT_ASSETS.mountain },
-            { keys: ['shrub', 'scrub'], asset: HABITAT_ASSETS.shrub },
-            { keys: ['backyard', 'urban', 'park'], asset: HABITAT_ASSETS.backyard },
-        ];
+    React.useEffect(() => {
+        if (params.initialSection && layoutsReady) {
+            const section = params.initialSection.toLowerCase();
+            const yOffset = sectionLayouts.current[section];
 
-        const match = mappings.find(m => m.keys.some(k => h.includes(k)));
-        return match ? match.asset : HABITAT_ASSETS.forest;
-    };
+            if (yOffset !== undefined) {
+                // Small delay to ensure modal is fully rendered
+                setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ y: yOffset, animated: true });
+                }, 300);
+            }
+        }
+    }, [params.initialSection, layoutsReady]);
 
-    const getNestingIcon = () => {
-        const loc = (bird.nesting_info?.location || '').toLowerCase();
-        const mappings = [
-            { keys: ['cavity', 'hole'], asset: NESTING_ASSETS.cavity },
-            { keys: ['burrow', 'tunnel'], asset: NESTING_ASSETS.burrow },
-            { keys: ['dome', 'spherical', 'enclosed'], asset: NESTING_ASSETS.dome },
-            { keys: ['ground', 'shrub'], asset: NESTING_ASSETS.ground },
-            { keys: ['platform', 'ledge', 'building'], asset: NESTING_ASSETS.platform },
-            { keys: ['scrape', 'sand', 'pebbles'], asset: NESTING_ASSETS.scrape },
-            { keys: ['hanging', 'pouch', 'pendant'], asset: NESTING_ASSETS.hanging },
-            { keys: ['none', 'parasitic', 'no nest'], asset: NESTING_ASSETS.none },
-            { keys: ['tree', 'branch', 'cup'], asset: NESTING_ASSETS.cup },
-        ];
+    const handleLayout = (section: string, y: number) => {
+        sectionLayouts.current[section.toLowerCase()] = y;
 
-        const match = mappings.find(m => m.keys.some(k => loc.includes(k)));
-        return match ? match.asset : NESTING_ASSETS.cup;
+        // We consider layouts ready if we have the target one, or just wait a bit
+        if (Object.keys(sectionLayouts.current).length >= 4 || (params.initialSection && sectionLayouts.current[params.initialSection.toLowerCase()] !== undefined)) {
+            setLayoutsReady(true);
+        }
     };
 
     return (
@@ -175,7 +169,11 @@ export default function BirdingTipsScreen() {
                     <View style={{ width: 44 }} />
                 </View>
 
-                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    ref={scrollViewRef}
+                    style={styles.scrollView}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Diet Section */}
                     {(() => {
                         let tags = [...(bird.diet_tags || [])];
@@ -190,11 +188,11 @@ export default function BirdingTipsScreen() {
                             }
                         }
 
-                        return renderAssetGrid('Diet', tags, DIET_ASSETS);
+                        return renderAssetGrid('Diet', tags, DIET_ASSETS, (e) => handleLayout('diet', e.nativeEvent.layout.y));
                     })()}
 
                     {/* Feeder Section */}
-                    {renderAssetGrid('Feeder', bird.feeder_info?.feeder_types || [], FEEDER_ASSETS)}
+                    {renderAssetGrid('Feeder', bird.feeder_info?.feeder_types || [], FEEDER_ASSETS, (e) => handleLayout('feeder', e.nativeEvent.layout.y))}
 
                     {/* Backyard Birding Tips Card */}
                     <View style={styles.tipCard}>
@@ -205,10 +203,10 @@ export default function BirdingTipsScreen() {
                     </View>
 
                     {/* Habitat Section */}
-                    <View style={styles.section}>
+                    <View style={styles.section} onLayout={(e) => handleLayout('habitat', e.nativeEvent.layout.y)}>
                         <Text style={styles.sectionTitle}>Habitat</Text>
                         <View style={styles.habitatIconContainer}>
-                            <Image source={getHabitatIcon()} style={styles.habitatLargeIcon} />
+                            <Image source={getHabitatIcon(bird)} style={styles.habitatLargeIcon} />
                             <Text style={styles.habitatName}>{bird.habitat_tags?.[0] || bird.habitat || 'N/A'}</Text>
                         </View>
                         <Text style={styles.habitatDescription}>
@@ -225,10 +223,10 @@ export default function BirdingTipsScreen() {
                     </View>
 
                     {/* Nesting Section */}
-                    <View style={styles.section}>
+                    <View style={styles.section} onLayout={(e) => handleLayout('nesting', e.nativeEvent.layout.y)}>
                         <Text style={styles.sectionTitle}>Nesting</Text>
                         <View style={styles.habitatIconContainer}>
-                            <Image source={getNestingIcon()} style={styles.habitatLargeIcon} />
+                            <Image source={getNestingIcon(bird)} style={styles.habitatLargeIcon} />
                             <Text style={styles.habitatName}>{bird.nesting_info?.location || bird.habitat || 'N/A'}</Text>
                         </View>
                         <Text style={styles.habitatDescription}>
@@ -244,7 +242,7 @@ export default function BirdingTipsScreen() {
                             <View style={styles.funFactIconWrapper}>
                                 <Lightbulb size={24} color="#FF6B35" fill="#FF6B35" strokeWidth={3} />
                             </View>
-                            <Text style={styles.funFactTitleText}>{bird.fact}</Text>
+                            <Text style={styles.funFactTitleText}>{bird.behavior}</Text>
                         </View>
                         <Text style={styles.funFactFullText}>
                             {bird.behavior || bird.description}
@@ -259,16 +257,15 @@ export default function BirdingTipsScreen() {
 const styles = StyleSheet.create({
     screenWrapper: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)', // Dim background
+        backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
         flex: 1,
         backgroundColor: '#fff',
-        marginTop: 100, // Reduced height by increasing margin
+        marginTop: 100,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         overflow: 'hidden',
-        // Add shadow for premium feel
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -12 },
         shadowOpacity: 0.12,
@@ -318,18 +315,17 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
     },
     gridItem: {
-        width: (width - 48) / 3, // 3 column with 16pt side padding and 8pt margins
+        width: (width - 48) / 3,
         marginRight: 8,
         alignItems: 'center',
     },
     assetWrapper: {
         width: '100%',
         aspectRatio: 1,
-        borderRadius: 16, // More rounded for premium feel
+        borderRadius: 16,
         overflow: 'hidden',
         backgroundColor: '#F7F9FC',
         marginBottom: 8,
-        // Subtle border
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.03)',
     },
@@ -385,7 +381,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     habitatLargeIcon: {
-        width: 100, // Slightly larger
+        width: 100,
         height: 100,
         resizeMode: 'contain',
         marginBottom: 8,
@@ -401,57 +397,8 @@ const styles = StyleSheet.create({
         lineHeight: 24,
         color: '#4A4A4A',
         marginTop: 8,
-        paddingHorizontal: 16, // Fixed missing edge padding
-        textAlign: 'center', // Center align to match icon and name
-    },
-    genderRow: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 16,
-    },
-    genderItem: {
-        flex: 1,
-    },
-    genderImageContainer: {
-        width: '100%',
-        aspectRatio: 1,
-        borderRadius: 16,
-        overflow: 'hidden',
-        backgroundColor: '#F7F9FC',
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.03)',
-    },
-    genderImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    genderLabelBadge: {
-        position: 'absolute',
-        bottom: 10,
-        left: 10,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 8,
-    },
-    genderLabelText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    genderName: {
-        fontSize: 19,
-        fontWeight: '800',
-        color: '#D35400', // Richer orange
-        marginTop: 12,
-        marginBottom: 4,
-    },
-    genderDesc: {
-        fontSize: 15,
-        lineHeight: 22,
-        color: '#4A4A4A',
+        paddingHorizontal: 16,
+        textAlign: 'center',
     },
     funFactCard: {
         flexDirection: 'row',
