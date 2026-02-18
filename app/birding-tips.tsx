@@ -244,9 +244,6 @@ export default function BirdingTipsScreen() {
                             </View>
                             <Text style={styles.funFactTitleText}>{bird.behavior}</Text>
                         </View>
-                        <Text style={styles.funFactFullText}>
-                            {bird.behavior || bird.description}
-                        </Text>
                     </View>
                 </ScrollView>
             </Animated.View>
