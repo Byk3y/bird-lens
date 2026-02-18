@@ -35,6 +35,17 @@ export const OverlapAvatars: React.FC<OverlapAvatarsProps> = ({ tags, type }) =>
 
     const finalUrls = matchedUrls.slice(0, 3);
 
+    // If no tags, show skeletons
+    if (tags.length === 0) {
+        return (
+            <View style={styles.container}>
+                {[1, 2].map((i) => (
+                    <View key={i} style={[styles.avatarWrapper, { backgroundColor: '#E0E0E0', opacity: 0.5 }]} />
+                ))}
+            </View>
+        );
+    }
+
     if (finalUrls.length === 0) return null;
 
     return (

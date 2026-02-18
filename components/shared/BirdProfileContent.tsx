@@ -56,13 +56,17 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
 
+    // Track if any media (photos/sounds) has arrived for loading states
+    const isMedialoaded = (inatPhotos && inatPhotos.length > 0) || (sounds && sounds.length > 0) || (bird.inat_photos && bird.inat_photos.length > 0);
+
     // Group sounds by type (Song vs Call)
     const groupedSounds = React.useMemo(() => {
-        const songs = sounds.filter(s => s.type?.toLowerCase().includes('song'));
-        const calls = sounds.filter(s => s.type?.toLowerCase().includes('call'));
-        const others = sounds.filter(s => !s.type?.toLowerCase().includes('song') && !s.type?.toLowerCase().includes('call'));
+        const targetSounds = (sounds && sounds.length > 0) ? sounds : (bird.sounds || []);
+        const songs = targetSounds.filter(s => s.type?.toLowerCase().includes('song'));
+        const calls = targetSounds.filter(s => s.type?.toLowerCase().includes('call'));
+        const others = targetSounds.filter(s => !s.type?.toLowerCase().includes('song') && !s.type?.toLowerCase().includes('call'));
         return { songs, calls, others };
-    }, [sounds]);
+    }, [sounds, bird.sounds]);
 
     // Reset gallery scroll position when bird changes
     useEffect(() => {
@@ -132,7 +136,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             </View>
 
             {/* Insight Tip */}
-            {bird.behavior ? (
+            {bird.behavior && bird.behavior !== bird.diet ? (
                 <View style={styles.section}>
                     <View style={styles.insightCard}>
                         <View style={styles.insightIconWrapper}>
@@ -141,8 +145,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Text style={styles.insightText}>{bird.behavior}</Text>
                     </View>
                 </View>
-            ) : !bird.inat_photos?.length ? (
-                // Only show if media hasn't arrived either, otherwise it looks too busy
+            ) : !isMedialoaded ? (
                 <View style={styles.section}>
                     <View style={[styles.insightCard, { opacity: 0.5 }]}>
                         <ActivityIndicator size="small" color="#FF6B35" />
