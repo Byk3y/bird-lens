@@ -36,52 +36,6 @@ export const useBirdIdentification = () => {
 
             console.log('Identification request initiated...');
 
-            let imagePath: string | undefined;
-            let finalImageB64 = imageB64;
-
-            // --- OPTIMIZATION: Compress Image ---
-            if (imageB64) {
-                try {
-                    const { manipulateAsync, SaveFormat } = require('expo-image-manipulator');
-                    const manipResult = await manipulateAsync(
-                        `data:image/jpeg;base64,${imageB64}`,
-                        [{ resize: { width: 1024 } }],
-                        { compress: 0.6, format: SaveFormat.JPEG, base64: true }
-                    );
-
-                    if (manipResult.base64) {
-                        finalImageB64 = manipResult.base64;
-                        console.log('Image compressed successfully.');
-                    }
-                } catch (compError) {
-                    console.warn('Image compression failed, proceeding with original:', compError);
-                }
-            }
-
-            // --- NEW: Storage-First Upload Pattern ---
-            if (finalImageB64) {
-                console.log('Uploading image to storage first...');
-                const fileName = `temp/${user?.id || 'ghost'}/${Date.now()}.jpg`;
-
-                // Use Buffer to convert base64 to bytes (safe for React Native)
-                const { Buffer } = require('buffer');
-                const bytes = Buffer.from(finalImageB64, 'base64');
-
-                const { error: uploadError } = await supabase.storage
-                    .from('sightings')
-                    .upload(fileName, bytes, {
-                        contentType: 'image/jpeg',
-                        upsert: true
-                    });
-
-                if (uploadError) {
-                    console.error('Storage-first upload failed:', uploadError);
-                } else {
-                    imagePath = fileName;
-                    console.log('Image uploaded to storage:', imagePath);
-                }
-            }
-
             // --- STREAMING FETCH ---
             const url = `${SUPABASE_URL}/functions/v1/identify-bird`;
             const response = await fetch(url, {
@@ -93,8 +47,7 @@ export const useBirdIdentification = () => {
                     'x-client-info': 'supabase-js-expo',
                 },
                 body: JSON.stringify({
-                    image: imagePath ? undefined : finalImageB64,
-                    imagePath,
+                    image: imageB64,
                     audio: audioB64
                 }),
             });
