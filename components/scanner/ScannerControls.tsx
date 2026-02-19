@@ -74,43 +74,43 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                 <TouchableOpacity
                     onPress={onCapture}
                     disabled={isProcessing || isInitializing}
-                    style={styles.mainShutter}
+                    style={[styles.mainShutter, activeMode === 'sound' && styles.soundShutter]}
                 >
-                    <View style={[
-                        styles.shutterInner,
-                        (isProcessing || isInitializing) && { opacity: 0.7 },
-                        isRecording && styles.shutterInnerRecording,
-                        hasRecording && !isRecording && styles.shutterInnerFinished
-                    ]}>
-                        {isInitializing ? (
-                            <View style={styles.initializingContainer}>
-                                <ActivityIndicator color={Colors.primary} size="small" />
-                            </View>
-                        ) : isRecording ? (
-                            <View style={styles.stopButton}>
-                                <LinearGradient
-                                    colors={['#f97316', '#D4202C']}
-                                    style={styles.stopGradient}
-                                />
-                                <View style={styles.stopIcon} />
-                            </View>
-                        ) : hasRecording ? (
-                            <View style={styles.uploadButton}>
+                    {activeMode === 'photo' ? (
+                        <View style={[
+                            styles.shutterInner,
+                            (isProcessing || isInitializing) && { opacity: 0.7 }
+                        ]}>
+                            {isInitializing ? (
+                                <View style={styles.initializingContainer}>
+                                    <ActivityIndicator color={Colors.primary} size="small" />
+                                </View>
+                            ) : (
                                 <LinearGradient
                                     colors={['#f97316', '#D4202C']}
                                     style={styles.shutterGradient}
                                 />
+                            )}
+                        </View>
+                    ) : (
+                        // Sound Mode Shutter
+                        <View style={[
+                            styles.soundShutterInner,
+                            isRecording && styles.soundShutterActive
+                        ]}>
+                            {isProcessing ? (
+                                <ActivityIndicator color={Colors.white} />
+                            ) : hasRecording ? (
                                 <View style={styles.uploadIconContainer}>
                                     <UploadCloud color={Colors.white} size={24} />
                                 </View>
-                            </View>
-                        ) : (
-                            <LinearGradient
-                                colors={['#f97316', '#D4202C']}
-                                style={styles.shutterGradient}
-                            />
-                        )}
-                    </View>
+                            ) : isRecording ? (
+                                <View style={styles.stopIcon} />
+                            ) : (
+                                <View style={styles.recordDot} />
+                            )}
+                        </View>
+                    )}
                 </TouchableOpacity>
 
                 {activeMode === 'photo' ? (
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
         right: 0,
     },
     soundBottomArea: {
-        backgroundColor: '#F8FAFC',
+        backgroundColor: Colors.white,
     },
     modeSwitcher: {
         flexDirection: 'row',
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderRadius: 4,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.primary,
     },
     uploadButton: {
         flex: 1,
@@ -255,5 +255,31 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    // Sound Shutter Styles
+    soundShutter: {
+        backgroundColor: 'transparent',
+        shadowOpacity: 0,
+        elevation: 0,
+        padding: 0,
+    },
+    soundShutterInner: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        borderWidth: 4,
+        borderColor: '#E5E7EB', // Light gray ring by default
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 4, // Space between ring and dot
+    },
+    soundShutterActive: {
+        borderColor: Colors.primary, // Red ring when recording
+    },
+    recordDot: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: Colors.primary,
     },
 });

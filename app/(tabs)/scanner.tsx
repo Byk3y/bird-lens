@@ -80,6 +80,7 @@ export default function ScannerScreen() {
     startRecording,
     stopRecording,
     recordingUri,
+    meteringLevel,
   } = useAudioRecording();
 
   // Reset to photo mode and auto-request permission on mount
@@ -300,6 +301,7 @@ export default function ScannerScreen() {
                 formattedTime={formattedTime}
                 hasRecording={!!recordingUri}
                 isProcessing={isProcessing}
+                meteringLevel={meteringLevel}
               />
             )}
 

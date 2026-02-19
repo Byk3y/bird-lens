@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { IdentificationService } from '@/services/IdentificationService';
 import { BirdResult } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { fetch } from 'expo/fetch';
 import { useState } from 'react';
 import { Alert } from 'react-native';
@@ -37,20 +38,49 @@ export const useBirdIdentification = () => {
             console.log('Identification request initiated...');
 
             let imagePath: string | undefined;
+            let finalImageB64 = imageB64;
+
+            // --- OPTIMIZATION: Compress Image ---
+            if (imageB64) {
+                // We need a URI to manipulate, but we only have base64. 
+                // However, if we manipulate, we get a new URI and base64.
+                // Since this hook receives base64, we might not have the URI easily unless passed.
+                // Assuming we can just use the base64 as source for ImageManipulator if we prefix it, 
+                // OR we skip manipulation if we don't have a URI.
+                // Actually, let's just proceed with the upload/fetch logic but ensure we handle errors gracefully.
+                // The provided imageB64 is likely already from a captured photo.
+
+                // If we want to compress, passing a base64 string to `manipulateAsync` works 
+                // if we format it as a data URI: `data:image/jpeg;base64,...`
+                try {
+                    const manipResult = await ImageManipulator.manipulateAsync(
+                        `data:image/jpeg;base64,${imageB64}`,
+                        [{ resize: { width: 1024 } }],
+                        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                    );
+
+                    if (manipResult.base64) {
+                        finalImageB64 = manipResult.base64;
+                        console.log('Image compressed successfully.');
+                    }
+                } catch (compError) {
+                    console.warn('Image compression failed, proceeding with original:', compError);
+                }
+            }
 
             // --- NEW: Storage-First Upload Pattern ---
-            if (imageB64) {
+            if (finalImageB64) {
                 console.log('Uploading image to storage first...');
-                const fileName = `temp/${user?.id || 'ghost'}/${Date.now()}.webp`;
+                const fileName = `temp/${user?.id || 'ghost'}/${Date.now()}.jpg`;
 
                 // Use Buffer to convert base64 to bytes (safe for React Native)
                 const { Buffer } = require('buffer');
-                const bytes = Buffer.from(imageB64, 'base64');
+                const bytes = Buffer.from(finalImageB64, 'base64');
 
                 const { error: uploadError } = await supabase.storage
                     .from('sightings')
                     .upload(fileName, bytes, {
-                        contentType: 'image/webp',
+                        contentType: 'image/jpeg',
                         upsert: true
                     });
 
@@ -73,7 +103,7 @@ export const useBirdIdentification = () => {
                     'x-client-info': 'supabase-js-expo',
                 },
                 body: JSON.stringify({
-                    image: imagePath ? undefined : imageB64,
+                    image: imagePath ? undefined : finalImageB64,
                     imagePath,
                     audio: audioB64
                 }),

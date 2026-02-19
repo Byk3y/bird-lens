@@ -23,13 +23,14 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
     isDark = false,
 }) => {
     const insets = useSafeAreaInsets();
-    const iconColor = isDark ? '#1e293b' : Colors.white;
+    const iconColor = isDark ? Colors.text : Colors.white;
+    const buttonBg = isDark ? Colors.surfaceLight : 'rgba(0,0,0,0.3)';
 
     return (
         <View style={[styles.cameraHeader, { paddingTop: Math.max(insets.top, 16) }]}>
             <View style={styles.headerLeft}>
                 <TouchableOpacity
-                    style={[styles.iconBtn, styles.backBtn]}
+                    style={[styles.iconBtn, styles.backBtn, { backgroundColor: buttonBg }]}
                     onPress={onBack}
                 >
                     <X color={iconColor} size={30} strokeWidth={3} />
@@ -43,7 +44,7 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
             </View>
 
             {!isDark && (
-                <TouchableOpacity style={styles.iconBtn} onPress={onFlashToggle}>
+                <TouchableOpacity style={[styles.iconBtn, { backgroundColor: buttonBg }]} onPress={onFlashToggle}>
                     {flash === 'on' ? (
                         <Zap color="#fcd34d" size={22} fill="#fcd34d" />
                     ) : (
@@ -72,7 +73,6 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: 'rgba(0,0,0,0.3)',
         justifyContent: 'center',
         alignItems: 'center',
     },
