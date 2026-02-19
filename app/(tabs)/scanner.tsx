@@ -120,11 +120,12 @@ export default function ScannerScreen() {
           const manipResult = await manipulateAsync(
             photo.uri,
             [{ resize: { width: 800 } }], // Resize to reasonable width for API
-            { compress: 0.6, format: SaveFormat.JPEG, base64: true }
+            { compress: 0.6, format: SaveFormat.WEBP, base64: true }
           );
 
-          if (manipResult.base64) {
-            setCapturedImage(manipResult.base64); // Set resized preview
+          if (manipResult.uri) {
+            // We still setCapturedImage(base64) for instant local UI preview
+            setCapturedImage(manipResult.base64 || null);
             await identifyBird(manipResult.base64);
           }
         }
@@ -251,6 +252,7 @@ export default function ScannerScreen() {
             enrichedCandidates={enrichedCandidates}
             heroImages={heroImages}
             capturedImage={capturedImage}
+            isProcessing={isProcessing}
             isSaving={isSaving}
             savedIndices={savedIndices}
             activeIndex={activeIndex}

@@ -37,6 +37,7 @@ export class IdentificationService {
     ): Promise<void> {
         const decoder = new TextDecoder();
         let buffer = '';
+        let receivedCandidates = false;
 
         try {
             while (true) {
@@ -51,6 +52,9 @@ export class IdentificationService {
                 for (const line of lines) {
                     const chunk = parseNDJSONLine(line);
                     if (chunk) {
+                        if ((chunk as any).type === 'candidates') {
+                            receivedCandidates = true;
+                        }
                         onChunk(chunk as IdentificationChunk);
                     }
                 }
@@ -60,12 +64,21 @@ export class IdentificationService {
             if (buffer.trim()) {
                 const chunk = parseNDJSONLine(buffer);
                 if (chunk) {
+                    if ((chunk as any).type === 'candidates') {
+                        receivedCandidates = true;
+                    }
                     onChunk(chunk as IdentificationChunk);
                 }
             }
         } catch (error) {
             console.error('[IdentificationService] Stream processing error:', error);
-            onChunk({ type: 'error', message: 'Stream interrupted unexpectedly' });
+            if (receivedCandidates) {
+                // Stream broke after we already got candidates — results are usable
+                console.warn('[IdentificationService] Stream interrupted after receiving candidates; results are still valid.');
+            } else {
+                // Stream broke before we got any candidates — this is a real error
+                onChunk({ type: 'error', message: 'Stream interrupted unexpectedly' });
+            }
         } finally {
             reader.releaseLock();
         }

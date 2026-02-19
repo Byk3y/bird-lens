@@ -17,6 +17,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 interface BirdIdentificationRequest {
     image?: string;
+    imagePath?: string;
     audio?: string;
 }
 
@@ -91,15 +92,34 @@ serve(async (req: Request) => {
 
         let body: BirdIdentificationRequest = await req.json();
         let image = body.image;
+        let imagePath = body.imagePath;
         let audio = body.audio;
 
-        console.log(`Request received. Image length: ${image?.length || 0}, Audio length: ${audio?.length || 0}`);
+        console.log(`Request received. Image length: ${image?.length || 0}, ImagePath: ${imagePath}, Audio length: ${audio?.length || 0}`);
 
-        if (!image && !audio) {
-            return new Response(JSON.stringify({ error: "Either image or audio data is required" }), {
+        if (!image && !imagePath && !audio) {
+            return new Response(JSON.stringify({ error: "Either image, imagePath, or audio data is required" }), {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" }
             });
+        }
+
+        // --- NEW: Download image from storage if only imagePath is provided ---
+        if (!image && imagePath) {
+            console.log(`Downloading image from storage: ${imagePath}`);
+            const { data, error } = await supabase.storage.from('sightings').download(imagePath);
+            if (error) {
+                console.error("Storage download error:", error);
+                throw new Error(`Failed to download image from storage: ${error.message}`);
+            }
+            const buffer = await data.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            image = btoa(binary);
+            console.log(`Downloaded image. Base64 length: ${image.length}`);
         }
 
         const startTime = Date.now();
@@ -110,7 +130,8 @@ serve(async (req: Request) => {
         const fastPromptInstructions = `
 Identify this bird with maximum scientific precision.
 Provide the **Top 3 most probable species** candidates.
-Return ONLY the following fields for each:
+
+Return a JSON object with a "candidates" array. Each object in the array must include:
 - "name": Common name
 - "scientific_name": Scientific name
 - "confidence": A number from 0-1
@@ -122,6 +143,8 @@ Return ONLY the following fields for each:
     "order": "Scientific name of order",
     "order_description": "Common name of order"
   }
+
+Example response format: {"candidates": [{"name": "...", "scientific_name": "...", "confidence": 0.95, "taxonomy": {...}}]}
 `;
 
         const enrichmentPromptInstructions = `
@@ -162,7 +185,7 @@ Return a JSON object with a "birds" array. Each bird must include:
             : `${persona}\n\n${contextPrompt}Identify the bird in this audio clip.\n${fastPromptInstructions}`;
 
         let parts: any[] = [{ text: fastPrompt }];
-        if (image) parts.push({ inline_data: { mime_type: "image/jpeg", data: image } });
+        if (image) parts.push({ inline_data: { mime_type: "image/webp", data: image } });
         else if (audio) parts.push({ inline_data: { mime_type: "audio/mp3", data: audio } });
 
         const stream = new ReadableStream({
@@ -191,50 +214,11 @@ Return a JSON object with a "birds" array. Each bird must include:
                                         role: "user",
                                         content: [
                                             { type: "text", text: `${promptText}\n\nMANDATORY: Return a JSON object.` },
-                                            ...(image ? [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : []),
+                                            ...(image ? [{ type: "image_url", image_url: { url: `data:image/webp;base64,${image}` } }] : []),
                                             ...(audio ? [{ type: "audio_url", audio_url: { url: `data:audio/mp3;base64,${audio}` } }] : [])
                                         ]
                                     }],
-                                    response_format: {
-                                        type: "json_schema",
-                                        json_schema: {
-                                            name: "bird_identification",
-                                            strict: true,
-                                            schema: {
-                                                type: "object",
-                                                properties: {
-                                                    candidates: {
-                                                        type: "array",
-                                                        items: {
-                                                            type: "object",
-                                                            properties: {
-                                                                name: { type: "string" },
-                                                                scientific_name: { type: "string" },
-                                                                confidence: { type: "number" },
-                                                                taxonomy: {
-                                                                    type: "object",
-                                                                    properties: {
-                                                                        family: { type: "string" },
-                                                                        family_scientific: { type: "string" },
-                                                                        genus: { type: "string" },
-                                                                        genus_description: { type: "string" },
-                                                                        order: { type: "string" },
-                                                                        order_description: { type: "string" }
-                                                                    },
-                                                                    required: ["family", "family_scientific", "genus", "genus_description", "order", "order_description"],
-                                                                    additionalProperties: false
-                                                                }
-                                                            },
-                                                            required: ["name", "scientific_name", "confidence", "taxonomy"],
-                                                            additionalProperties: false
-                                                        }
-                                                    }
-                                                },
-                                                required: ["candidates"],
-                                                additionalProperties: false
-                                            }
-                                        }
-                                    }
+                                    response_format: { type: "json_object" }
                                 }),
                             });
                         } else {
@@ -242,42 +226,25 @@ Return a JSON object with a "birds" array. Each bird must include:
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                    contents: [{ parts: [{ text: promptText }, ...(image ? [{ inline_data: { mime_type: "image/jpeg", data: image } }] : []), ...(audio ? [{ inline_data: { mime_type: "audio/mp3", data: audio } }] : [])] }],
+                                    contents: [{ parts: [{ text: promptText }, ...(image ? [{ inline_data: { mime_type: "image/webp", data: image } }] : []), ...(audio ? [{ inline_data: { mime_type: "audio/mp3", data: audio } }] : [])] }],
                                     generationConfig: { responseMimeType: "application/json" }
                                 }),
                             });
                         }
                     };
 
-                    // PHASE 1: Fast Identification (OpenRouter primary with retry, Gemini fallback)
-                    let primaryError = "";
-
-                    // Attempt 1: OpenRouter
+                    // PHASE 1: Fast Identification (OpenRouter primary, Gemini immediate fallback)
                     try {
                         identificationResponse = await attemptAI(true, fastPrompt);
                         if (!identificationResponse.ok) {
                             const errBody = await identificationResponse.text().catch(() => "unknown");
-                            primaryError = `OpenRouter ${identificationResponse.status}: ${errBody.substring(0, 200)}`;
-                            console.warn("[PHASE1] OpenRouter attempt 1 failed:", primaryError);
-                            throw new Error(primaryError);
+                            console.warn(`[PHASE1] OpenRouter failed ${identificationResponse.status}: ${errBody.substring(0, 200)}`);
+                            throw new Error("OpenRouter failed");
                         }
-                    } catch (err1: any) {
-                        // Attempt 2: Retry OpenRouter after a brief pause
-                        try {
-                            await new Promise(r => setTimeout(r, 1000));
-                            identificationResponse = await attemptAI(true, fastPrompt);
-                            if (!identificationResponse.ok) {
-                                const errBody = await identificationResponse.text().catch(() => "unknown");
-                                primaryError = `OpenRouter retry ${identificationResponse.status}: ${errBody.substring(0, 200)}`;
-                                console.warn("[PHASE1] OpenRouter attempt 2 failed:", primaryError);
-                                throw new Error(primaryError);
-                            }
-                        } catch (err2: any) {
-                            // Attempt 3: Gemini fallback
-                            console.warn("[PHASE1] Falling back to Gemini. OpenRouter errors:", err1?.message?.substring(0, 100));
-                            isFallback = true;
-                            identificationResponse = await attemptAI(false, fastPrompt);
-                        }
+                    } catch (err: any) {
+                        console.warn("[PHASE1] Falling back to Gemini:", err?.message?.substring(0, 100));
+                        isFallback = true;
+                        identificationResponse = await attemptAI(false, fastPrompt);
                     }
 
                     const fastResult = await identificationResponse.json();
@@ -285,32 +252,22 @@ Return a JSON object with a "birds" array. Each bird must include:
 
                     if (!isFallback) {
                         const content = fastResult.choices?.[0]?.message?.content;
-                        if (!content) throw new Error("OpenRouter returned empty content – response had no message");
+                        if (!content) throw new Error("OpenRouter returned empty content");
                         const parsed = cleanAndParseJson(content, "OpenRouter");
-                        candidates = parsed.candidates || [];
+                        // Handle multiple possible response structures from json_object mode
+                        candidates = parsed.candidates || parsed.birds || parsed.species || parsed.results || (Array.isArray(parsed) ? parsed : []);
+                        console.log(`[PHASE1] OpenRouter parsed ${candidates.length} candidates, keys: ${Object.keys(parsed).join(',')}`);
                     } else {
                         const content = fastResult.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!content) {
-                            // Last resort: try OpenRouter one final time
-                            console.warn("[PHASE1] Gemini also empty. Trying OpenRouter as last resort...");
-                            const lastResort = await attemptAI(true, fastPrompt);
-                            if (lastResort.ok) {
-                                const lrResult = await lastResort.json();
-                                const lrContent = lrResult.choices?.[0]?.message?.content;
-                                if (lrContent) {
-                                    isFallback = false;
-                                    const parsed = cleanAndParseJson(lrContent, "OpenRouter-LastResort");
-                                    candidates = parsed.candidates || [];
-                                } else {
-                                    throw new Error("All AI providers failed – OpenRouter and Gemini both returned empty content. Please try again.");
-                                }
-                            } else {
-                                throw new Error(`All AI providers failed. OpenRouter: ${primaryError || "unavailable"}. Gemini: empty response. Please try again.`);
-                            }
-                        } else {
-                            const parsed = cleanAndParseJson(content, "Gemini");
-                            candidates = parsed.candidates || [];
-                        }
+                        if (!content) throw new Error("Both AI providers returned empty content. Please try again.");
+                        const parsed = cleanAndParseJson(content, "Gemini");
+                        // Handle multiple possible response structures
+                        candidates = parsed.candidates || parsed.birds || parsed.species || parsed.results || (Array.isArray(parsed) ? parsed : []);
+                        console.log(`[PHASE1] Gemini parsed ${candidates.length} candidates, keys: ${Object.keys(parsed).join(',')}`);
+                    }
+
+                    if (!candidates || candidates.length === 0) {
+                        throw new Error("AI returned no bird candidates. Please try again with a clearer image.");
                     }
 
                     candidates = candidates.slice(0, 3);

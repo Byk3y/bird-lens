@@ -27,7 +27,7 @@ export const useBirdIdentification = () => {
         try {
             setIsProcessing(true);
             setError(null);
-            // Light feedback for identification start (shutter already handled in UI)
+            // Light feedback for identification start
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
             // Get session if it exists, but don't block for ghost users
@@ -35,6 +35,32 @@ export const useBirdIdentification = () => {
             const token = session?.access_token || SUPABASE_ANON_KEY;
 
             console.log('Identification request initiated...');
+
+            let imagePath: string | undefined;
+
+            // --- NEW: Storage-First Upload Pattern ---
+            if (imageB64) {
+                console.log('Uploading image to storage first...');
+                const fileName = `temp/${user?.id || 'ghost'}/${Date.now()}.webp`;
+
+                // Use Buffer to convert base64 to bytes (safe for React Native)
+                const { Buffer } = require('buffer');
+                const bytes = Buffer.from(imageB64, 'base64');
+
+                const { error: uploadError } = await supabase.storage
+                    .from('sightings')
+                    .upload(fileName, bytes, {
+                        contentType: 'image/webp',
+                        upsert: true
+                    });
+
+                if (uploadError) {
+                    console.error('Storage-first upload failed:', uploadError);
+                } else {
+                    imagePath = fileName;
+                    console.log('Image uploaded to storage:', imagePath);
+                }
+            }
 
             // --- STREAMING FETCH ---
             const url = `${SUPABASE_URL}/functions/v1/identify-bird`;
@@ -46,7 +72,11 @@ export const useBirdIdentification = () => {
                     'apikey': SUPABASE_ANON_KEY,
                     'x-client-info': 'supabase-js-expo',
                 },
-                body: JSON.stringify({ image: imageB64, audio: audioB64 }),
+                body: JSON.stringify({
+                    image: imagePath ? undefined : imageB64,
+                    imagePath,
+                    audio: audioB64
+                }),
             });
 
             if (!response.ok) {
@@ -126,6 +156,7 @@ export const useBirdIdentification = () => {
 
                     case 'error':
                         console.error('Stream error from server:', chunk.message);
+                        setError(chunk.message || 'Identification failed. Please try again.');
                         break;
                 }
             });
@@ -185,7 +216,7 @@ export const useBirdIdentification = () => {
 
                 // Upload image if provided
                 if (capturedImage) {
-                    const fileName = `${user?.id}/${Date.now()}.jpg`;
+                    const fileName = `${user?.id}/${Date.now()}.webp`;
 
                     const { Buffer } = require('buffer');
                     const bytes = Buffer.from(capturedImage, 'base64');
@@ -193,7 +224,7 @@ export const useBirdIdentification = () => {
                     const { data: uploadData, error: uploadError } = await supabase.storage
                         .from('sightings')
                         .upload(fileName, bytes, {
-                            contentType: 'image/jpeg',
+                            contentType: 'image/webp',
                             upsert: true
                         });
 

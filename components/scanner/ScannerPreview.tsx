@@ -102,7 +102,7 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
                     {/* Image with subtle grid effect */}
                     <View style={styles.imageRelative}>
                         <Image
-                            source={{ uri: `data:image/jpeg;base64,${imageUri}` }}
+                            source={{ uri: `data:image/webp;base64,${imageUri}` }}
                             style={styles.image}
                         />
 
