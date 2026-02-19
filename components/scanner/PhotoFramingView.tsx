@@ -42,43 +42,46 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
     const startWidth = useSharedValue(0);
     const startHeight = useSharedValue(0);
 
+    // Image Transform State
+    const imgScale = useSharedValue(1);
+    const imgTransX = useSharedValue(0);
+    const imgTransY = useSharedValue(0);
+
+    const savedImgScale = useSharedValue(1);
+    const savedImgTransX = useSharedValue(0);
+    const savedImgTransY = useSharedValue(0);
+
     // Initial Image Load and Sizing
     useEffect(() => {
         Image.getSize(imageUri, (w, h) => {
             setOriginalImageSize({ width: w, height: h });
 
-            // Calculate "Cover" dimensions (Zoom in)
+            // Calculate "Contain" dimensions (Fit screen)
             const screenAspectRatio = SCREEN_WIDTH / SCREEN_HEIGHT;
             const imageAspectRatio = w / h;
 
             let displayWidth, displayHeight, scale;
 
-            if (imageAspectRatio > screenAspectRatio) {
-                // Image is wider than screen, but we want Cover.
-                // Height = Screen Height. Width = scaled up.
-                displayHeight = SCREEN_HEIGHT;
-                displayWidth = SCREEN_HEIGHT * imageAspectRatio;
-                scale = SCREEN_HEIGHT / h;
-            } else {
-                // Image is taller, but we want Cover.
-                // Width = Screen Width. Height = scaled up.
-                displayWidth = SCREEN_WIDTH;
-                displayHeight = SCREEN_WIDTH / imageAspectRatio;
-                scale = SCREEN_WIDTH / w;
-            }
+            // We use Math.min to ensure it fits within BOTH dimensions
+            const scaleW = SCREEN_WIDTH / w;
+            const scaleH = SCREEN_HEIGHT / h;
+
+            scale = Math.min(scaleW, scaleH);
+            displayWidth = w * scale;
+            displayHeight = h * scale;
 
             const offsetX = (SCREEN_WIDTH - displayWidth) / 2;
             const offsetY = (SCREEN_HEIGHT - displayHeight) / 2;
 
             setImageLayout({ width: displayWidth, height: displayHeight, scale, offsetX, offsetY });
 
-            // Initialize Crop Box: Square, 80% of the screen width (or min dimension)
-            // This ensures it looks like the reference "square by default"
-            const initialSize = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT) * 0.85;
+            // Initialize Crop Box:
+            // Default to 80% of the smaller dimension of the visible image
+            const initialSize = Math.min(displayWidth, displayHeight) * 0.8;
             cropWidth.value = initialSize;
             cropHeight.value = initialSize;
 
-            // Center crop box on screen
+            // Center crop box on screen (matches image center since image is centered)
             cropX.value = (SCREEN_WIDTH - initialSize) / 2;
             cropY.value = (SCREEN_HEIGHT - initialSize) / 2;
         });
@@ -91,24 +94,49 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
     };
 
     // --- Gestures ---
-    // We use useMemo to create the gesture configurations once (or when deps change)
-    // to prevent re-creation on every render.
 
-    const moveGesture = React.useMemo(() => Gesture.Pan()
+    // 1. Global Pinch (Zoom) - To be attached to the container
+    const pinchGesture = Gesture.Pinch()
+        .onStart(() => {
+            'worklet';
+            savedImgScale.value = imgScale.value;
+        })
+        .onUpdate((e) => {
+            'worklet';
+            imgScale.value = Math.max(0.5, savedImgScale.value * e.scale);
+        });
+
+    // 2. Image Pan (Background)
+    const imagePanGesture = Gesture.Pan()
+        .onStart(() => {
+            savedImgTransX.value = imgTransX.value;
+            savedImgTransY.value = imgTransY.value;
+        })
+        .onUpdate((e) => {
+            imgTransX.value = savedImgTransX.value + e.translationX;
+            imgTransY.value = savedImgTransY.value + e.translationY;
+        })
+        .simultaneousWithExternalGesture(pinchGesture);
+
+    // 3. Crop Box Move (Foreground)
+    const moveGesture = Gesture.Pan()
+        .maxPointers(1)
         .onStart(() => {
             startX.value = cropX.value;
             startY.value = cropY.value;
         })
         .onUpdate((e) => {
             if (!imageLayout) return;
-            const maxX = imageLayout.offsetX + imageLayout.width - cropWidth.value;
-            const maxY = imageLayout.offsetY + imageLayout.height - cropHeight.value;
+            const maxX = SCREEN_WIDTH - cropWidth.value;
+            const maxY = SCREEN_HEIGHT - cropHeight.value;
 
-            cropX.value = clamp(startX.value + e.translationX, imageLayout.offsetX, maxX);
-            cropY.value = clamp(startY.value + e.translationY, imageLayout.offsetY, maxY);
-        }), [imageLayout, cropX, cropY, cropWidth, cropHeight, startX, startY]);
+            cropX.value = clamp(startX.value + e.translationX, 0, maxX);
+            cropY.value = clamp(startY.value + e.translationY, 0, maxY);
+        })
+        .simultaneousWithExternalGesture(pinchGesture);
 
-    // Corners
+
+    // Corners - Resizing
     const resizeTL = React.useMemo(() => Gesture.Pan()
         .onStart(() => {
             startX.value = cropX.value;
@@ -135,7 +163,6 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
         })
         .onUpdate((e) => {
             if (!imageLayout) return;
-            // moving TR changes y, width (x is static)
             const maxW = imageLayout.offsetX + imageLayout.width - cropX.value;
             const newW = clamp(startWidth.value + e.translationX, MIN_CROP_SIZE, maxW);
             const newY = clamp(startY.value + e.translationY, imageLayout.offsetY, startY.value + startHeight.value - MIN_CROP_SIZE);
@@ -153,7 +180,6 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
         })
         .onUpdate((e) => {
             if (!imageLayout) return;
-            // moving BL changes x, width, height
             const newX = clamp(startX.value + e.translationX, imageLayout.offsetX, startX.value + startWidth.value - MIN_CROP_SIZE);
             const maxH = imageLayout.offsetY + imageLayout.height - cropY.value;
             const newH = clamp(startHeight.value + e.translationY, MIN_CROP_SIZE, maxH);
@@ -232,6 +258,14 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
         height: cropHeight.value,
     }));
 
+    const animatedImageStyles = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: imgTransX.value },
+            { translateY: imgTransY.value },
+            { scale: imgScale.value }
+        ]
+    }));
+
     // Mask Styles
     const maskTopStyle = useAnimatedStyle(() => ({
         height: cropY.value,
@@ -255,137 +289,131 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
         top: cropY.value,
         height: cropHeight.value,
         left: cropX.value + cropWidth.value,
-        width: SCREEN_WIDTH, // Overkill but covers it
+        width: SCREEN_WIDTH,
     }));
 
     const handleConfirm = () => {
         if (!imageLayout) return;
 
-        // Map displayed crop to original image coordinates
-        const relativeX = cropX.value - imageLayout.offsetX;
-        const relativeY = cropY.value - imageLayout.offsetY;
+        // 1. Calculate Image Center (Pre-transform)
+        const cx = imageLayout.offsetX + imageLayout.width / 2;
+        const cy = imageLayout.offsetY + imageLayout.height / 2;
 
-        const originalX = relativeX / imageLayout.scale;
-        const originalY = relativeY / imageLayout.scale;
-        const originalW = cropWidth.value / imageLayout.scale;
-        const originalH = cropHeight.value / imageLayout.scale;
+        // 2. Calculate Transformed Center
+        const tcx = cx + imgTransX.value;
+        const tcy = cy + imgTransY.value;
 
-        // We pass 'scale: 1' because these are absolute pixel coordinates now
-        // But our callback interface expects something slightly different?
-        // Let's re-check the `ScannerScreen` logic. 
-        // Currently ScannerScreen just calls manipulate with resize 800.
-        // It SHOULD use crop.
-        // I will overload the callback to pass the precise crop rect.
-        // The existing interface: `cropResult: { originX, originY, width, height, scale, baseImageWidth, baseImageHeight }`
-        // We can pass `scale: 1` and the calculated original coords.
+        // 3. Calculate Transformed Top-Left
+        const currentScale = imgScale.value;
+        const tx = tcx - (imageLayout.width * currentScale) / 2;
+        const ty = tcy - (imageLayout.height * currentScale) / 2;
+
+        // 4. Calculate Crop Box Position relative to Transformed Image Top-Left
+        const relativeX = cropX.value - tx;
+        const relativeY = cropY.value - ty;
+
+        // 5. Scale back to Original Image coordinates
+        const totalScale = imageLayout.scale * currentScale;
+
+        const originalX = relativeX / totalScale;
+        const originalY = relativeY / totalScale;
+        const originalW = cropWidth.value / totalScale;
+        const originalH = cropHeight.value / totalScale;
 
         onConfirm({
             originX: originalX,
             originY: originalY,
             width: originalW,
             height: originalH,
-            scale: 1, // We've already handled the scale
+            scale: 1,
             baseImageWidth: originalImageSize?.width || 0,
             baseImageHeight: originalImageSize?.height || 0,
         });
     };
-
-    // Close Button Position style
-    const closeBtnStyle = {
-        top: Math.max(insets.top, 16) + 8, // Similar to ScannerHeader logic: marginTop: 8
-        left: 16 + 12, // ScannerHeader uses paddingHorizontal: lg(16) + marginLeft: 16 (on button) -> approx 32
-        // Actually ScannerHeader uses: paddingHorizontal: lg, inside it backBtn marginLeft: 16.
-        // Let's match: left: 24 (Step 118 was 20) -> let's use style prop
-    };
-
 
     if (!imageLayout) return <View style={styles.container} />;
 
     return (
         <GestureHandlerRootView style={styles.container}>
             <View style={styles.contentContainer}>
-                {/* Background Image */}
-                <Image
-                    source={{ uri: imageUri }}
-                    style={{
-                        position: 'absolute',
-                        width: imageLayout.width,
-                        height: imageLayout.height,
-                        top: imageLayout.offsetY,
-                        left: imageLayout.offsetX,
-                    }}
-                    resizeMode="contain"
-                />
 
-                {/* Dark Overlay masks */}
-                <Animated.View style={[styles.mask, maskTopStyle]} />
-                <Animated.View style={[styles.mask, maskBottomStyle]} />
-                <Animated.View style={[styles.mask, maskLeftStyle]} />
-                <Animated.View style={[styles.mask, maskRightStyle]} />
+                {/* Global Pinch Handler */}
+                <GestureDetector gesture={pinchGesture}>
+                    <Animated.View style={{ flex: 1 }}>
 
-                {/* Crop Box */}
-                <GestureDetector gesture={moveGesture}>
-                    <Animated.View style={[styles.cropBox, animatedStyles]}>
-                        <GridOverlay />
+                        {/* Background Image Pan */}
+                        <GestureDetector gesture={imagePanGesture}>
+                            <Animated.View style={{ flex: 1 }}>
+                                <Animated.Image
+                                    source={{ uri: imageUri }}
+                                    style={[{
+                                        position: 'absolute',
+                                        width: imageLayout.width,
+                                        height: imageLayout.height,
+                                        top: imageLayout.offsetY,
+                                        left: imageLayout.offsetX,
+                                    }, animatedImageStyles]}
+                                    resizeMode="contain"
+                                />
 
-                        {/* --- Corners --- */}
-                        {/* TL */}
-                        <GestureDetector gesture={resizeTL}>
-                            <View style={[styles.hitBox, styles.cornerHitBox, { top: -15, left: -15 }]}>
-                                <View style={[styles.bracket, styles.topLeft]} />
-                            </View>
+                                {/* Dark Overlay masks */}
+                                <Animated.View style={[styles.mask, maskTopStyle]} pointerEvents="none" />
+                                <Animated.View style={[styles.mask, maskBottomStyle]} pointerEvents="none" />
+                                <Animated.View style={[styles.mask, maskLeftStyle]} pointerEvents="none" />
+                                <Animated.View style={[styles.mask, maskRightStyle]} pointerEvents="none" />
+                            </Animated.View>
                         </GestureDetector>
 
-                        {/* TR */}
-                        <GestureDetector gesture={resizeTR}>
-                            <View style={[styles.hitBox, styles.cornerHitBox, { top: -15, right: -15 }]}>
-                                <View style={[styles.bracket, styles.topRight]} />
-                            </View>
-                        </GestureDetector>
+                        {/* Crop Box Move */}
+                        <GestureDetector gesture={moveGesture}>
+                            <Animated.View style={[styles.cropBox, animatedStyles]}>
+                                <GridOverlay />
 
-                        {/* BL */}
-                        <GestureDetector gesture={resizeBL}>
-                            <View style={[styles.hitBox, styles.cornerHitBox, { bottom: -15, left: -15 }]}>
-                                <View style={[styles.bracket, styles.bottomLeft]} />
-                            </View>
-                        </GestureDetector>
+                                {/* Corners */}
+                                <GestureDetector gesture={resizeTL}>
+                                    <View style={[styles.hitBox, styles.cornerHitBox, { top: -15, left: -15 }]}>
+                                        <View style={[styles.bracket, styles.topLeft]} />
+                                    </View>
+                                </GestureDetector>
+                                <GestureDetector gesture={resizeTR}>
+                                    <View style={[styles.hitBox, styles.cornerHitBox, { top: -15, right: -15 }]}>
+                                        <View style={[styles.bracket, styles.topRight]} />
+                                    </View>
+                                </GestureDetector>
+                                <GestureDetector gesture={resizeBL}>
+                                    <View style={[styles.hitBox, styles.cornerHitBox, { bottom: -15, left: -15 }]}>
+                                        <View style={[styles.bracket, styles.bottomLeft]} />
+                                    </View>
+                                </GestureDetector>
+                                <GestureDetector gesture={resizeBR}>
+                                    <View style={[styles.hitBox, styles.cornerHitBox, { bottom: -15, right: -15 }]}>
+                                        <View style={[styles.bracket, styles.bottomRight]} />
+                                    </View>
+                                </GestureDetector>
 
-                        {/* BR */}
-                        <GestureDetector gesture={resizeBR}>
-                            <View style={[styles.hitBox, styles.cornerHitBox, { bottom: -15, right: -15 }]}>
-                                <View style={[styles.bracket, styles.bottomRight]} />
-                            </View>
+                                {/* Sides */}
+                                <GestureDetector gesture={resizeTop}>
+                                    <View style={[styles.hitBox, styles.sideHitBox, { top: -15, left: 20, right: 20, height: 40 }]}>
+                                        <View style={[styles.sideBar, styles.topBar]} />
+                                    </View>
+                                </GestureDetector>
+                                <GestureDetector gesture={resizeBottom}>
+                                    <View style={[styles.hitBox, styles.sideHitBox, { bottom: -15, left: 20, right: 20, height: 40 }]}>
+                                        <View style={[styles.sideBar, styles.bottomBarVisual]} />
+                                    </View>
+                                </GestureDetector>
+                                <GestureDetector gesture={resizeLeft}>
+                                    <View style={[styles.hitBox, styles.sideHitBox, { left: -15, top: 20, bottom: 20, width: 40 }]}>
+                                        <View style={[styles.sideBar, styles.leftBar]} />
+                                    </View>
+                                </GestureDetector>
+                                <GestureDetector gesture={resizeRight}>
+                                    <View style={[styles.hitBox, styles.sideHitBox, { right: -15, top: 20, bottom: 20, width: 40 }]}>
+                                        <View style={[styles.sideBar, styles.rightBar]} />
+                                    </View>
+                                </GestureDetector>
+                            </Animated.View>
                         </GestureDetector>
-
-                        {/* --- Sides --- */}
-                        {/* Top */}
-                        <GestureDetector gesture={resizeTop}>
-                            <View style={[styles.hitBox, styles.sideHitBox, { top: -15, left: 20, right: 20, height: 40 }]}>
-                                <View style={[styles.sideBar, styles.topBar]} />
-                            </View>
-                        </GestureDetector>
-
-                        {/* Bottom */}
-                        <GestureDetector gesture={resizeBottom}>
-                            <View style={[styles.hitBox, styles.sideHitBox, { bottom: -15, left: 20, right: 20, height: 40 }]}>
-                                <View style={[styles.sideBar, styles.bottomBarVisual]} />
-                            </View>
-                        </GestureDetector>
-
-                        {/* Left */}
-                        <GestureDetector gesture={resizeLeft}>
-                            <View style={[styles.hitBox, styles.sideHitBox, { left: -15, top: 20, bottom: 20, width: 40 }]}>
-                                <View style={[styles.sideBar, styles.leftBar]} />
-                            </View>
-                        </GestureDetector>
-
-                        {/* Right */}
-                        <GestureDetector gesture={resizeRight}>
-                            <View style={[styles.hitBox, styles.sideHitBox, { right: -15, top: 20, bottom: 20, width: 40 }]}>
-                                <View style={[styles.sideBar, styles.rightBar]} />
-                            </View>
-                        </GestureDetector>
-
                     </Animated.View>
                 </GestureDetector>
 
@@ -424,7 +452,6 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
                 >
                     <X color="#fff" size={34} strokeWidth={3} />
                 </TouchableOpacity>
-
             </View>
         </GestureHandlerRootView>
     );
@@ -438,8 +465,6 @@ const GridOverlay = () => (
         <View style={[styles.gridLine, { left: '66%', width: 1, height: '100%' }]} />
     </View>
 );
-
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,

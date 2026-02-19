@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { IdentificationService } from '@/services/IdentificationService';
 import { BirdResult } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { fetch } from 'expo/fetch';
 import { useState } from 'react';
 import { Alert } from 'react-native';
@@ -42,21 +41,12 @@ export const useBirdIdentification = () => {
 
             // --- OPTIMIZATION: Compress Image ---
             if (imageB64) {
-                // We need a URI to manipulate, but we only have base64. 
-                // However, if we manipulate, we get a new URI and base64.
-                // Since this hook receives base64, we might not have the URI easily unless passed.
-                // Assuming we can just use the base64 as source for ImageManipulator if we prefix it, 
-                // OR we skip manipulation if we don't have a URI.
-                // Actually, let's just proceed with the upload/fetch logic but ensure we handle errors gracefully.
-                // The provided imageB64 is likely already from a captured photo.
-
-                // If we want to compress, passing a base64 string to `manipulateAsync` works 
-                // if we format it as a data URI: `data:image/jpeg;base64,...`
                 try {
-                    const manipResult = await ImageManipulator.manipulateAsync(
+                    const { manipulateAsync, SaveFormat } = require('expo-image-manipulator');
+                    const manipResult = await manipulateAsync(
                         `data:image/jpeg;base64,${imageB64}`,
                         [{ resize: { width: 1024 } }],
-                        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                        { compress: 0.6, format: SaveFormat.JPEG, base64: true }
                     );
 
                     if (manipResult.base64) {
