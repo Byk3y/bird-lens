@@ -1,5 +1,6 @@
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
+import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
 import { BirdMedia, MediaService } from '@/services/MediaService';
 import { BirdResult, BirdSound, INaturalistPhoto } from '@/types/scanner';
@@ -11,14 +12,11 @@ import * as Speech from 'expo-speech';
 import {
     Camera,
     ChevronLeft,
-    ChevronRight,
-    Share2,
-    X
+    Share2
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
-    Modal,
     NativeScrollEvent,
     NativeSyntheticEvent,
     Pressable,
@@ -221,98 +219,13 @@ export default function BirdDetailScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Image Viewer Modal */}
-            <Modal
+            {/* Image Viewer Component */}
+            <ImageViewer
                 visible={isImageViewerVisible}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setIsImageViewerVisible(false)}
-            >
-                <View style={styles.modalBg}>
-                    {/* Close Area */}
-                    <Pressable style={styles.modalCloseArea} onPress={() => setIsImageViewerVisible(false)} />
-
-                    {/* Image Viewer Header */}
-                    <View style={styles.modalHeader}>
-                        <Pressable
-                            onPress={() => setIsImageViewerVisible(false)}
-                            style={styles.modalCloseBtn}
-                        >
-                            <X color="#FFF" size={28} />
-                        </Pressable>
-                    </View>
-
-                    <View style={styles.modalContent}>
-                        <ScrollView
-                            ref={scrollRef}
-                            horizontal
-                            pagingEnabled
-                            showsHorizontalScrollIndicator={false}
-                            onMomentumScrollEnd={handleScroll}
-                            contentOffset={{ x: selectedImageIndex * width, y: 0 }}
-                            scrollEventThrottle={16}
-                        >
-                            {inatPhotos.map((photo, index) => (
-                                <View key={index} style={styles.fullImageContainer}>
-                                    <Image
-                                        source={{ uri: photo.url }}
-                                        style={styles.fullImage}
-                                        resizeMode="contain"
-                                    />
-                                </View>
-                            ))}
-                        </ScrollView>
-                    </View>
-
-                    {/* Image Viewer Footer */}
-                    <View style={styles.modalFooter}>
-                        <View style={styles.footerInfoRow}>
-                            <TouchableOpacity
-                                style={styles.copyrightContainer}
-                                onPress={() => {
-                                    // Could open license URL
-                                }}
-                            >
-                                <Text style={styles.copyrightText}>copyright</Text>
-                            </TouchableOpacity>
-
-                            <View style={styles.paginationContainer}>
-                                <Text style={styles.paginationText}>
-                                    {selectedImageIndex + 1} / {inatPhotos.length}
-                                </Text>
-                            </View>
-
-                            {/* Empty view for spacing to keep pagination centered */}
-                            <View style={{ width: 60 }} />
-                        </View>
-
-                        <View style={styles.modalControls}>
-                            <Pressable
-                                style={[styles.navArrow, selectedImageIndex === 0 && { opacity: 0.3 }]}
-                                disabled={selectedImageIndex === 0}
-                                onPress={() => {
-                                    const nextIndex = Math.max(0, selectedImageIndex - 1);
-                                    scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
-                                    setSelectedImageIndex(nextIndex);
-                                }}
-                            >
-                                <ChevronLeft color="#FFF" size={32} />
-                            </Pressable>
-                            <Pressable
-                                style={[styles.navArrow, selectedImageIndex === inatPhotos.length - 1 && { opacity: 0.3 }]}
-                                disabled={selectedImageIndex === inatPhotos.length - 1}
-                                onPress={() => {
-                                    const nextIndex = Math.min(inatPhotos.length - 1, selectedImageIndex + 1);
-                                    scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
-                                    setSelectedImageIndex(nextIndex);
-                                }}
-                            >
-                                <ChevronRight color="#FFF" size={32} />
-                            </Pressable>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                images={inatPhotos}
+                initialIndex={selectedImageIndex}
+                onClose={() => setIsImageViewerVisible(false)}
+            />
         </View>
     );
 }
@@ -426,90 +339,14 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     bottomBarText: {
-        color: '#666666',
-        fontSize: 12,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1A1A1A',
+        marginTop: 4,
     },
     divider: {
         width: 1,
         height: 30,
         backgroundColor: '#f1f5f9',
-    },
-    // Modal Styles
-    modalBg: {
-        flex: 1,
-        backgroundColor: '#000',
-    },
-    modalCloseArea: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    modalHeader: {
-        height: 100,
-        paddingTop: 50,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        zIndex: 20,
-    },
-    modalCloseBtn: {
-        width: 44,
-        height: 44,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        flex: 1,
-    },
-    fullImageContainer: {
-        width: width,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    fullImage: {
-        width: width,
-        height: width * 1.25,
-        backgroundColor: '#FFF',
-    },
-    modalFooter: {
-        paddingBottom: 50,
-        paddingHorizontal: 20,
-        alignItems: 'center',
-    },
-    footerInfoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-        marginBottom: 20,
-    },
-    copyrightContainer: {
-        width: 60,
-    },
-    copyrightText: {
-        color: '#FFF',
-        fontSize: 14,
-        textDecorationLine: 'underline',
-        opacity: 0.8,
-    },
-    paginationContainer: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    paginationText: {
-        color: '#FFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    modalControls: {
-        flexDirection: 'row',
-        gap: 60,
-        alignItems: 'center',
-    },
-    navArrow: {
-        width: 44,
-        height: 44,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
 });

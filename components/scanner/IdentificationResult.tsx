@@ -1,4 +1,5 @@
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
+import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { BirdResult } from '@/types/scanner';
 import { BlurView } from 'expo-blur';
@@ -16,7 +17,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 
 interface IdentificationResultProps {
@@ -33,6 +34,7 @@ interface IdentificationResultProps {
     updateHeroImage: (scientificName: string, url: string) => void;
     onSave: (bird: BirdResult, capturedImage: string | null) => void;
     onReset: () => void;
+    isProcessing?: boolean;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -73,6 +75,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     updateHeroImage,
     onSave,
     onReset,
+    isProcessing = false,
 }) => {
     const router = useRouter();
 
@@ -91,12 +94,22 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     }, [hasAnyCandidateData]);
 
     // Unified list for carousel
-    const carouselItems = enrichedCandidates.slice(0, 3);
+    const carouselItems = React.useMemo(() => enrichedCandidates.slice(0, 3), [enrichedCandidates]);
+
     const isComparisonTab = activeIndex === carouselItems.length;
-    const activeBird = !isComparisonTab ? carouselItems[activeIndex] : null;
+
+    // Stabilize the active bird reference so we don't re-render BirdProfileContent 
+    // when media arrives for OTHER candidates.
+    const activeBird = React.useMemo(() => {
+        if (isComparisonTab) return null;
+        return carouselItems[activeIndex] || null;
+    }, [carouselItems[activeIndex], isComparisonTab]);
+
     const isSavedForActive = savedIndices.has(activeIndex);
 
     const scrollX = React.useRef(new Animated.Value(0)).current;
+
+    const carouselItemsWithComparison = React.useMemo(() => [...carouselItems, { type: 'comparison' }], [carouselItems]);
 
     const onScroll = Animated.event(
         [{ nativeEvent: { contentOffset: { x: scrollX } } }],
@@ -121,6 +134,9 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             }
         });
     };
+
+    const [isImageViewerVisible, setIsImageViewerVisible] = React.useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
 
     const playScientificName = () => {
         if (activeBird?.scientific_name) {
@@ -167,7 +183,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             />
                         ) : capturedImage ? (
                             <Image
-                                source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
                                 style={StyleSheet.absoluteFill}
                                 contentFit="cover"
                                 transition={300}
@@ -175,7 +191,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             />
                         ) : isComparisonTab && capturedImage ? (
                             <Image
-                                source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
                                 style={StyleSheet.absoluteFill}
                                 contentFit="cover"
                                 transition={500}
@@ -198,7 +214,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         ]}
                     >
                         {/* Bird Candidates + Comparison Tab */}
-                        {[...carouselItems, { type: 'comparison' }].map((item: any, index) => {
+                        {carouselItemsWithComparison.map((item: any, index) => {
                             const inputRange = [
                                 (index - 1) * ITEM_WIDTH,
                                 index * ITEM_WIDTH,
@@ -240,7 +256,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                         ) : (
                                             capturedImage ? (
                                                 <Image
-                                                    source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                                    source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
                                                     style={styles.circleImage}
                                                     cachePolicy="memory-disk"
                                                 />
@@ -260,7 +276,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     {capturedImage && (
                         <View style={styles.thumbnailContainer}>
                             <Image
-                                source={{ uri: `data:image/jpeg;base64,${capturedImage}` } as any}
+                                source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
                                 style={styles.thumbnailImage}
                             />
                         </View>
@@ -279,11 +295,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                     ]}
                                 >
                                     {isActive && (
-                                        <Image
-                                            source={{ uri: ACTIVE_TAB_SVG }}
-                                            style={styles.activeTabBackground}
-                                            contentFit="fill"
-                                        />
+                                        <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.white, borderRadius: 12 }]} />
                                     )}
                                     <Text style={[
                                         styles.tabText,
@@ -302,9 +314,14 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             bird={activeBird}
                             inatPhotos={activeBird.inat_photos}
                             sounds={activeBird.sounds}
-                            isLoadingSounds={!activeBird.sounds?.length && !activeBird.inat_photos?.length}
+                            isLoadingSounds={!activeBird.sounds?.length && !activeBird.inat_photos?.length && isProcessing}
                             onOpenTips={(section) => handleOpenTips(activeBird, section)}
                             onPlaySound={playScientificName}
+                            onImagePress={(idx) => {
+                                setSelectedImageIndex(idx);
+                                setIsImageViewerVisible(true);
+                            }}
+                            isEnrichmentComplete={!isProcessing}
                             onOpenIdentification={() => {
                                 router.push({
                                     pathname: '/identification-detail',
@@ -364,6 +381,13 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     </View>
                 )
             }
+            {/* Image Viewer Component */}
+            <ImageViewer
+                visible={isImageViewerVisible}
+                images={activeBird?.inat_photos || []}
+                initialIndex={selectedImageIndex}
+                onClose={() => setIsImageViewerVisible(false)}
+            />
         </View >
     );
 };
@@ -468,14 +492,13 @@ const styles = StyleSheet.create({
         right: 0,
         gap: 8,
         justifyContent: 'center',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         zIndex: 50,
-        paddingBottom: 4, // Add clearance so inactive circles don't touch the white container
     },
     tabIndicator: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',
@@ -486,15 +509,8 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     activeTab: {
-        backgroundColor: 'transparent',
-        width: 40,
-        height: 32,
-        borderRadius: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowOpacity: 0,
-        elevation: 0,
-        marginBottom: -4,
+        borderWidth: 1.5,
+        borderColor: Colors.primary,
     },
     activeTabBackground: {
         ...StyleSheet.absoluteFillObject,
@@ -502,14 +518,13 @@ const styles = StyleSheet.create({
     tabText: {
         ...Typography.label,
         color: '#666',
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: '700',
     },
     activeTabText: {
         color: Colors.primary,
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 2,
+        fontSize: 16,
+        fontWeight: '800',
     },
     correctionSection: {
         padding: 24,
