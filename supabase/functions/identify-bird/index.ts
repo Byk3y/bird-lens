@@ -23,9 +23,32 @@ interface BirdIdentificationRequest {
 }
 
 const writeChunk = (controller: ReadableStreamDefaultController, data: any) => {
-    const encoder = new TextEncoder();
-    controller.enqueue(encoder.encode(JSON.stringify(data) + "\n"));
+    try {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode(JSON.stringify(data) + "\n"));
+    } catch {
+        // Stream might be closed
+    }
 };
+
+/**
+ * Helper to perform a fetch with a timeout
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 45000): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
 
 // ---------- Helper: Search Cache (using species_meta table) ----------
 
@@ -181,7 +204,13 @@ Return a JSON object with a "candidates" array. Each object in the array must in
 
         const stream = new ReadableStream({
             async start(controller) {
+                let heartbeatId: any;
                 try {
+                    // GLOBAL HEARTBEAT: Keep connection alive through all phases
+                    heartbeatId = setInterval(() => {
+                        writeChunk(controller, { type: "heartbeat" });
+                    }, 10000);
+
                     // HEARTBEAT: Send immediate "waiting" signal
                     writeChunk(controller, { type: "progress", message: "Analyzing plumage and patterns..." });
 
@@ -191,7 +220,7 @@ Return a JSON object with a "candidates" array. Each object in the array must in
 
                     const attemptAI = async (isPrimary: boolean, promptText: string): Promise<Response> => {
                         if (isPrimary) {
-                            return await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                            return await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
                                 method: "POST",
                                 headers: {
                                     "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
@@ -213,7 +242,7 @@ Return a JSON object with a "candidates" array. Each object in the array must in
                                 }),
                             });
                         } else {
-                            return await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                            return await fetchWithTimeout(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
@@ -286,19 +315,12 @@ Return a JSON object with a "candidates" array. Each object in the array must in
 
                     // PHASE 2: Parallel Background Enrichment
                     const xenoKey = XENO_CANTO_API_KEY || "";
-
                     const hasCandidates = candidates && candidates.length > 0;
-
-                    // Heartbeat helper to keep the stream alive
-                    const startHeartbeat = () => setInterval(() => {
-                        try { writeChunk(controller, { type: "heartbeat" }); } catch { }
-                    }, 5000);
 
                     // Helper for prioritized metadata enrichment
                     const fetchPrioritizedMetadata = async () => {
                         if (!hasCandidates) return;
 
-                        const heartbeatId = startHeartbeat();
                         try {
                             // 1. Prioritize Top Candidate for instant UI satisfaction
                             const topCandidate = candidates[0];
@@ -328,8 +350,8 @@ Return a JSON object with a "candidates" array. Each object in the array must in
                                     });
                                 }
                             }
-                        } finally {
-                            clearInterval(heartbeatId);
+                        } catch (err) {
+                            console.error("Metadata enrichment error:", err);
                         }
                     };
 
@@ -355,8 +377,10 @@ Return a JSON object with a "candidates" array. Each object in the array must in
                     ]);
 
                     writeChunk(controller, { type: "done", duration: Date.now() - startTime });
+                    clearInterval(heartbeatId);
                     controller.close();
                 } catch (streamError: any) {
+                    clearInterval(heartbeatId);
                     console.error("[STREAM ERROR]", streamError);
                     try { writeChunk(controller, { type: "error", message: streamError.message }); } catch { }
                     controller.close();

@@ -5,6 +5,25 @@ import { fixXenoCantoUrl } from "./utils.ts";
 const INAT_API_URL = "https://api.inaturalist.org/v1";
 const WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php";
 
+/**
+ * Helper to perform a fetch with a timeout
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
+
 // ---------- Types ----------
 
 export interface INatPhoto {
@@ -49,7 +68,7 @@ async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
     try {
         const query = scientificName.trim();
         const searchUrl = `${INAT_API_URL}/taxa?q=${encodeURIComponent(query)}&per_page=1`;
-        const searchResponse = await fetch(searchUrl);
+        const searchResponse = await fetchWithTimeout(searchUrl);
         if (!searchResponse.ok) return [];
 
         const searchData = await searchResponse.json();
@@ -60,7 +79,7 @@ async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
 
         // Fetch full taxon details to get all taxon_photos
         const detailUrl = `${INAT_API_URL}/taxa/${taxon.id}`;
-        const detailResponse = await fetch(detailUrl);
+        const detailResponse = await fetchWithTimeout(detailUrl);
         if (!detailResponse.ok) return [];
 
         const detailData = await detailResponse.json();
@@ -109,7 +128,7 @@ async function fetchINatGenderedPhoto(scientificName: string, gender: "male" | "
         const fields = "photos.url,photos.license_code,photos.attribution";
         const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=9&term_value_id=${termValueId}&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
 
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (!response.ok) return null;
 
         const data = await response.json();
@@ -134,7 +153,7 @@ async function fetchINatJuvenilePhoto(scientificName: string): Promise<string | 
         const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=1&term_value_id=8&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
 
         console.log(`[Enrichment] Fetching juvenile photo: ${url}`);
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (!response.ok) return null;
 
         const data = await response.json();
@@ -170,7 +189,7 @@ async function fetchWikimediaImage(scientificName: string): Promise<string | nul
             iiurlwidth: '1024',
         });
 
-        const response = await fetch(`${WIKIMEDIA_API_URL}?${params}`);
+        const response = await fetchWithTimeout(`${WIKIMEDIA_API_URL}?${params}`);
         if (!response.ok) return null;
 
         const data = await response.json();
@@ -222,7 +241,7 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
         const query = encodeURIComponent(`sp:"${scientificName}" q:A`);
         const url = `https://xeno-canto.org/api/3/recordings?query=${query}&key=${apiKey}`;
 
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (!response.ok) return [];
 
         const data = await response.json();

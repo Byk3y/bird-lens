@@ -5,6 +5,25 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const GEMINI_MODEL = "gemini-2.0-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+/**
+ * Helper to perform a fetch with a timeout
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 25000): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
+
 const enrichmentPromptInstructions = `
 For the following bird species, provide comprehensive field-guide quality metadata.
 Species: [[SPECIES_NAMES]]
@@ -57,7 +76,7 @@ export async function generateBirdMetadata(scientificName: string) {
     // Helper to attempt AI call
     const attemptEnrichment = async (isPrimary: boolean): Promise<Response> => {
         if (isPrimary && OPENROUTER_API_KEY) {
-            return await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            return await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
@@ -72,7 +91,7 @@ export async function generateBirdMetadata(scientificName: string) {
                 }),
             });
         } else if (GEMINI_API_KEY) {
-            return await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            return await fetchWithTimeout(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -141,7 +160,7 @@ export async function generateBatchBirdMetadata(scientificNames: string[]) {
     // Simplified fallback logic for batch
     const callAI = async () => {
         if (OPENROUTER_API_KEY) {
-            const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            const resp = await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
@@ -156,7 +175,7 @@ export async function generateBatchBirdMetadata(scientificNames: string[]) {
             if (resp.ok) return resp;
         }
         if (GEMINI_API_KEY) {
-            return await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            return await fetchWithTimeout(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
