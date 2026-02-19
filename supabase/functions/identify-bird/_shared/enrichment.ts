@@ -11,6 +11,8 @@ export interface INatPhoto {
     url: string;
     attribution: string;
     license: string;
+    id?: string | number;
+    provider?: 'inaturalist' | 'wikimedia';
 }
 
 export interface BirdSound {
@@ -87,6 +89,8 @@ async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
                 url: largeUrl || originalUrl,
                 attribution: photo.attribution || 'Unknown',
                 license: photo.license_code || 'CC-BY-NC',
+                id: photo.id,
+                provider: 'inaturalist'
             };
         }).filter(Boolean);
     } catch (error) {

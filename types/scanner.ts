@@ -2,6 +2,8 @@ export interface INaturalistPhoto {
     url: string;
     attribution: string;
     license: string;
+    id?: string | number;
+    provider?: 'inaturalist' | 'wikimedia';
 }
 
 export interface BirdSound {
