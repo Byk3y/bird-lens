@@ -86,7 +86,7 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
             {/* Header / Close Button */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={onReset} style={styles.closeButton}>
-                    <X size={24} color="#FFF" />
+                    <X size={24} color={Colors.text} />
                 </TouchableOpacity>
             </View>
 

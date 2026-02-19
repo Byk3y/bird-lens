@@ -20,6 +20,7 @@ interface ScannerControlsProps {
     onShowTips: () => void;
     isRecording?: boolean;
     hasRecording?: boolean;
+    onGalleryPress?: () => void;
 }
 
 export const ScannerControls: React.FC<ScannerControlsProps> = ({
@@ -31,6 +32,7 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
     onShowTips,
     isRecording = false,
     hasRecording = false,
+    onGalleryPress,
 }) => {
     return (
         <View style={[styles.bottomArea, activeMode === 'sound' && styles.soundBottomArea]}>
@@ -59,7 +61,7 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
             {/* Captures / Controls */}
             <View style={styles.shutterRow}>
                 {activeMode === 'photo' ? (
-                    <TouchableOpacity style={styles.sideControl}>
+                    <TouchableOpacity style={styles.sideControl} onPress={onGalleryPress}>
                         <View style={styles.galleryPreview}>
                             <ImageIcon color="#f97316" size={21} />
                         </View>

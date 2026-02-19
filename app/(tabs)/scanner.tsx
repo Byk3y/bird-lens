@@ -21,6 +21,7 @@ import { useAuth } from '@/lib/auth';
 
 // Components
 import { IdentificationResult } from '@/components/scanner/IdentificationResult';
+import { PhotoFramingView } from '@/components/scanner/PhotoFramingView';
 import { ScannerControls } from '@/components/scanner/ScannerControls';
 import { ScannerHeader } from '@/components/scanner/ScannerHeader';
 import { ScannerPreview } from '@/components/scanner/ScannerPreview';
@@ -29,6 +30,7 @@ import { SnapTipsModal } from '@/components/scanner/SnapTipsModal';
 import { SoundScanner } from '@/components/scanner/SoundScanner';
 import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
 
 // Types
@@ -36,10 +38,12 @@ import { ScanMode } from '@/types/scanner';
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
+  const [mediaPermission, requestMediaPermission] = ImagePicker.useMediaLibraryPermissions();
   const [activeMode, setActiveMode] = useState<ScanMode>('photo');
   const [flash, setFlash] = useState<'off' | 'on'>('off');
   const [showSnapTips, setShowSnapTips] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [pickedImage, setPickedImage] = useState<string | null>(null);
   const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const { isLoading: isAuthLoading } = useAuth();
@@ -97,7 +101,64 @@ export default function ScannerScreen() {
     }
   }, [result, isProcessing, error]);
 
+
   const [isFlashing, setIsFlashing] = useState(false);
+
+  const handlePickPhoto = async () => {
+    // Check permission status from hook state first (instant)
+    if (mediaPermission?.status !== 'granted') {
+      const { status } = await requestMediaPermission();
+      if (status !== 'granted') {
+        alert('Sorry, we need camera roll permissions to make this work!');
+        return;
+      }
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false, // We use our own cropper
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets[0].uri) {
+      setPickedImage(result.assets[0].uri);
+    }
+  };
+
+  const confirmFraming = async (cropData: { originX: number; originY: number; width: number; height: number; scale: number; baseImageWidth: number; baseImageHeight: number }) => {
+    if (!pickedImage) return;
+
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Perform crop then resize
+      const manipResult = await manipulateAsync(
+        pickedImage,
+        [
+          {
+            crop: {
+              originX: Math.max(0, cropData.originX),
+              originY: Math.max(0, cropData.originY),
+              width: cropData.width,
+              height: cropData.height,
+            },
+          },
+          { resize: { width: 800 } },
+        ],
+        { compress: 0.8, format: SaveFormat.JPEG, base64: true }
+      );
+
+      if (manipResult.base64) {
+        setCapturedImage(manipResult.base64);
+        await identifyBird(manipResult.base64);
+        setPickedImage(null);
+      }
+    } catch (error) {
+      console.error('Processing picked image failed', error);
+      alert('Failed to process image');
+    }
+  };
+
 
   const handleCapture = async () => {
     if (activeMode === 'photo') {
@@ -183,7 +244,15 @@ export default function ScannerScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" translucent />
       <View style={styles.container}>
-        {capturedImage && !result && (isProcessing || error) ? (
+        {pickedImage && !result && !isProcessing ? (
+          <PhotoFramingView
+            imageUri={pickedImage}
+            onCancel={() => setPickedImage(null)}
+            onRepick={handlePickPhoto}
+            onConfirm={confirmFraming}
+            onShowTips={() => setShowSnapTips(true)}
+          />
+        ) : capturedImage && !result && (isProcessing || error) ? (
           <ScannerPreview
             imageUri={capturedImage}
             isProcessing={isProcessing}
@@ -243,6 +312,7 @@ export default function ScannerScreen() {
               onShowTips={() => setShowSnapTips(true)}
               isRecording={isRecording}
               hasRecording={!!recordingUri}
+              onGalleryPress={handlePickPhoto}
             />
           </View>
         ) : (
