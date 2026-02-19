@@ -7,6 +7,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { Camera, Check, ChevronLeft, Image as ImageIcon, Save, Share2 } from 'lucide-react-native';
+import { MotiView } from 'moti';
 import { Skeleton } from 'moti/skeleton';
 import React, { useEffect } from 'react';
 import {
@@ -57,6 +58,45 @@ const SkeletonLoader = () => {
                     <Skeleton colorMode="light" width={180} height={20} />
                 </View>
             </View>
+        </View>
+    );
+};
+
+const SavedOverlay = ({ visible }: { visible: boolean }) => {
+    return (
+        <View
+            pointerEvents="none"
+            style={[
+                StyleSheet.absoluteFill,
+                {
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 100,
+                }
+            ]}
+        >
+            <MotiView
+                from={{ opacity: 0, scale: 0.5 }}
+                animate={{
+                    opacity: visible ? 1 : 0,
+                    scale: visible ? 1 : 0.5
+                }}
+                transition={{
+                    type: 'spring',
+                    damping: 15,
+                    stiffness: 150,
+                }}
+                style={styles.savedBadge}
+            >
+                <BlurView intensity={40} tint="light" style={styles.savedBadgeBlur}>
+                    <View style={styles.savedBadgeContent}>
+                        <View style={styles.savedIconCircle}>
+                            <Check color={Colors.white} size={28} strokeWidth={3} />
+                        </View>
+                        <Text style={styles.savedBadgeText}>Saved!</Text>
+                    </View>
+                </BlurView>
+            </MotiView>
         </View>
     );
 };
@@ -281,6 +321,9 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             />
                         </View>
                     )}
+
+                    {/* Saved Success Overlay */}
+                    <SavedOverlay visible={isSavedForActive} />
 
                     {/* Pagination Tabs */}
                     <View style={styles.pagination}>
@@ -596,5 +639,49 @@ const styles = StyleSheet.create({
     },
     contentSection: {
         paddingTop: Spacing.lg,
+    },
+    savedBadge: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 15,
+    },
+    savedBadgeBlur: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    savedBadgeContent: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    savedIconCircle: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    savedBadgeText: {
+        ...Typography.h3,
+        color: Colors.white,
+        fontWeight: '800',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
     },
 });

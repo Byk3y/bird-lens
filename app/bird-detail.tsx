@@ -79,25 +79,34 @@ export default function BirdDetailScreen() {
     const [inatPhotos, setInatPhotos] = useState<INaturalistPhoto[]>(savedInatPhotos);
     const [sounds, setSounds] = useState<BirdSound[]>(savedSounds);
 
+    // Separate Search vs Sighting logic
+    const isSighting = !!params.sightingDate;
+    const isSearchSkeleton = savedInatPhotos.length <= 1;
+
     // Separate loading states:
     // 1. initialLoading: Show full screen spinner if we have NO data OR if we're coming from search 
     //    and waiting for the first batch of enrichment (media/metadata).
     // 2. isEnriching: Show pulse animations/skeletons in gallery while fetching even more media.
-    const isSearchSkeleton = savedInatPhotos.length <= 1;
-    const initialLoading = (!hasSavedData || isSearchSkeleton) && !media;
+    const initialLoading = (!hasSavedData || (isSearchSkeleton && !isSighting)) && !media;
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [isEnriching, setIsEnriching] = useState((!hasSavedData || isSearchSkeleton) && !media);
 
     // Stabilized Hero Image logic
     const heroImageSource = React.useMemo(() => {
-        // High quality photos from iNaturalist (provided by media enrichment)
+        // 1. If it's a sighting, ALWAYS prioritize the user's captured photo as the first image
+        if (isSighting && params.imageUrl && selectedImageIndex === 0) {
+            return params.imageUrl;
+        }
+
+        // 2. Otherwise, use high quality photos from iNaturalist (provided by media enrichment)
         if (inatPhotos.length > 0) {
             return inatPhotos[selectedImageIndex]?.url || inatPhotos[0].url;
         }
-        // Fallback to the search thumbnail or passed image
+
+        // 3. Fallback to the search thumbnail or passed image
         return params.imageUrl || birdDetails.male_image_url || null;
-    }, [inatPhotos, selectedImageIndex, params.imageUrl, birdDetails.male_image_url]);
+    }, [inatPhotos, selectedImageIndex, params.imageUrl, birdDetails.male_image_url, isSighting]);
     const scrollRef = useRef<ScrollView>(null);
 
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -126,20 +135,23 @@ export default function BirdDetailScreen() {
 
                 // Update photos if fetched data is richer than initial data (e.g. single search thumbnail)
                 if (mediaData.inat_photos?.length) {
-                    // Check if the initial image (params.imageUrl) is a low-res thumbnail (e.g. contains 'square' or 'small')
-                    // If it is, we want to REPLACE it with high-quality images, not just append them.
                     const initialUrl = params.imageUrl;
                     const isLowResThumbnail = initialUrl && (initialUrl.includes('square') || initialUrl.includes('small'));
 
-                    if (isLowResThumbnail) {
-                        // If it's a low-res thumbnail, replace entirely with the new high-quality photos
+                    if (isSighting && initialUrl) {
+                        // For sightings, NEVER replace the main photo. 
+                        // Just append new reference photos while keeping the capture at index 0.
+                        const filteredPhotos = mediaData.inat_photos.filter(p => p.url !== initialUrl);
+                        setInatPhotos([
+                            { url: initialUrl, attribution: 'User Capture', license: 'cc-by' },
+                            ...filteredPhotos
+                        ]);
+                    } else if (isLowResThumbnail) {
+                        // For search results with a low-res thumbnail, replace with high-quality reference photos
                         setInatPhotos(mediaData.inat_photos);
                     } else {
-                        // Otherwise (e.g. user capture or high-res), deduplicate and append
-                        const filteredPhotos = mediaData.inat_photos.filter(
-                            p => p.url !== initialUrl
-                        );
-
+                        // Standard append and deduplicate logic
+                        const filteredPhotos = mediaData.inat_photos.filter(p => p.url !== initialUrl);
                         if (filteredPhotos.length > 0) {
                             setInatPhotos([
                                 ...(savedInatPhotos.length > 0 ? savedInatPhotos : []),
