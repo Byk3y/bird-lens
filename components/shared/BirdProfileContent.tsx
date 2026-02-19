@@ -12,7 +12,7 @@ import {
     MoreHorizontal,
     Notebook
 } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -43,6 +43,7 @@ interface BirdProfileContentProps {
     onImagePress?: (index: number) => void;
     onOpenTips?: (section?: string) => void;
     onOpenIdentification?: () => void;
+    isEnrichmentComplete?: boolean;
 }
 
 export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
@@ -54,6 +55,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     onImagePress,
     onOpenTips,
     onOpenIdentification,
+    isEnrichmentComplete = true,
 }) => {
     const galleryRef = useRef<ScrollView>(null);
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
@@ -70,11 +72,6 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
         const others = targetSounds.filter(s => !s.type?.toLowerCase().includes('song') && !s.type?.toLowerCase().includes('call'));
         return { songs, calls, others, total: targetSounds.length };
     }, [sounds, bird.sounds]);
-
-    // Reset gallery scroll position when bird changes
-    useEffect(() => {
-        galleryRef.current?.scrollTo({ x: 0, animated: false });
-    }, [bird.scientific_name]);
 
     return (
         <View style={styles.container}>
@@ -93,25 +90,29 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     <MoreHorizontal size={20} color="#999" />
                 </View>
                 <ScrollView
+                    key={bird.name}
                     ref={galleryRef}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     style={styles.galleryScroll}
                 >
                     {(inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).length > 0 ? (
-                        (inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).map((photo, idx) => (
-                            <TouchableOpacity
-                                key={idx}
-                                style={styles.galleryItem}
-                                onPress={() => onImagePress?.(idx)}
-                            >
-                                <Image
-                                    source={{ uri: (typeof photo === 'string' ? photo : (photo as INaturalistPhoto).url) }}
-                                    style={styles.galleryImage}
-                                    cachePolicy="memory-disk"
-                                />
-                            </TouchableOpacity>
-                        ))
+                        (inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).map((photo, idx) => {
+                            const photoUrl = typeof photo === 'string' ? photo : (photo as INaturalistPhoto).url;
+                            return (
+                                <TouchableOpacity
+                                    key={photoUrl}
+                                    style={styles.galleryItem}
+                                    onPress={() => onImagePress?.(idx)}
+                                >
+                                    <Image
+                                        source={{ uri: photoUrl }}
+                                        style={styles.galleryImage}
+                                        cachePolicy="memory-disk"
+                                    />
+                                </TouchableOpacity>
+                            );
+                        })
                     ) : (
                         // Render placeholders when no images are available yet
                         [1, 2, 3].map((_, idx) => (
@@ -135,7 +136,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     <MoreHorizontal size={20} color="#999" />
                 </View>
 
-                <BirdingTipsGrid bird={bird} onOpenTips={onOpenTips} />
+                <BirdingTipsGrid bird={bird} onOpenTips={onOpenTips} isEnrichmentComplete={isEnrichmentComplete} />
             </View>
 
             {/* Insight Tip */}
@@ -254,34 +255,36 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             <View style={styles.gutter} />
 
             {/* Identification Section */}
-            <View style={styles.section}>
-                <View style={styles.sectionHeaderRow}>
-                    <View style={styles.sectionTitleLeft}>
-                        <HelpCircle size={22} color="#1A1A1A" />
-                        <Text style={styles.sectionTitle}>How to identify it?</Text>
+            {(bird.identification_tips || !isEnrichmentComplete) && (
+                <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                        <View style={styles.sectionTitleLeft}>
+                            <HelpCircle size={22} color="#1A1A1A" />
+                            <Text style={styles.sectionTitle}>How to identify it?</Text>
+                        </View>
+                        <MoreHorizontal size={20} color="#999" />
                     </View>
-                    <MoreHorizontal size={20} color="#999" />
+                    <View style={styles.clippedIdContainer}>
+                        {bird.identification_tips ? (
+                            <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
+                        ) : (
+                            <IdentificationSkeleton />
+                        )}
+                        <LinearGradient
+                            colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}
+                            style={styles.fadeOverlay}
+                        />
+                    </View>
+                    <TouchableOpacity
+                        onPress={onOpenIdentification}
+                        style={styles.expandButton}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.expandButtonText}>Learn More</Text>
+                        <ChevronDown size={16} color="#BA6526" />
+                    </TouchableOpacity>
                 </View>
-                <View style={styles.clippedIdContainer}>
-                    {bird.identification_tips ? (
-                        <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
-                    ) : (
-                        <IdentificationSkeleton />
-                    )}
-                    <LinearGradient
-                        colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}
-                        style={styles.fadeOverlay}
-                    />
-                </View>
-                <TouchableOpacity
-                    onPress={onOpenIdentification}
-                    style={styles.expandButton}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.expandButtonText}>Learn More</Text>
-                    <ChevronDown size={16} color="#BA6526" />
-                </TouchableOpacity>
-            </View>
+            )}
 
             <View style={styles.gutter} />
 

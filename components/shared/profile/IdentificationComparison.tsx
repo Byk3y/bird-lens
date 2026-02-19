@@ -46,7 +46,7 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
         }
 
         if (mode === 'age') {
-            const adultImage = bird.male_image_url || bird.images?.[0] || bird.female_image_url;
+            const adultImage = bird.male_image_url || bird.inat_photos?.[0]?.url || bird.images?.[0] || bird.female_image_url;
             return (
                 <View style={styles.idContainer}>
                     {adultImage && renderInlineItem('Adult', adultImage)}
@@ -56,7 +56,7 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
         }
 
         // Fallback
-        const fallbackImage = bird.male_image_url || bird.female_image_url || bird.juvenile_image_url || bird.images?.[0];
+        const fallbackImage = bird.male_image_url || bird.female_image_url || bird.juvenile_image_url || bird.inat_photos?.[0]?.url || bird.images?.[0];
         const fallbackLabel = bird.juvenile_image_url && !bird.male_image_url ? "Juvenile" : "Adult";
         return (
             <View style={styles.idContainer}>
@@ -92,9 +92,9 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
                 </>
             ) : (
                 <>
-                    {(bird.male_image_url || bird.images?.[0] || bird.female_image_url) && renderFullItem(
+                    {(bird.male_image_url || bird.inat_photos?.[0]?.url || bird.images?.[0] || bird.female_image_url) && renderFullItem(
                         'Adult',
-                        (bird.male_image_url || bird.images?.[0] || bird.female_image_url)!,
+                        (bird.male_image_url || bird.inat_photos?.[0]?.url || bird.images?.[0] || bird.female_image_url)!,
                         bird.identification_tips.male || bird.identification_tips.female
                     )}
                     {hasJuvenile && renderFullItem('Juvenile', bird.juvenile_image_url!, bird.identification_tips.juvenile)}
