@@ -5,12 +5,33 @@ import { fixXenoCantoUrl } from "./utils.ts";
 const INAT_API_URL = "https://api.inaturalist.org/v1";
 const WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php";
 
+/**
+ * Helper to perform a fetch with a timeout
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
+
 // ---------- Types ----------
 
 export interface INatPhoto {
     url: string;
     attribution: string;
     license: string;
+    id?: string | number;
+    provider?: 'inaturalist' | 'wikimedia';
 }
 
 export interface BirdSound {
@@ -37,28 +58,61 @@ export interface EnrichedMedia {
     wikipedia_image: string | null;
 }
 
+// ---------- iNaturalist Filtering ----------
+
+/**
+ * Helper to determine if an observation is appropriate for display.
+ * Excludes dead animals, museum specimens, and research samples.
+ */
+function isAppropriateObservation(obs: any): boolean {
+    if (!obs) return false;
+
+    // 1. Check annotations for Life Stage = Dead
+    // term_id 17 is "Alive or Dead", term_value_id 19 is "Dead"
+    const deadAnnotation = obs.annotations?.find((a: any) => a.term_id === 17 && a.controlled_value_id === 19);
+    if (deadAnnotation) return false;
+
+    // 2. Check tags for problematic keywords
+    const badTags = ['dead', 'specimen', 'museum', 'plucked', 'carcass', 'roadkill', 'skull', 'bones', 'research'];
+    const tags = (obs.tags || []).map((t: string) => t.toLowerCase());
+    if (tags.some((t: string) => badTags.includes(t))) return false;
+
+    // 3. Scan description for problematic keywords
+    const description = (obs.description || '').toLowerCase();
+    if (badTags.some(word => description.includes(word))) return false;
+
+    return true;
+}
+
 // ---------- iNaturalist Photos ----------
 
 /**
- * Fetches high-quality taxon photos from iNaturalist.
- * Uses taxa endpoint for species-level photos (more reliable than observations).
+ * Helper to fetch basic taxon information (ID and Rank)
  */
-async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
+async function fetchTaxonInfo(scientificName: string): Promise<{ id: number; rank: string; name: string } | null> {
     try {
         const query = scientificName.trim();
         const searchUrl = `${INAT_API_URL}/taxa?q=${encodeURIComponent(query)}&per_page=1`;
-        const searchResponse = await fetch(searchUrl);
-        if (!searchResponse.ok) return [];
+        const response = await fetchWithTimeout(searchUrl);
+        if (!response.ok) return null;
 
-        const searchData = await searchResponse.json();
-        // Try to find an exact match first, otherwise take the first result
-        const taxon = searchData.results?.find((t: any) => t.name.toLowerCase() === query.toLowerCase()) || searchData.results?.[0];
+        const data = await response.json();
+        // Try exact match, then first result
+        return data.results?.find((t: any) => t.name.toLowerCase() === query.toLowerCase()) || data.results?.[0] || null;
+    } catch (error) {
+        console.error(`Error fetching taxon info for ${scientificName}:`, error);
+        return null;
+    }
+}
 
-        if (!taxon?.id) return [];
-
+/**
+ * Fetches high-quality taxon photos from iNaturalist.
+ */
+async function fetchINatPhotos(taxonId: number): Promise<INatPhoto[]> {
+    try {
         // Fetch full taxon details to get all taxon_photos
-        const detailUrl = `${INAT_API_URL}/taxa/${taxon.id}`;
-        const detailResponse = await fetch(detailUrl);
+        const detailUrl = `${INAT_API_URL}/taxa/${taxonId}`;
+        const detailResponse = await fetchWithTimeout(detailUrl);
         if (!detailResponse.ok) return [];
 
         const detailData = await detailResponse.json();
@@ -87,10 +141,12 @@ async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
                 url: largeUrl || originalUrl,
                 attribution: photo.attribution || 'Unknown',
                 license: photo.license_code || 'CC-BY-NC',
+                id: photo.id,
+                provider: 'inaturalist'
             };
         }).filter(Boolean);
     } catch (error) {
-        console.error(`Error fetching iNat photos for ${scientificName}:`, error);
+        console.error(`Error fetching iNat photos for taxon ${taxonId}:`, error);
         return [];
     }
 }
@@ -102,14 +158,20 @@ async function fetchINatPhotos(scientificName: string): Promise<INatPhoto[]> {
 async function fetchINatGenderedPhoto(scientificName: string, gender: "male" | "female"): Promise<string | null> {
     try {
         const termValueId = gender === "male" ? 11 : 10;
-        const fields = "photos.url,photos.license_code,photos.attribution";
-        const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=9&term_value_id=${termValueId}&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
+        const fields = "photos.url,photos.license_code,photos.attribution,annotations,tags,description";
+        // Filter out bad tags directly in API
+        const notTags = "dead,specimen,museum,plucked,research,roadkill,carcass";
+        const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=9&term_value_id=${termValueId}&quality_grade=research&per_page=5&order_by=votes&not_tag=${notTags}&fields=${fields}`;
 
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (!response.ok) return null;
 
         const data = await response.json();
-        const photo = data.results?.[0]?.photos?.[0];
+        if (!data.results?.length) return null;
+
+        // Find the first appropriate candidate
+        const candidate = data.results.find(isAppropriateObservation);
+        const photo = candidate?.photos?.[0];
         if (!photo?.url) return null;
 
         // Upgrade to large URL
@@ -126,14 +188,20 @@ async function fetchINatGenderedPhoto(scientificName: string, gender: "male" | "
  */
 async function fetchINatJuvenilePhoto(scientificName: string): Promise<string | null> {
     try {
-        const fields = "photos.url,photos.license_code,photos.attribution";
-        const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=1&term_value_id=8&quality_grade=research&per_page=1&order_by=votes&fields=${fields}`;
+        const fields = "photos.url,photos.license_code,photos.attribution,annotations,tags,description";
+        // Filter out bad tags directly in API
+        const notTags = "dead,specimen,museum,plucked,research,roadkill,carcass";
+        const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=1&term_value_id=8&quality_grade=research&per_page=5&order_by=votes&not_tag=${notTags}&fields=${fields}`;
 
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (!response.ok) return null;
 
         const data = await response.json();
-        const photo = data.results?.[0]?.photos?.[0];
+        if (!data.results?.length) return null;
+
+        // Find the first appropriate candidate
+        const candidate = data.results.find(isAppropriateObservation);
+        const photo = candidate?.photos?.[0];
         if (!photo?.url) return null;
 
         // Upgrade to large URL
@@ -164,7 +232,7 @@ async function fetchWikimediaImage(scientificName: string): Promise<string | nul
             iiurlwidth: '1024',
         });
 
-        const response = await fetch(`${WIKIMEDIA_API_URL}?${params}`);
+        const response = await fetchWithTimeout(`${WIKIMEDIA_API_URL}?${params}`);
         if (!response.ok) return null;
 
         const data = await response.json();
@@ -213,13 +281,10 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
             return [];
         }
 
-        // Sanitize scientific name for Xeno-Canto: Use only Genus and species (binomial)
-        // Trilnomials (subspecies) often break the 'sp:' filter
-        const binomialName = scientificName.split(' ').slice(0, 2).join(' ');
-        const query = encodeURIComponent(`sp:"${binomialName}" q:A`);
+        const query = encodeURIComponent(`sp:"${scientificName}" q:A`);
         const url = `https://xeno-canto.org/api/3/recordings?query=${query}&key=${apiKey}`;
 
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (!response.ok) return [];
 
         const data = await response.json();
@@ -265,22 +330,29 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
 export async function enrichSpecies(scientificName: string, xenoCantoApiKey: string): Promise<EnrichedMedia> {
     console.log(`Enriching data for: ${scientificName}`);
 
-    // 1. iNaturalist Taxon Photos
-    const inatPhotos = await fetchINatPhotos(scientificName);
+    // 1. Get Taxon ID and Rank first to see if it's a species
+    const taxonInfo = await fetchTaxonInfo(scientificName);
+    const isSpecies = taxonInfo && (taxonInfo.rank === "species" || taxonInfo.rank === "subspecies");
 
-    // 2. Wikimedia Commons fallback if iNat photos are sparse
+    if (!taxonInfo) {
+        return { inat_photos: [], male_image_url: null, female_image_url: null, juvenile_image_url: null, sounds: [], wikipedia_image: null };
+    }
+
+    // 2. Fetch basic photos and sounds in parallel
+    // We only fetch sex/age specific photos if it's a species-level taxon
+    const [inatPhotos, malePhoto, femalePhoto, juvenilePhoto, sounds] = await Promise.all([
+        fetchINatPhotos(taxonInfo.id),
+        isSpecies ? fetchINatGenderedPhoto(scientificName, "male") : Promise.resolve(null),
+        isSpecies ? fetchINatGenderedPhoto(scientificName, "female") : Promise.resolve(null),
+        isSpecies ? fetchINatJuvenilePhoto(scientificName) : Promise.resolve(null),
+        fetchXenoCantoSounds(scientificName, xenoCantoApiKey)
+    ]);
+
+    // Wikimedia fallback if needed
     let wikipediaImage: string | null = null;
     if (inatPhotos.length < 3) {
         wikipediaImage = await fetchWikimediaImage(scientificName);
     }
-
-    // 3. Gendered & Life Stage Photos (lightweight)
-    const malePhoto = await fetchINatGenderedPhoto(scientificName, "male");
-    const femalePhoto = await fetchINatGenderedPhoto(scientificName, "female");
-    const juvenilePhoto = await fetchINatJuvenilePhoto(scientificName);
-
-    // 4. Xeno-Canto Sounds
-    const sounds = await fetchXenoCantoSounds(scientificName, xenoCantoApiKey);
 
     return {
         inat_photos: inatPhotos,

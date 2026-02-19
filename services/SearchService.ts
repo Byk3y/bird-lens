@@ -14,7 +14,7 @@ export class SearchService {
         if (!query || query.length < 2) return [];
 
         try {
-            const url = `${INAT_API_URL}?q=${encodeURIComponent(query)}&taxon_id=3&per_page=10`;
+            const url = `${INAT_API_URL}?q=${encodeURIComponent(query)}&taxon_id=3&rank=species,subspecies&per_page=10`;
             const response = await fetch(url);
             const data = await response.json();
 
