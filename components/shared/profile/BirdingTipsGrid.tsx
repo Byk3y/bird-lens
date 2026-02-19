@@ -91,7 +91,9 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                     </View>
                     <View style={styles.halfCardMain}>
                         <Image source={getNestingIcon(bird)} style={[styles.habitatIcon, !bird.nesting_info && { opacity: 0.1 }]} cachePolicy="memory-disk" />
-                        <Text style={[styles.halfCardValue, !bird.nesting_info && { color: '#CCC' }]}>{bird.nesting_info?.location || displayLoadingOrUnknown}</Text>
+                        <Text style={[styles.halfCardValue, !bird.nesting_info && { color: '#CCC' }]}>
+                            {bird.nesting_info?.location ? bird.nesting_info.location.split(' ')[0] : displayLoadingOrUnknown}
+                        </Text>
                     </View>
                 </TouchableOpacity>
             </View>

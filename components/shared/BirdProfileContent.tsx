@@ -12,6 +12,7 @@ import {
     MoreHorizontal,
     Notebook
 } from 'lucide-react-native';
+import { MotiView } from 'moti';
 import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -39,6 +40,7 @@ interface BirdProfileContentProps {
     inatPhotos?: INaturalistPhoto[];
     sounds?: BirdSound[];
     isLoadingSounds?: boolean;
+    isLoadingImages?: boolean; // New prop
     onPlaySound?: () => void;
     onImagePress?: (index: number) => void;
     onOpenTips?: (section?: string) => void;
@@ -51,6 +53,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     inatPhotos = [],
     sounds = [],
     isLoadingSounds = false,
+    isLoadingImages = false, // Default false
     onPlaySound,
     onImagePress,
     onOpenTips,
@@ -72,6 +75,11 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
         const others = targetSounds.filter(s => !s.type?.toLowerCase().includes('song') && !s.type?.toLowerCase().includes('call'));
         return { songs, calls, others, total: targetSounds.length };
     }, [sounds, bird.sounds]);
+
+    // Determine actual photos to show
+    const displayPhotos = inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || [];
+    // Show skeletons if specifically loading images
+    const showSkeletons = isLoadingImages && (displayPhotos.length <= 1);
 
     return (
         <View style={styles.container}>
@@ -96,31 +104,40 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     showsHorizontalScrollIndicator={false}
                     style={styles.galleryScroll}
                 >
-                    {(inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).length > 0 ? (
-                        (inatPhotos && inatPhotos.length > 0 ? inatPhotos : bird.inat_photos || []).map((photo, idx) => {
-                            const photoUrl = typeof photo === 'string' ? photo : (photo as INaturalistPhoto).url;
-                            return (
-                                <TouchableOpacity
-                                    key={photoUrl}
-                                    style={styles.galleryItem}
-                                    onPress={() => onImagePress?.(idx)}
-                                >
-                                    <Image
-                                        source={{ uri: photoUrl }}
-                                        style={styles.galleryImage}
-                                        cachePolicy="memory-disk"
-                                    />
-                                </TouchableOpacity>
-                            );
-                        })
-                    ) : (
-                        // Render placeholders when no images are available yet
-                        [1, 2, 3].map((_, idx) => (
-                            <View key={idx} style={[styles.galleryItem, { backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center' }]}>
-                                <ImageIcon size={32} color="#CCC" />
-                            </View>
-                        ))
-                    )}
+                    {/* Render existing photos */}
+                    {displayPhotos.map((photo, idx) => {
+                        const photoUrl = typeof photo === 'string' ? photo : (photo as INaturalistPhoto).url;
+                        return (
+                            <TouchableOpacity
+                                key={`photo-${photoUrl}-${idx}`}
+                                style={styles.galleryItem}
+                                onPress={() => onImagePress?.(idx)}
+                            >
+                                <Image
+                                    source={{ uri: photoUrl }}
+                                    style={styles.galleryImage}
+                                    cachePolicy="memory-disk"
+                                />
+                            </TouchableOpacity>
+                        );
+                    })}
+
+                    {/* Append pulse skeletons if loading and we have fewer than 6 items */}
+                    {isLoadingImages && [...Array(Math.max(0, 6 - displayPhotos.length))].map((_, idx) => (
+                        <View key={`skeleton-${idx}`} style={[styles.galleryItem, { backgroundColor: '#F3F3F3', overflow: 'hidden' }]}>
+                            <MotiView
+                                from={{ opacity: 1 }}
+                                animate={{ opacity: 0.5 }}
+                                transition={{
+                                    type: 'timing',
+                                    duration: 800,
+                                    loop: true,
+                                    repeatReverse: true,
+                                }}
+                                style={{ flex: 1, backgroundColor: '#E0E0E0' }}
+                            />
+                        </View>
+                    ))}
                 </ScrollView>
             </View>
 

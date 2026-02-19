@@ -12,6 +12,7 @@ import * as Speech from 'expo-speech';
 import {
     Camera,
     ChevronLeft,
+    Image as ImageIcon,
     Share2
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -40,21 +41,63 @@ export default function BirdDetailScreen() {
 
     const bird = React.useMemo(() => JSON.parse(params.birdData as string) as BirdResult, [params.birdData]);
     const sightingDate = params.sightingDate ? new Date(params.sightingDate) : new Date();
+    const [birdDetails, setBirdDetails] = useState<BirdResult>(bird);
 
     // Initialize state from saved metadata immediately — no loading screen needed
-    const savedInatPhotos = React.useMemo(() => bird.inat_photos || [], [bird.inat_photos]);
-    const savedSounds = React.useMemo(() => bird.sounds || [], [bird.sounds]);
+    const savedInatPhotos = React.useMemo(() => {
+        if (birdDetails.inat_photos && birdDetails.inat_photos.length > 0) return birdDetails.inat_photos;
+
+        // Fallback: Construct photo objects from simple image URLs
+        const simpleImages = birdDetails.images || [];
+        if (simpleImages.length > 0) {
+            return simpleImages.map(url => ({
+                url,
+                attribution: 'iNaturalist', // Default attribution
+                license: 'cc-by'
+            }));
+        }
+
+        // Deep Fallback: Use the single image passed via params (e.g. from capture)
+        if (params.imageUrl) {
+            return [{
+                url: params.imageUrl,
+                attribution: 'User Capture',
+                license: 'cc-by'
+            }];
+        }
+
+        return [];
+    }, [birdDetails.inat_photos, birdDetails.images, params.imageUrl]);
+
+    const savedSounds = React.useMemo(() => birdDetails.sounds || [], [birdDetails.sounds]);
     const hasSavedData = savedInatPhotos.length > 0 || savedSounds.length > 0;
 
     const [media, setMedia] = useState<BirdMedia | null>(
         // Pre-populate from in-memory cache if available
-        MediaService.getCached(bird.scientific_name)
+        MediaService.getCached(birdDetails.scientific_name)
     );
     const [inatPhotos, setInatPhotos] = useState<INaturalistPhoto[]>(savedInatPhotos);
     const [sounds, setSounds] = useState<BirdSound[]>(savedSounds);
-    const [loading, setLoading] = useState(!hasSavedData && !media);
+
+    // Separate loading states:
+    // 1. initialLoading: Show full screen spinner if we have NO data OR if we're coming from search 
+    //    and waiting for the first batch of enrichment (media/metadata).
+    // 2. isEnriching: Show pulse animations/skeletons in gallery while fetching even more media.
+    const isSearchSkeleton = savedInatPhotos.length <= 1;
+    const initialLoading = (!hasSavedData || isSearchSkeleton) && !media;
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [isEnriching, setIsEnriching] = useState((!hasSavedData || isSearchSkeleton) && !media);
+
+    // Stabilized Hero Image logic
+    const heroImageSource = React.useMemo(() => {
+        // High quality photos from iNaturalist (provided by media enrichment)
+        if (inatPhotos.length > 0) {
+            return inatPhotos[selectedImageIndex]?.url || inatPhotos[0].url;
+        }
+        // Fallback to the search thumbnail or passed image
+        return params.imageUrl || birdDetails.male_image_url || null;
+    }, [inatPhotos, selectedImageIndex, params.imageUrl, birdDetails.male_image_url]);
     const scrollRef = useRef<ScrollView>(null);
 
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -68,7 +111,7 @@ export default function BirdDetailScreen() {
     useEffect(() => {
         // If we already have cached media data, skip the fetch entirely
         if (media) {
-            setLoading(false);
+            setIsEnriching(false);
             return;
         }
 
@@ -81,17 +124,51 @@ export default function BirdDetailScreen() {
 
                 setMedia(mediaData);
 
-                // Only update photos/sounds if we didn't already have saved data
-                if (savedInatPhotos.length === 0 && mediaData.inat_photos?.length) {
-                    setInatPhotos(mediaData.inat_photos);
+                // Update photos if fetched data is richer than initial data (e.g. single search thumbnail)
+                if (mediaData.inat_photos?.length) {
+                    // Check if the initial image (params.imageUrl) is a low-res thumbnail (e.g. contains 'square' or 'small')
+                    // If it is, we want to REPLACE it with high-quality images, not just append them.
+                    const initialUrl = params.imageUrl;
+                    const isLowResThumbnail = initialUrl && (initialUrl.includes('square') || initialUrl.includes('small'));
+
+                    if (isLowResThumbnail) {
+                        // If it's a low-res thumbnail, replace entirely with the new high-quality photos
+                        setInatPhotos(mediaData.inat_photos);
+                    } else {
+                        // Otherwise (e.g. user capture or high-res), deduplicate and append
+                        const filteredPhotos = mediaData.inat_photos.filter(
+                            p => p.url !== initialUrl
+                        );
+
+                        if (filteredPhotos.length > 0) {
+                            setInatPhotos([
+                                ...(savedInatPhotos.length > 0 ? savedInatPhotos : []),
+                                ...filteredPhotos
+                            ]);
+                        }
+                    }
                 }
                 if (savedSounds.length === 0 && mediaData.sounds?.length) {
                     setSounds(mediaData.sounds);
                 }
+
+                // Merge AI metadata and gendered images if available
+                if (mediaData.metadata || mediaData.male_image_url) {
+                    setBirdDetails(prev => ({
+                        ...prev,
+                        ...(mediaData.metadata || {}),
+                        male_image_url: mediaData.male_image_url || prev.male_image_url,
+                        female_image_url: mediaData.female_image_url || prev.female_image_url,
+                        juvenile_image_url: mediaData.juvenile_image_url || prev.juvenile_image_url,
+                        // Preserve identification keys
+                        scientific_name: prev.scientific_name,
+                        name: prev.name
+                    }));
+                }
             } catch (error) {
                 console.warn('Background media fetch failed (non-blocking):', error);
             } finally {
-                if (isMounted) setLoading(false);
+                if (isMounted) setIsEnriching(false);
             }
         }
 
@@ -103,8 +180,8 @@ export default function BirdDetailScreen() {
     const handleShare = async () => {
         try {
             await Share.share({
-                message: `Check out this ${bird.name} I spotted! It's scientific name is ${bird.scientific_name}.`,
-                url: params.imageUrl as string || media?.image?.url || bird.images?.[0] || '',
+                message: `Check out this ${birdDetails.name} I spotted! It's scientific name is ${birdDetails.scientific_name}.`,
+                url: params.imageUrl as string || media?.image?.url || birdDetails.images?.[0] || '',
             });
         } catch (error) {
             console.error('Error sharing:', error);
@@ -118,7 +195,10 @@ export default function BirdDetailScreen() {
             if (isSpeaking) {
                 await Speech.stop();
             }
-            Speech.speak(bird.scientific_name, {
+            if (isSpeaking) {
+                await Speech.stop();
+            }
+            Speech.speak(birdDetails.scientific_name, {
                 language: 'en',
                 pitch: 1.0,
                 rate: 0.8,
@@ -132,7 +212,7 @@ export default function BirdDetailScreen() {
         router.push({
             pathname: '/birding-tips',
             params: {
-                birdData: JSON.stringify(bird),
+                birdData: JSON.stringify(birdDetails),
                 initialSection: section
             }
         });
@@ -141,11 +221,11 @@ export default function BirdDetailScreen() {
     const handleOpenIdentification = () => {
         router.push({
             pathname: '/identification-detail',
-            params: { birdData: JSON.stringify(bird) }
+            params: { birdData: JSON.stringify(birdDetails) }
         });
     };
 
-    if (loading) {
+    if (initialLoading) {
         return <LoadingScreen onBack={() => router.back()} message="Opening Profile..." />;
     }
 
@@ -165,31 +245,44 @@ export default function BirdDetailScreen() {
             >
                 {/* Hero Image Section */}
                 <View style={styles.heroWrapper}>
-                    <Image
-                        source={{ uri: params.imageUrl || inatPhotos[0]?.url || bird.images?.[0] }}
-                        style={styles.heroBlur}
-                        blurRadius={100}
-                    />
-                    <View style={styles.imageCardContainer}>
+                    {heroImageSource && (
                         <Image
-                            source={{ uri: params.imageUrl || inatPhotos[0]?.url || bird.images?.[0] }}
-                            style={styles.heroImage}
-                            resizeMode="cover"
+                            source={{ uri: heroImageSource }}
+                            style={styles.heroBlur}
+                            blurRadius={100}
                         />
+                    )}
+                    <View style={styles.imageCardContainer}>
+                        {heroImageSource ? (
+                            <Image
+                                source={{ uri: heroImageSource }}
+                                style={styles.heroImage}
+                                contentFit="cover"
+                                transition={400}
+                            />
+                        ) : (
+                            <View style={[styles.heroImage, { backgroundColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center' }]}>
+                                <ImageIcon color="#333" size={48} />
+                            </View>
+                        )}
                     </View>
-                    <View style={styles.timestampContainer}>
-                        <Text style={styles.timestampLabel}>posted on</Text>
-                        <Text style={styles.timestampValue}>{format(sightingDate, 'do MMM')}</Text>
-                    </View>
+                    {params.sightingDate && (
+                        <View style={styles.timestampContainer}>
+                            <Text style={styles.timestampLabel}>posted on</Text>
+                            <Text style={styles.timestampValue}>{format(sightingDate, 'do MMM')}</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Main Content */}
                 <View style={styles.mainInfoSection}>
                     <BirdProfileContent
-                        bird={bird}
+                        bird={birdDetails}
                         inatPhotos={inatPhotos}
                         sounds={sounds}
                         isLoadingSounds={sounds.length === 0 && !media}
+                        isLoadingImages={isEnriching} // Pass isEnriching state for gallery pulse
+                        isEnrichmentComplete={!isEnriching} // New prop for tips and metadata
                         onPlaySound={handlePronounce}
                         onImagePress={(idx) => {
                             setSelectedImageIndex(idx);

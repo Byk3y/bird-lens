@@ -14,8 +14,13 @@ export interface BirdMedia {
         taxonKey: number | null;
         tileUrl: string | null;
     };
+    male_image_url?: string | null;
+    female_image_url?: string | null;
+    juvenile_image_url?: string | null;
+    wikipedia_image?: string | null;
     inat_photos?: INaturalistPhoto[];
     sounds?: BirdSound[];
+    metadata?: any;
 }
 
 interface CacheEntry {

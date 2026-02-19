@@ -1,8 +1,9 @@
 import { Colors, Spacing } from '@/constants/theme';
 import { SearchService } from '@/services/SearchService';
+import { BirdResult } from '@/types/scanner';
 import { BirdSuggestion, SearchHistoryItem } from '@/types/search';
 import { router } from 'expo-router';
-import { ChevronLeft, ChevronRight, Search, Trash2, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -37,6 +38,7 @@ export default function SearchScreen() {
 
     useEffect(() => {
         loadHistory();
+        SearchService.clearHistory(); // Ensure history is not persisted as requested
         setTimeout(() => searchInputRef.current?.focus(), 100);
     }, []);
 
@@ -64,31 +66,32 @@ export default function SearchScreen() {
     };
 
     const handleSelectBird = async (bird: BirdSuggestion) => {
-        await SearchService.saveToHistory(bird);
-
-        const skeletonBird: any = {
+        const skeletonBird: BirdResult = {
             name: bird.preferred_common_name || bird.name,
             scientific_name: bird.name,
-            inat_photos: bird.default_photo ? [{
-                url: bird.default_photo.square_url,
-                attribution: 'iNaturalist',
-                license: 'cc-by'
-            }] : [],
+            also_known_as: [],
             taxonomy: {
                 family: '',
                 family_scientific: '',
                 genus: bird.name.split(' ')[0],
                 genus_description: '',
             },
+            identification_tips: { male: '', female: '' },
             description: '',
             diet: '',
             diet_tags: [],
             habitat: '',
             habitat_tags: [],
-            identification_tips: { male: '', female: '' },
             nesting_info: { description: '', location: '', type: '' },
-            key_facts: { colors: [] },
-            confidence: 1
+            feeder_info: { attracted_by: [], feeder_types: [] },
+            behavior: '',
+            rarity: 'Common',
+            confidence: 1,
+            inat_photos: bird.default_photo ? [{
+                url: bird.default_photo.square_url,
+                attribution: 'iNaturalist',
+                license: 'cc-by'
+            }] : []
         };
 
         router.replace({
@@ -100,45 +103,7 @@ export default function SearchScreen() {
         });
     };
 
-    const handleSelectHistory = (item: SearchHistoryItem) => {
-        const skeletonBird: any = {
-            name: item.preferred_common_name || item.name,
-            scientific_name: item.name,
-            inat_photos: item.thumbnail ? [{
-                url: item.thumbnail,
-                attribution: 'iNaturalist',
-                license: 'cc-by'
-            }] : [],
-            taxonomy: {
-                family: '',
-                family_scientific: '',
-                genus: item.name.split(' ')[0],
-                genus_description: '',
-            },
-            description: '',
-            diet: '',
-            diet_tags: [],
-            habitat: '',
-            habitat_tags: [],
-            identification_tips: { male: '', female: '' },
-            nesting_info: { description: '', location: '', type: '' },
-            key_facts: { colors: [] },
-            confidence: 1
-        };
 
-        router.replace({
-            pathname: '/bird-detail',
-            params: {
-                birdData: JSON.stringify(skeletonBird),
-                imageUrl: item.thumbnail
-            }
-        });
-    };
-
-    const clearHistory = async () => {
-        await SearchService.clearHistory();
-        setHistory([]);
-    };
 
     const renderHighlight = (text: string, highlight: string) => {
         if (!highlight.trim()) return <Text style={styles.resultName}>{text}</Text>;
@@ -186,25 +151,25 @@ export default function SearchScreen() {
             </View>
 
             {query.length < 2 ? (
-                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                    {/* Recent Searches */}
+                <ScrollView
+                    style={styles.content}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {/* Recent Searches (Labels Only) */}
                     {history.length > 0 && (
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Recent Search</Text>
-                                <TouchableOpacity onPress={clearHistory}>
-                                    <Trash2 color={Colors.textTertiary} size={20} />
-                                </TouchableOpacity>
+                                <Text style={styles.sectionTitle}>Recent Searches</Text>
                             </View>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyList}>
                                 {history.map((item) => (
-                                    <TouchableOpacity
+                                    <View
                                         key={item.id}
                                         style={styles.historyPill}
-                                        onPress={() => handleSelectHistory(item)}
                                     >
                                         <Text style={styles.historyText}>{item.preferred_common_name}</Text>
-                                    </TouchableOpacity>
+                                    </View>
                                 ))}
                             </ScrollView>
                         </View>
@@ -240,6 +205,7 @@ export default function SearchScreen() {
                             data={results}
                             keyExtractor={(item) => item.id.toString()}
                             contentContainerStyle={styles.resultsList}
+                            keyboardShouldPersistTaps="handled"
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={styles.resultRow}
@@ -438,9 +404,9 @@ const styles = StyleSheet.create({
     },
     loadingContainer: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        paddingTop: 40,
+        paddingTop: 100,
     },
     emptyContainer: {
         padding: 40,

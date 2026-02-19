@@ -16,7 +16,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce 
                 <View style={{ flex: 1 }}>
                     <Text style={styles.mainTitle}>
                         {bird.name}
-                        <Text style={styles.speciesOfText}>, a species of</Text>
+                        {(bird.taxonomy?.family || bird.taxonomy?.family_scientific) && (
+                            <Text style={styles.speciesOfText}>, a species of</Text>
+                        )}
                     </Text>
                     {(bird.taxonomy?.family || bird.taxonomy?.family_scientific) && (
                         <Text style={styles.familyText}>
