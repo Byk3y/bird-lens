@@ -40,8 +40,20 @@ serve(async (req: Request) => {
         // Check if cache is stale (14 days)
         const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 14 * 24 * 60 * 60 * 1000);
 
-        // If cache is valid AND has metadata, return it
-        if (cached && !isStale && identificationData) {
+        // Check for missing new fields in metadata (also_known_as, genus_description)
+        const isMetadataIncomplete = identificationData && (
+            !identificationData.also_known_as ||
+            !Array.isArray(identificationData.also_known_as) ||
+            !identificationData.taxonomy?.genus_description
+        );
+
+        if (isMetadataIncomplete) {
+            console.log(`Metadata incomplete for ${scientific_name} (missing fields), forcing regeneration.`);
+            identificationData = null;
+        }
+
+        // If cache is valid AND has COMPLETE metadata, return it
+        if (cached && !isStale && identificationData && !isMetadataIncomplete) {
             console.log(`Cache hit for media & metadata: ${scientific_name}`);
             return new Response(JSON.stringify({
                 image: {
