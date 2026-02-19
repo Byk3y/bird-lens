@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { generateBirdMetadata } from "./_shared/ai-enrichment.ts";
+import { generateBatchBirdMetadata, generateBirdMetadata } from "./_shared/ai-enrichment.ts";
 import { corsHeaders, createStreamResponse } from "./_shared/cors.ts";
 import { enrichSpecies } from "./_shared/enrichment.ts";
 import { cleanAndParseJson } from "./_shared/utils.ts";
@@ -148,32 +148,22 @@ Return a JSON object with a "candidates" array. Each object in the array must in
 Example response format: {"candidates": [{"name": "...", "scientific_name": "...", "confidence": 0.95, "taxonomy": {...}}]}
 `;
 
-        const enrichmentPromptInstructions = `
-For the following bird species, provide comprehensive field-guide quality metadata.
-Species: [[SPECIES_NAMES]]
+        const audioPromptInstructions = `
+Analyze this audio recording to identify the bird species based on its vocalizations (song, call, or alarm).
+Pay close attention to rhythm, pitch, frequency range, and repetition patterns.
+Provide the **Top 3 most probable species** candidates.
 
-Return a JSON object with a "birds" array. Each bird must include:
-- "name": Common name (for mapping)
-- "habitat": Detailed ecological habitat description.
-- "habitat_tags": Array of 1-3 short keywords for the habitat (e.g., ["Rainforest", "Montane"]).
-- "nesting_info": { 
-    "description": "Comprehensive materials/clutch info", 
-    "location": "A short 2-4 word summary of where it nests", 
-    "type": "Nest type" 
-  }
-- "identification_tips": { "male": "Tips for males", "female": "Tips for females", "juvenile": "Tips for juveniles" }
-- "behavior": "One memorably punchy behavioral fact, distinct from diet."
-- "also_known_as": Array of strings.
-- "description": 2-3 sentence overview.
-- "diet": Primary diet description.
-- "diet_tags": Array of simple dietary keywords. Use specific terms like ["Aquatic plants", "Small fish", "Invertebrates", "Small mammals", "Crustaceans", "Reptiles & Amphibians", "Carrion", "Grains", "Buds & Shoots", "Insects", "Fruit", "Seeds", "Nectar"] where applicable for consistent visual mapping.
-- "conservation_status": "Current global conservation status (e.g., Least Concern, Near Threatened, Vulnerable, Endangered)."
-- "key_facts": { 
-    "size": "value (e.g., 9-11 inches)", 
-    "wingspan": "value (e.g., 15-20 inches)",
-    "wing_shape": "value (e.g., Pointed, Broad)",
-    "tail_shape": "value (e.g., Notched, Square)",
-    "colors": ["Primary", "Colors", "As", "Array"]
+Return a JSON object with a "candidates" array. Each object in the array must include:
+- "name": Common name
+- "scientific_name": Scientific name
+- "confidence": A number from 0-1
+- "taxonomy": {
+    "family": "Common name of family",
+    "family_scientific": "Scientific name of family",
+    "genus": "Scientific name of genus",
+    "genus_description": "Commonly called [Common Name of Genus]",
+    "order": "Scientific name of order",
+    "order_description": "Common name of order"
   }
 `;
 
@@ -183,7 +173,7 @@ Return a JSON object with a "birds" array. Each bird must include:
 
         const fastPrompt = image
             ? `${persona}\n\n${contextPrompt}Identify the bird in this image.\n${fastPromptInstructions}`
-            : `${persona}\n\n${contextPrompt}Identify the bird in this audio clip.\n${fastPromptInstructions}`;
+            : `${persona}\n\n${contextPrompt}Identify the bird in this audio clip.\n${audioPromptInstructions}`;
 
         let parts: any[] = [{ text: fastPrompt }];
         if (image) parts.push({ inline_data: { mime_type: "image/webp", data: image } });
@@ -234,18 +224,35 @@ Return a JSON object with a "birds" array. Each bird must include:
                         }
                     };
 
-                    // PHASE 1: Fast Identification (OpenRouter primary, Gemini immediate fallback)
+                    // PHASE 1: Fast Identification
+                    // Logic:
+                    // - If Audio: Use Gemini 2.0 Flash (Native Multi-modal) as PRIMARY. It "hears" better.
+                    // - If Image: Use OpenRouter (GPT-4o) as PRIMARY. It sees detail better.
                     try {
-                        identificationResponse = await attemptAI(true, fastPrompt);
-                        if (!identificationResponse.ok) {
-                            const errBody = await identificationResponse.text().catch(() => "unknown");
-                            console.warn(`[PHASE1] OpenRouter failed ${identificationResponse.status}: ${errBody.substring(0, 200)}`);
-                            throw new Error("OpenRouter failed");
+                        if (audio) {
+                            // --- AUDIO PATH: Gemini First ---
+                            console.log("[PHASE1] Audio detected. Using Gemini 2.0 Flash as primary.");
+                            try {
+                                isFallback = true; // Mark as Gemini for parsing logic
+                                identificationResponse = await attemptAI(false, fastPrompt); // Gemini direct/fallback method
+                            } catch (err) {
+                                console.warn("[PHASE1] Gemini Audio failed, trying OpenRouter:", err);
+                                isFallback = false; // Mark as OpenRouter
+                                identificationResponse = await attemptAI(true, fastPrompt);
+                            }
+                        } else {
+                            // --- IMAGE PATH: OpenRouter (GPT-4o) First ---
+                            try {
+                                identificationResponse = await attemptAI(true, fastPrompt);
+                                if (!identificationResponse.ok) throw new Error("OpenRouter failed");
+                            } catch (err) {
+                                console.warn("[PHASE1] OpenRouter Image failed, falling back to Gemini:", err);
+                                isFallback = true;
+                                identificationResponse = await attemptAI(false, fastPrompt);
+                            }
                         }
                     } catch (err: any) {
-                        console.warn("[PHASE1] Falling back to Gemini:", err?.message?.substring(0, 100));
-                        isFallback = true;
-                        identificationResponse = await attemptAI(false, fastPrompt);
+                        throw new Error("All AI models failed to identify the bird. Please try again.");
                     }
 
                     const fastResult = await identificationResponse.json();
@@ -257,23 +264,25 @@ Return a JSON object with a "birds" array. Each bird must include:
                         const parsed = cleanAndParseJson(content, "OpenRouter");
                         // Handle multiple possible response structures from json_object mode
                         candidates = parsed.candidates || parsed.birds || parsed.species || parsed.results || (Array.isArray(parsed) ? parsed : []);
-                        console.log(`[PHASE1] OpenRouter parsed ${candidates.length} candidates, keys: ${Object.keys(parsed).join(',')}`);
+                        console.log(`[PHASE1] OpenRouter parsed ${candidates.length} candidates`);
                     } else {
                         const content = fastResult.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!content) throw new Error("Both AI providers returned empty content. Please try again.");
+                        if (!content) throw new Error("AI provider returned empty content.");
                         const parsed = cleanAndParseJson(content, "Gemini");
                         // Handle multiple possible response structures
                         candidates = parsed.candidates || parsed.birds || parsed.species || parsed.results || (Array.isArray(parsed) ? parsed : []);
-                        console.log(`[PHASE1] Gemini parsed ${candidates.length} candidates, keys: ${Object.keys(parsed).join(',')}`);
+                        console.log(`[PHASE1] Gemini parsed ${candidates.length} candidates`);
                     }
 
                     if (!candidates || candidates.length === 0) {
-                        throw new Error("AI returned no bird candidates. Please try again with a clearer image.");
+                        throw new Error(audio
+                            ? "Could not identify any distinct bird sounds. Try recording closer to the source."
+                            : "AI returned no bird candidates. Please try again with a clearer image.");
                     }
 
                     candidates = candidates.slice(0, 3);
                     writeChunk(controller, { type: "candidates", data: candidates });
-                    writeChunk(controller, { type: "progress", message: "Writing your field guide..." });
+                    writeChunk(controller, { type: "progress", message: "Consulting field guides..." });
 
                     // PHASE 2: Parallel Background Enrichment
                     const xenoKey = XENO_CANTO_API_KEY || "";
@@ -299,15 +308,25 @@ Return a JSON object with a "birds" array. Each bird must include:
                                 writeChunk(controller, { type: "metadata", index: 0, data: meta });
                             }
 
-                            // 2. Fetch others in the background if they exist
+                            // 2. Fetch others in a single batch if they exist
                             if (candidates.length > 1) {
                                 const others = candidates.slice(1);
-                                await Promise.all(others.map(async (cand, i) => {
-                                    const meta = await generateBirdMetadata(cand.scientific_name);
-                                    if (meta) {
-                                        writeChunk(controller, { type: "metadata", index: i + 1, data: meta });
-                                    }
-                                }));
+                                const otherNames = others.map(c => c.scientific_name);
+                                const batchMeta = await generateBatchBirdMetadata(otherNames);
+
+                                if (batchMeta && batchMeta.length > 0) {
+                                    others.forEach((cand, i) => {
+                                        const idx = i + 1;
+                                        const meta = batchMeta.find((m: any) =>
+                                            m.scientific_name?.toLowerCase() === cand.scientific_name.toLowerCase() ||
+                                            m.name?.toLowerCase() === cand.name.toLowerCase()
+                                        ) || batchMeta[i];
+
+                                        if (meta) {
+                                            writeChunk(controller, { type: "metadata", index: idx, data: meta });
+                                        }
+                                    });
+                                }
                             }
                         } finally {
                             clearInterval(heartbeatId);

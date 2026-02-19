@@ -213,7 +213,10 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
             return [];
         }
 
-        const query = encodeURIComponent(`sp:"${scientificName}" q:A`);
+        // Sanitize scientific name for Xeno-Canto: Use only Genus and species (binomial)
+        // Trilnomials (subspecies) often break the 'sp:' filter
+        const binomialName = scientificName.split(' ').slice(0, 2).join(' ');
+        const query = encodeURIComponent(`sp:"${binomialName}" q:A`);
         const url = `https://xeno-canto.org/api/3/recordings?query=${query}&key=${apiKey}`;
 
         const response = await fetch(url);
