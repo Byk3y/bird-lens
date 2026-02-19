@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { generateBirdMetadata } from "./_shared/ai-enrichment.ts";
 import { corsHeaders, createStreamResponse } from "./_shared/cors.ts";
 import { enrichSpecies } from "./_shared/enrichment.ts";
 import { cleanAndParseJson } from "./_shared/utils.ts";
@@ -292,54 +293,21 @@ Return a JSON object with a "birds" array. Each bird must include:
                         try {
                             // 1. Prioritize Top Candidate for instant UI satisfaction
                             const topCandidate = candidates[0];
-                            const topPrompt = enrichmentPromptInstructions.replace("[[SPECIES_NAMES]]", topCandidate.scientific_name);
-                            const topResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                                method: "POST",
-                                headers: { "Authorization": `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                    model: openRouterModel,
-                                    messages: [{ role: "user", content: topPrompt }],
-                                    response_format: { type: "json_object" }
-                                }),
-                            });
+                            const meta = await generateBirdMetadata(topCandidate.scientific_name);
 
-                            if (topResponse.ok) {
-                                const data = await topResponse.json();
-                                const parsed = cleanAndParseJson(data.choices[0].message.content, "Enrichment-Top");
-                                const meta = parsed.birds?.[0] || parsed.candidates?.[0] || (Array.isArray(parsed) ? parsed[0] : parsed);
-                                if (meta) writeChunk(controller, { type: "metadata", index: 0, data: meta });
+                            if (meta) {
+                                writeChunk(controller, { type: "metadata", index: 0, data: meta });
                             }
 
                             // 2. Fetch others in the background if they exist
                             if (candidates.length > 1) {
                                 const others = candidates.slice(1);
-                                const speciesNames = others.map(c => c.scientific_name).join(", ");
-                                const othersPrompt = enrichmentPromptInstructions.replace("[[SPECIES_NAMES]]", speciesNames);
-
-                                const othersResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                                    method: "POST",
-                                    headers: { "Authorization": `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                        model: openRouterModel,
-                                        messages: [{ role: "user", content: othersPrompt }],
-                                        response_format: { type: "json_object" }
-                                    }),
-                                });
-
-                                if (othersResponse.ok) {
-                                    const data = await othersResponse.json();
-                                    const parsed = cleanAndParseJson(data.choices[0].message.content, "Enrichment-Others");
-                                    const metadataList = parsed.birds || parsed.candidates || (Array.isArray(parsed) ? parsed : []);
-
-                                    others.forEach((cand, i) => {
-                                        const idx = i + 1;
-                                        const meta = metadataList.find((m: any) =>
-                                            m.name?.toLowerCase() === cand.name.toLowerCase() ||
-                                            m.scientific_name?.toLowerCase() === cand.scientific_name.toLowerCase()
-                                        ) || metadataList[i];
-                                        if (meta) writeChunk(controller, { type: "metadata", index: idx, data: meta });
-                                    });
-                                }
+                                await Promise.all(others.map(async (cand, i) => {
+                                    const meta = await generateBirdMetadata(cand.scientific_name);
+                                    if (meta) {
+                                        writeChunk(controller, { type: "metadata", index: i + 1, data: meta });
+                                    }
+                                }));
                             }
                         } finally {
                             clearInterval(heartbeatId);

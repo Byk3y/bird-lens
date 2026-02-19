@@ -21,6 +21,7 @@ export const Colors = {
 
   // States
   white: '#ffffff',
+  border: '#e2e8f0',
   error: '#ef4444',
   success: '#10b981',
 };

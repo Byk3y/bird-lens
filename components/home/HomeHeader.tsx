@@ -4,11 +4,15 @@ import React from 'react';
 import {
     StyleSheet,
     Text,
-    TextInput,
-    View,
+    View
 } from 'react-native';
 
+import { useRouter } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
+
 export const HomeHeader: React.FC = () => {
+    const router = useRouter();
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Good Morning';
@@ -26,14 +30,14 @@ export const HomeHeader: React.FC = () => {
 
             {/* Search Bar - Crystallized */}
             <View style={styles.searchContainer}>
-                <View style={styles.searchBar}>
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={styles.searchBar}
+                    onPress={() => router.push('/search')}
+                >
                     <Search color="#475569" size={20} style={styles.searchIcon} />
-                    <TextInput
-                        placeholder="Search over 30,000 species"
-                        placeholderTextColor={Colors.textTertiary}
-                        style={styles.searchInput}
-                    />
-                </View>
+                    <Text style={styles.searchPlaceholder}>Search over 30,000 species</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -78,6 +82,12 @@ const styles = StyleSheet.create({
     searchIcon: {
         marginRight: Spacing.sm,
         opacity: 0.9,
+    },
+    searchPlaceholder: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '500',
+        color: Colors.textTertiary,
     },
     searchInput: {
         flex: 1,
