@@ -183,8 +183,8 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                 </View>
             )}
 
-            {/* Gallery Section - Only show if in photo mode or if we have photos in sound mode */}
-            {(sourceMode === 'photo' || displayPhotos.length > 0) && (
+            {/* Gallery Section - Show if we have photos, if we're in photo mode, or if we're currently loading images */}
+            {(sourceMode === 'photo' || displayPhotos.length > 0 || isLoadingImages) && (
                 <View style={styles.gallerySection}>
                     <View style={styles.sectionHeaderRow}>
                         <View style={styles.sectionTitleLeft}>

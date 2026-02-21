@@ -38,8 +38,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce 
                 <View style={styles.metaContainer}>
                     {bird.also_known_as && bird.also_known_as.length > 0 && (
                         <View style={styles.metaRow}>
-                            <Text style={styles.metaLabel}>Also known as: </Text>
-                            <Text style={styles.metaValue}>{bird.also_known_as.join(', ')}</Text>
+                            <Text style={styles.metaFlowText}>
+                                <Text style={styles.metaLabel}>Also known as: </Text>
+                                <Text style={styles.metaValue}>{bird.also_known_as.join(', ')}</Text>
+                            </Text>
                         </View>
                     )}
                     {bird.scientific_name && (
@@ -48,8 +50,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce 
                             onPress={onPronounce}
                             activeOpacity={0.7}
                         >
-                            <Text style={styles.metaLabel}>Scientific name: </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={styles.metaRowContent}>
+                                <Text style={styles.metaLabel}>Scientific name: </Text>
                                 <Text style={[styles.metaValue, { fontStyle: 'italic' }]}>{bird.scientific_name}</Text>
                                 <View style={styles.soundIconContainer}>
                                     <Volume2 size={13} color="#FFFFFF" />
@@ -134,10 +136,17 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     metaRow: {
+        marginBottom: 6,
+        paddingHorizontal: 0,
+    },
+    metaFlowText: {
+        fontSize: 17,
+        lineHeight: 24,
+    },
+    metaRowContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
-        paddingHorizontal: 0,
+        flexWrap: 'wrap',
     },
     metaLabel: {
         fontSize: 17,
