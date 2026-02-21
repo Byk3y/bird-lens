@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Forward, Gem, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
+import { Forward, Gem, Mic, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useCallback, useRef, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -21,7 +21,7 @@ const { width } = Dimensions.get('window');
 const CACHE_KEY = 'bird_lens_collection_cache';
 const REFRESH_COOLDOWN_MS = 30 * 1000; // Don't refetch within 30 seconds
 
-const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, scientific_name, rarity, confidence, metadata';
+const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, audio_url, scientific_name, rarity, confidence, metadata';
 
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
@@ -233,6 +233,11 @@ export default function MeScreen() {
                                                 contentFit="cover"
                                                 transition={500}
                                             />
+                                            {sighting.audio_url && (
+                                                <View style={styles.audioTag}>
+                                                    <Mic color={Colors.white} size={14} />
+                                                </View>
+                                            )}
                                         </View>
 
                                         <View style={styles.cardContent}>
@@ -388,10 +393,19 @@ const styles = StyleSheet.create({
         width: '100%',
         aspectRatio: 0.9,
         backgroundColor: '#f1f5f9',
+        position: 'relative',
     },
     cardImage: {
         width: '100%',
         height: '100%',
+    },
+    audioTag: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: 6,
+        borderRadius: 20,
     },
     cardContent: {
         padding: 12,

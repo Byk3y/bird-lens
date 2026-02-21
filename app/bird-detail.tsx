@@ -1,4 +1,5 @@
 import { LoadingScreen } from '@/components/common/LoadingScreen';
+import { MiniAudioPlayer } from '@/components/scanner/MiniAudioPlayer';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
@@ -284,6 +285,12 @@ export default function BirdDetailScreen() {
                             <Text style={styles.timestampValue}>{format(sightingDate, 'do MMM')}</Text>
                         </View>
                     )}
+
+                    {birdDetails.audio_url && (
+                        <View style={styles.listenBackContainer}>
+                            <MiniAudioPlayer uri={birdDetails.audio_url} />
+                        </View>
+                    )}
                 </View>
 
                 {/* Main Content */}
@@ -405,6 +412,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         textAlign: 'right',
+    },
+    listenBackContainer: {
+        position: 'absolute',
+        bottom: 50,
+        left: 16,
+        zIndex: 60,
     },
     mainInfoSection: {
         paddingTop: 16,

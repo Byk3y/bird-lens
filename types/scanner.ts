@@ -79,6 +79,8 @@ export interface BirdResult {
     sounds?: BirdSound[];
     wikipedia_image?: string;
     gbif_taxon_key?: string;
+    metadata?: Record<string, any>;
+    audio_url?: string;
 }
 
 export type ScanMode = 'photo' | 'sound';
