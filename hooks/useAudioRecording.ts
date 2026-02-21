@@ -1,3 +1,4 @@
+import { configureAudioMode, waitForAudioInit } from '@/lib/audioConfig';
 import { Audio } from 'expo-av';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -10,32 +11,51 @@ export function useAudioRecording() {
 
     const startRecording = useCallback(async () => {
         try {
+            await waitForAudioInit();
             await Audio.requestPermissionsAsync();
-            await Audio.setAudioModeAsync({
-                allowsRecordingIOS: true,
-                playsInSilentModeIOS: true,
-            });
+            await configureAudioMode(true);
 
             const { recording } = await Audio.Recording.createAsync(
                 {
                     ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
                     android: {
-                        ...Audio.RecordingOptionsPresets.HIGH_QUALITY.android,
-                        extension: '.m4a',
-                        outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-                        audioEncoder: Audio.AndroidAudioEncoder.AAC,
+                        extension: '.wav',
+                        outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+                        audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+                        sampleRate: 48000,
+                        numberOfChannels: 1,
+                        bitRate: 64000,
                     },
                     ios: {
-                        ...Audio.RecordingOptionsPresets.HIGH_QUALITY.ios,
-                        extension: '.m4a',
-                        outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+                        extension: '.wav',
+                        outputFormat: Audio.IOSOutputFormat.LINEARPCM,
                         audioQuality: Audio.IOSAudioQuality.MAX,
+                        sampleRate: 48000,
+                        numberOfChannels: 1,
+                        bitRate: 64000,
+                        linearPCMBitDepth: 16,
+                        linearPCMIsBigEndian: false,
+                        linearPCMIsFloat: false,
                     },
                 },
                 (status) => {
                     setDurationMillis(status.durationMillis);
                     if (status.metering !== undefined) {
                         setMeteringLevel(status.metering);
+                    }
+
+                    // Auto-stop at 10 seconds to prevent Railway Varnish 503 errors
+                    if (status.durationMillis >= 10000 && status.isRecording) {
+                        recording.stopAndUnloadAsync().then(() => {
+                            const uri = recording.getURI();
+                            setRecordingUri(uri);
+                            setRecording(null);
+                            setIsRecording(false);
+
+                            Audio.setAudioModeAsync({
+                                allowsRecordingIOS: false,
+                            }).then(() => configureAudioMode(false));
+                        }).catch(err => console.error("Auto-stop failed", err));
                     }
                 },
                 100 // Progress interval
@@ -62,8 +82,28 @@ export function useAudioRecording() {
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
             });
+            await configureAudioMode(false);
         } catch (err) {
             console.error('Failed to stop recording', err);
+        } finally {
+            setRecording(null);
+            setIsRecording(false);
+        }
+    }, [recording]);
+
+    const stopAndCleanup = useCallback(async () => {
+        if (!recording) return;
+        try {
+            await recording.stopAndUnloadAsync();
+        } catch (err) {
+            // Silently fail if already unloaded or other state issue
+        } finally {
+            setRecording(null);
+            setIsRecording(false);
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+            });
+            await configureAudioMode(false);
         }
     }, [recording]);
 
@@ -79,16 +119,26 @@ export function useAudioRecording() {
     useEffect(() => {
         return () => {
             if (recording) {
-                recording.stopAndUnloadAsync();
+                recording.stopAndUnloadAsync().catch(() => {
+                    // Ignore errors if already unloaded
+                });
             }
         };
     }, [recording]);
+
+    const clearRecording = useCallback(() => {
+        setRecordingUri(null);
+        setDurationMillis(0);
+        setMeteringLevel(-160);
+    }, []);
 
     return {
         isRecording,
         recordingUri,
         startRecording,
         stopRecording,
+        stopAndCleanup,
+        clearRecording,
         formattedTime: formatTime(durationMillis),
         durationMillis,
         meteringLevel,

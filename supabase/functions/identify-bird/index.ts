@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { generateBatchBirdMetadata, generateBirdMetadata } from "./_shared/ai-enrichment.ts";
 import { corsHeaders, createStreamResponse } from "./_shared/cors.ts";
 import { enrichSpecies } from "./_shared/enrichment.ts";
-import { cleanAndParseJson } from "./_shared/utils.ts";
+import { cleanAndParseJson, isWavHeaderPresent } from "./_shared/utils.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 const XENO_CANTO_API_KEY = Deno.env.get("XENO_CANTO_API_KEY");
@@ -21,7 +21,7 @@ interface BirdIdentificationRequest {
     audio?: string;
 }
 
-const writeChunk = (controller: ReadableStreamDefaultController, data: any) => {
+const writeChunk = (controller: ReadableStreamDefaultController, data: unknown) => {
     try {
         const encoder = new TextEncoder();
         controller.enqueue(encoder.encode(JSON.stringify(data) + "\n"));
@@ -56,7 +56,7 @@ async function getCachedMedia(scientificName: string) {
         const { data, error } = await supabase
             .from('species_meta')
             .select('inat_photos, sounds, male_image_url, female_image_url, juvenile_image_url, wikipedia_image')
-            .eq('scientific_name', scientificName)
+            .eq('scientific_name', scientificName.trim())
             .maybeSingle();
 
         if (error) {
@@ -70,13 +70,13 @@ async function getCachedMedia(scientificName: string) {
     }
 }
 
-async function setCachedMedia(scientificName: string, name: string, mediaData: any) {
+async function setCachedMedia(scientificName: string, name: string, mediaData: any) { // @ts-ignore: mediaData has a complex structure from enrichSpecies
     try {
         const { error } = await supabase
             .from('species_meta')
             .upsert({
-                scientific_name: scientificName,
-                common_name: name,
+                scientific_name: scientificName.trim(),
+                common_name: name.trim(),
                 inat_photos: mediaData.inat_photos || [],
                 sounds: mediaData.sounds || [],
                 male_image_url: mediaData.male_image_url || null,
@@ -90,6 +90,41 @@ async function setCachedMedia(scientificName: string, name: string, mediaData: a
     } catch (e) {
         console.error("Cache save error:", e);
     }
+}
+
+/**
+ * Adds a WAV header to a raw PCM byte array.
+ * Assumes 16-bit, Mono, 48000Hz as per useAudioRecording.ts iOS/Android settings.
+ */
+function addWavHeader(pcmData: Uint8Array, sampleRate = 48000, channels = 1, bitDepth = 16): Uint8Array {
+    const dataLength = pcmData.length;
+    const buffer = new ArrayBuffer(44 + dataLength);
+    const view = new DataView(buffer);
+
+    // RIFF header
+    const writeString = (offset: number, str: string) => {
+        for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
+        }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM format
+    view.setUint16(22, channels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, (sampleRate * channels * bitDepth) / 8, true);
+    view.setUint16(32, (channels * bitDepth) / 8, true);
+    view.setUint16(34, bitDepth, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataLength, true);
+
+    // Copy PCM data
+    new Uint8Array(buffer, 44).set(pcmData);
+    return new Uint8Array(buffer);
 }
 
 // ---------- Main Handler ----------
@@ -114,7 +149,7 @@ serve(async (req: Request) => {
         let imagePath = body.imagePath;
         let audio = body.audio;
 
-        console.log(`Request received. Image length: ${image?.length || 0}, ImagePath: ${imagePath}, Audio length: ${audio?.length || 0}`);
+        console.log('Request received. Image length: ' + (image?.length || 0) + ', ImagePath: ' + imagePath + ', Audio length: ' + (audio?.length || 0));
 
         if (!image && !imagePath && !audio) {
             return new Response(JSON.stringify({ error: "Either image, imagePath, or audio data is required" }), {
@@ -125,16 +160,16 @@ serve(async (req: Request) => {
 
         // --- Download image from storage if only imagePath is provided ---
         if (!image && imagePath) {
-            console.log(`Downloading image from storage: ${imagePath}`);
+            console.log('Downloading image from storage: ' + imagePath);
             const { data, error } = await supabase.storage.from('sightings').download(imagePath);
             if (error) {
                 console.error("Storage download error:", error);
-                throw new Error(`Failed to download image from storage: ${error.message}`);
+                throw new Error('Failed to download image from storage: ' + error.message);
             }
             const buffer = await data.arrayBuffer();
             const bytes = new Uint8Array(buffer);
             image = encode(bytes);
-            console.log(`Downloaded image. Base64 length: ${image.length}`);
+            console.log('Downloaded image. Base64 length: ' + (image?.length || 0));
         }
 
         const startTime = Date.now();
@@ -185,15 +220,15 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
         // Include current date for better seasonality-based identification
         const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-        const contextPrompt = `Current Date: ${currentDate}.\n\n`;
+        const contextPrompt = 'Current Date: ' + currentDate + '.\n\n';
 
         const fastPrompt = image
-            ? `${persona}\n\n${contextPrompt}Identify the bird in this image.\n${fastPromptInstructions}`
-            : `${persona}\n\n${contextPrompt}Identify the bird in this audio clip.\n${audioPromptInstructions}`;
+            ? persona + '\n\n' + contextPrompt + 'Identify the bird in this image.\n' + fastPromptInstructions
+            : persona + '\n\n' + contextPrompt + 'Identify the bird in this audio clip.\n' + audioPromptInstructions;
 
         const stream = new ReadableStream({
             async start(controller) {
-                let heartbeatId: any;
+                let heartbeatId: any; // ReturnType<typeof setInterval> mismatch between environments
                 try {
                     // GLOBAL HEARTBEAT: Keep connection alive through all phases
                     heartbeatId = setInterval(() => {
@@ -201,45 +236,34 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     }, 10000);
 
                     // HEARTBEAT: Send immediate "waiting" signal
-                    writeChunk(controller, { type: "progress", message: audio ? "Analyzing audio patterns..." : "Scanning image features..." });
+                    writeChunk(controller, { type: "progress", message: audio ? "Analyzing acoustic patterns with BirdNET..." : "Scanning image features..." });
 
                     // PHASE 1: Identification
                     const openRouterModel = "openai/gpt-4o";
 
                     const attemptAI = async (isPrimary: boolean, promptText: string): Promise<Response> => {
-                        const isGemini = audio || !isPrimary;
+                        const isGemini = !isPrimary;
                         const model = isGemini ? GEMINI_MODEL : openRouterModel;
 
-                        console.log(`[AI] Routing to OpenRouter: ${model} (Audio: ${!!audio})`);
+                        console.log('[AI] Routing to OpenRouter: ' + model);
 
                         const contentParts: any[] = [
-                            { type: "text", text: isGemini ? promptText : `${promptText}\n\nMANDATORY: Return a JSON object.` }
+                            { type: "text", text: isGemini ? promptText : promptText + '\n\nMANDATORY: Return a JSON object.' }
                         ];
 
                         if (image) {
                             contentParts.push({
                                 type: "image_url",
-                                image_url: { url: `data:image/webp;base64,${image}` }
+                                image_url: { url: 'data:image/webp;base64,' + image }
                             });
                         }
 
-                        if (audio) {
-                            // Correct OpenRouter format for multimodal audio data (e.g. Gemini 2.0 Flash)
-                            contentParts.push({
-                                type: "input_audio",
-                                input_audio: {
-                                    data: audio,
-                                    format: "m4a"
-                                }
-                            });
-                        }
-
-                        console.log(`[PHASE1] Requesting ${model} with ${contentParts.length} parts (Audio: ${!!audio}, Image: ${!!image})`);
+                        console.log('[PHASE1] Requesting ' + model + ' with ' + contentParts.length + ' parts (Image: ' + !!image + ')');
 
                         return await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
                             method: "POST",
                             headers: {
-                                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                                "Authorization": 'Bearer ' + OPENROUTER_API_KEY,
                                 "Content-Type": "application/json",
                                 "HTTP-Referer": "https://bird-identifier.supabase.co",
                                 "X-Title": "Bird Identifier",
@@ -265,67 +289,155 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                         // If audio is present, try BirdNET first
                         if (audio) {
                             writeChunk(controller, { type: "progress", message: "Analyzing audio with BirdNET..." });
-                            try {
-                                // 1. Convert base64 audio to binary
-                                const audioBytes = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
 
-                                // 2. Create FormData
-                                const formData = new FormData();
-                                const blob = new Blob([audioBytes], { type: 'audio/wav' });
-                                formData.append('audio', blob, 'audio.wav');
+                            // 1. Convert base64 audio to binary
+                            let audioBytes = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
 
-                                console.log(`[PHASE1] Sending audio to BirdNET API. Bytes: ${audioBytes.length}`);
 
-                                // 3. Call BirdNET API
-                                const birdNetApiKey = Deno.env.get('BIRDNET_API_KEY');
-                                const headers: Record<string, string> = {};
-                                if (birdNetApiKey) {
-                                    headers['Authorization'] = `Bearer ${birdNetApiKey}`;
-                                }
+                            // 1.5. Trim audio to max 10 seconds (480,000 bytes at 48kHz mono 16-bit) to prevent Railway 503 limits
+                            const MAX_BYTES = 500000;
+                            const TRIM_BYTES = 480000;
+                            if (audioBytes.length > MAX_BYTES) {
+                                console.log(`[PHASE1] Audio bytes (${audioBytes.length}) exceeded max allowed size. Trimming to ${TRIM_BYTES} bytes.`);
+                                audioBytes = audioBytes.slice(0, TRIM_BYTES);
+                            }
 
-                                const birdNetResponse = await fetchWithTimeout(
-                                    "https://birdnet-inference-api-production-ed4a.up.railway.app/inference/",
-                                    {
-                                        method: "POST",
-                                        headers,
-                                        body: formData,
-                                    },
-                                    45000 // 45 second timeout for inference
-                                );
+                            // 2. Detect existing WAV header
+                            const hasWavHeader = isWavHeaderPresent(audioBytes);
+                            let wavBytes: Uint8Array;
 
-                                if (!birdNetResponse.ok) {
-                                    throw new Error(`BirdNET API failed with status ${birdNetResponse.status}`);
-                                }
+                            if (hasWavHeader) {
+                                console.log('[PHASE1] Existing WAV header detected. Not adding redundant header.');
+                                wavBytes = audioBytes;
+                            } else {
+                                console.log('[PHASE1] No WAV header detected. Adding one...');
+                                wavBytes = addWavHeader(audioBytes);
+                            }
 
-                                const birdNetJson = await birdNetResponse.json();
-                                console.log(`[PHASE1] BirdNET Response:`, JSON.stringify(birdNetJson));
+                            const blob = new Blob([wavBytes], { type: 'audio/wav' });
 
-                                // 4. Map BirdNET response to our existing candidates format
-                                // BirdNET returns: { "predictions": [ { "common_name": "...", "scientific_name": "...", "confidence": 0.95 } ] }
-                                if (birdNetJson.predictions && Array.isArray(birdNetJson.predictions) && birdNetJson.predictions.length > 0) {
-                                    birdNetCandidates = birdNetJson.predictions.map((p: any) => ({
-                                        name: p.common_name,
-                                        scientific_name: p.scientific_name,
-                                        confidence: p.confidence,
-                                        // We don't have full taxonomy from BirdNET directly, but it meets the basic UI contract
-                                        identifying_features: `Identified via BirdNET acoustic analysis`,
-                                    }));
-                                    usedBirdNet = true;
-                                    console.log(`[PHASE1] BirdNET successfully identified ${birdNetCandidates.length} candidates.`);
-                                } else {
-                                    throw new Error("BirdNET returned empty predictions array");
-                                }
+                            console.log('[PHASE1] Sending audio to BirdNET API. Original Bytes: ' + audioBytes.length + ', Final Bytes: ' + wavBytes.length);
 
-                            } catch (birdNetErr) {
-                                console.warn("[PHASE1] BirdNET failed or returned empty. Falling back to Gemini:", birdNetErr);
-                                // Fallback to Gemini
-                                isGeminiUsed = true;
-                                identificationResponse = await attemptAI(false, fastPrompt);
-                                if (!identificationResponse.ok) {
-                                    const errBody = await identificationResponse.text().catch(() => "unknown");
-                                    throw new Error(`Fallback AI failed with status ${identificationResponse.status}: ${errBody}`);
+                            const maxAttempts = 3;
+                            let attempt = 0;
+                            let lastError: any = null;
+
+                            while (attempt < maxAttempts) {
+                                attempt++;
+                                try {
+                                    if (attempt > 1) {
+                                        console.log(`[PHASE1] Retrying BirdNET (Attempt ${attempt}/${maxAttempts})...`);
+                                        await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s backoff
+                                    }
+
+                                    // 2. Create FormData (re-create each time to be safe)
+                                    const formData = new FormData();
+                                    formData.append('file', blob, 'audio.wav');
+
+                                    // 3. Call BirdNET API
+                                    const birdNetApiKey = Deno.env.get('BIRDNET_API_KEY');
+                                    const headers = new Headers();
+                                    if (birdNetApiKey) {
+                                        headers.append('Authorization', 'Bearer ' + birdNetApiKey);
+                                    }
+
+                                    console.log(`[PHASE1] BirdNET Attempt ${attempt} - Sending ${wavBytes.length} bytes`);
+
+                                    const birdNetResponse = await fetchWithTimeout(
+                                        "https://birdnet-inference-api-production-ed4a.up.railway.app/inference/",
+                                        {
+                                            method: "POST",
+                                            headers,
+                                            body: formData,
+                                        },
+                                        60000 // 60 second timeout for inference
+                                    );
+
+                                    if (!birdNetResponse.ok) {
+                                        const errorBody = await birdNetResponse.text().catch(() => "unknown");
+                                        console.error(`[PHASE1] BirdNET attempt ${attempt} failed with status ${birdNetResponse.status}: ${errorBody}`);
+                                        throw new Error(`BirdNET API failed with status ${birdNetResponse.status}`);
+                                    }
+
+                                    // 4. Parse response body safely
+                                    const birdNetJson = await birdNetResponse.json().catch((jsonErr: any) => {
+                                        console.error(`[PHASE1] Error reading BirdNET JSON on attempt ${attempt}:`, jsonErr);
+                                        throw new Error(`Error reading BirdNET response body: ${jsonErr.message}`);
+                                    });
+
+                                    console.log('[PHASE1] BirdNET Response received successfully.');
+
+                                    // 5. Map BirdNET response to our existing candidates format
+                                    if (birdNetJson && birdNetJson.predictions && Array.isArray(birdNetJson.predictions)) {
+                                        console.log('[PHASE1] BirdNET Predictions:', JSON.stringify(birdNetJson.predictions.slice(0, 3)));
+
+                                        const extractedCandidates: any[] = [];
+
+                                        // 5a. Iterate through all time segments
+                                        birdNetJson.predictions.forEach((segment: any) => {
+                                            if (segment.species && Array.isArray(segment.species)) {
+                                                // 5b. Iterate through species identified in this segment
+                                                segment.species.forEach((speciesEntry: any) => {
+                                                    const rawName = speciesEntry.species_name;
+                                                    const probability = speciesEntry.probability;
+
+                                                    // 5c. Filter low confidence & missing data
+                                                    if (rawName && probability !== undefined && probability >= 0.1) {
+                                                        const firstUnderscoreIdx = rawName.indexOf('_');
+                                                        if (firstUnderscoreIdx !== -1) {
+                                                            const scientificName = rawName.substring(0, firstUnderscoreIdx).trim();
+                                                            const commonName = rawName.substring(firstUnderscoreIdx + 1).trim();
+
+                                                            if (scientificName && commonName) {
+                                                                extractedCandidates.push({
+                                                                    name: commonName,
+                                                                    scientific_name: scientificName,
+                                                                    confidence: probability,
+                                                                    identifying_features: `Identified via BirdNET acoustic analysis`,
+                                                                    taxonomy: {}
+                                                                });
+                                                            }
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        });
+
+                                        // 5d. Sort across all segments by confidence descending
+                                        extractedCandidates.sort((a, b) => b.confidence - a.confidence);
+
+                                        // 5e. Remove duplicates (taking the highest confidence for a species)
+                                        const uniqueCandidates: any[] = [];
+                                        const seenNames = new Set<string>();
+                                        for (const candidate of extractedCandidates) {
+                                            if (!seenNames.has(candidate.scientific_name)) {
+                                                seenNames.add(candidate.scientific_name);
+                                                uniqueCandidates.push(candidate);
+                                            }
+                                        }
+
+                                        // 5f. Take top 3
+                                        birdNetCandidates = uniqueCandidates.slice(0, 3);
+
+                                        if (birdNetCandidates.length > 0) {
+                                            usedBirdNet = true;
+                                            break; // Success!
+                                        } else {
+                                            throw new Error("Could not identify any distinct bird sounds. Please try recording closer to the source.");
+                                        }
+                                    } else {
+                                        throw new Error("BirdNET returned an empty or invalid response format.");
+                                    }
+                                } catch (err: any) {
+                                    lastError = err;
+                                    console.warn(`[PHASE1] BirdNET attempt ${attempt} failed:`, err.message);
                                 }
                             }
+
+                            if (!usedBirdNet) {
+                                throw lastError || new Error("BirdNET acoustic analysis failed after all retries.");
+                            }
+
                         } else {
                             // Image path: OpenRouter primary
                             isGeminiUsed = false;
@@ -333,19 +445,19 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
 
                             if (!identificationResponse.ok) {
                                 const errBody = await identificationResponse.text().catch(() => "unknown");
-                                throw new Error(`Primary AI failed with status ${identificationResponse.status}: ${errBody}`);
+                                throw new Error('Primary AI failed with status ' + identificationResponse.status + ': ' + errBody);
                             }
                         }
                     } catch (err) {
-                        console.warn("[PHASE1] Primary AI failed, checking fallback:", err);
-                        // Only fallback if we haven't already used Gemini (and it wasn't audio, since audio already falls back to Gemini in its own block above)
-                        if (!isGeminiUsed && !audio) {
+                        console.warn("[PHASE1] Primary AI or BirdNET failed, checking fallback:", err);
+                        // Only fallback if we haven't already used Gemini
+                        if (!isGeminiUsed) {
                             isGeminiUsed = true;
                             try {
                                 identificationResponse = await attemptAI(false, fastPrompt);
                                 if (!identificationResponse.ok) {
                                     const errBody = await identificationResponse.text().catch(() => "unknown");
-                                    throw new Error(`Fallback AI failed with status ${identificationResponse.status}: ${errBody}`);
+                                    throw new Error('Fallback AI failed with status ' + identificationResponse.status + ': ' + errBody);
                                 }
                             } catch (innerErr) {
                                 console.error("[PHASE1] Fallback AI also failed:", innerErr);
@@ -362,14 +474,18 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     if (usedBirdNet) {
                         candidates = birdNetCandidates;
                         content = JSON.stringify({ predictions: birdNetCandidates });
-                        console.log(`[PHASE1] Using BirdNET candidates.`);
-                        writeChunk(controller, { type: "progress", message: `Analysis: Acoustic analysis matched ${candidates.length} potential species.` });
+                        console.log('[PHASE1] Using BirdNET candidates.');
+                        writeChunk(controller, { type: "progress", message: 'Analysis: Acoustic analysis matched ' + candidates.length + ' potential species.' });
                     } else {
                         if (!identificationResponse) {
                             throw new Error("All AI models failed to identify the bird. Please try again.");
                         }
 
-                        const resultJson = await identificationResponse.json();
+                        const resultJson = await identificationResponse.json().catch((jsonErr: any) => {
+                            console.error("[PHASE1] Error reading AI response JSON:", jsonErr);
+                            throw new Error("Failed to parse AI response body. The connection may have been closed.");
+                        });
+
                         content = resultJson.choices?.[0]?.message?.content;
 
                         if (!content) {
@@ -377,16 +493,16 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             throw new Error("AI returned empty content.");
                         }
 
-                        console.log(`[PHASE1] Raw AI Response Content: ${content}`);
-                        console.log(`[PHASE1] AI response successfully parsed. Model: ${resultJson.model}`);
+                        console.log('[PHASE1] Raw AI Response Content: ' + content);
+                        console.log('[PHASE1] AI response successfully parsed. Model: ' + resultJson.model);
 
                         const parsed = cleanAndParseJson(content, resultJson.model || "OpenRouter");
 
                         // For audio, log the AI's acoustic description if available
                         if (audio && parsed.audio_description) {
-                            console.log(`[PHASE1] Audio Analysis: ${parsed.audio_description}`);
+                            console.log('[PHASE1] Audio Analysis: ' + parsed.audio_description);
                             // Optionally send this back as a progress message so user sees it
-                            writeChunk(controller, { type: "progress", message: `Analysis: ${parsed.audio_description}` });
+                            writeChunk(controller, { type: "progress", message: 'Analysis: ' + parsed.audio_description });
                         }
 
                         candidates = parsed.candidates || parsed.birds || parsed.species || parsed.results || (Array.isArray(parsed) ? parsed : []);
@@ -429,8 +545,8 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                                     others.forEach((cand: any, i: number) => {
                                         const idx = i + 1;
                                         const meta = batchMeta.find((m: any) =>
-                                            m.scientific_name?.toLowerCase() === cand.scientific_name.toLowerCase() ||
-                                            m.name?.toLowerCase() === cand.name.toLowerCase()
+                                            m.scientific_name?.toLowerCase() === cand.scientific_name?.toLowerCase() ||
+                                            m.name?.toLowerCase() === cand.name?.toLowerCase()
                                         ) || batchMeta[i];
 
                                         if (meta) {
@@ -448,7 +564,9 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     await Promise.all([
                         fetchPrioritizedMetadata(),
                         ...(hasCandidates ? candidates.map(async (bird: any, index: number) => {
-                            const { scientific_name, name } = bird;
+                            const scientific_name = bird.scientific_name?.trim();
+                            const name = bird.name?.trim();
+                            if (!scientific_name) return;
                             try {
                                 const cached = await getCachedMedia(scientific_name);
                                 if (cached) {
@@ -459,7 +577,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                                     setCachedMedia(scientific_name, name, media).catch(() => { });
                                 }
                             } catch (err) {
-                                console.error(`Media enrichment failed for ${scientific_name}`, err);
+                                console.error('Media enrichment failed for ' + scientific_name, err);
                                 writeChunk(controller, { type: "media", index, data: { inat_photos: [], sounds: [] } });
                             }
                         }) : [])
@@ -468,17 +586,17 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     writeChunk(controller, { type: "done", duration: Date.now() - startTime });
                     clearInterval(heartbeatId);
                     controller.close();
-                } catch (streamError: any) {
+                } catch (streamError: any) { // @ts-ignore: Deno.serve error type
                     if (heartbeatId) clearInterval(heartbeatId);
                     console.error("[STREAM ERROR]", streamError);
-                    try { writeChunk(controller, { type: "error", message: streamError.message }); } catch { }
+                    try { writeChunk(controller, { type: "error", message: streamError.message }); } catch { /* ignore stream close */ }
                     controller.close();
                 }
             }
         });
 
         return createStreamResponse(stream);
-    } catch (error: any) {
+    } catch (error: any) { // Type 'unknown' requires casting for .message access
         console.error("Critical Error:", error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
