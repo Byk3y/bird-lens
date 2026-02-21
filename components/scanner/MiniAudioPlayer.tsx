@@ -73,8 +73,8 @@ export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ uri }) => {
         <BlurView intensity={30} tint="light" style={styles.container}>
             <View style={styles.waveform}>
                 {Array.from({ length: 12 }).map((_, i) => {
-                    // Less aggressive heights to fit smaller container
-                    const heights = [8, 12, 10, 16, 12, 18, 14, 12, 10, 12, 8, 6];
+                    // Even smaller heights for tiny player
+                    const heights = [6, 8, 7, 10, 8, 12, 10, 8, 7, 8, 6, 5];
                     const h = heights[i % heights.length];
                     const isPlayed = (i / 12) < progressValue;
 
@@ -101,9 +101,9 @@ export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ uri }) => {
                 {loading ? (
                     <ActivityIndicator size="small" color={Colors.primary} />
                 ) : status?.isPlaying ? (
-                    <Pause size={14} color={Colors.primary} fill={Colors.primary} />
+                    <Pause size={10} color={Colors.primary} fill={Colors.primary} />
                 ) : (
-                    <Play size={14} color={Colors.primary} fill={Colors.primary} style={{ marginLeft: 2 }} />
+                    <Play size={10} color={Colors.primary} fill={Colors.primary} style={{ marginLeft: 1 }} />
                 )}
             </TouchableOpacity>
         </BlurView>
@@ -114,9 +114,9 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        height: 38,
-        borderRadius: 19,
+        paddingHorizontal: 6,
+        height: 30,
+        borderRadius: 15,
         overflow: 'hidden',
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderWidth: 1,
@@ -125,17 +125,17 @@ const styles = StyleSheet.create({
     waveform: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 2,
-        marginRight: 8,
+        gap: 1.5,
+        marginRight: 6,
     },
     bar: {
-        width: 2.5,
-        borderRadius: 1.25,
+        width: 2,
+        borderRadius: 1,
     },
     playButton: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',

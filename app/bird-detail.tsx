@@ -415,8 +415,8 @@ const styles = StyleSheet.create({
     },
     listenBackContainer: {
         position: 'absolute',
-        bottom: 50,
-        left: 16,
+        bottom: 32,
+        left: 8,
         zIndex: 60,
     },
     mainInfoSection: {

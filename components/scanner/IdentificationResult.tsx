@@ -4,9 +4,10 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { BirdResult } from '@/types/scanner';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { Camera, Check, ChevronLeft, Image as ImageIcon, Save, Share2 } from 'lucide-react-native';
+import { Activity, Camera, Check, ChevronLeft, Image as ImageIcon, Save, Share2 } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import { Skeleton } from 'moti/skeleton';
 import React, { useEffect } from 'react';
@@ -20,6 +21,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { MiniAudioPlayer } from './MiniAudioPlayer';
+
 
 interface IdentificationResultProps {
     result: BirdResult | null;
@@ -27,13 +30,14 @@ interface IdentificationResultProps {
     enrichedCandidates: BirdResult[];
     heroImages: Record<string, string>;
     capturedImage: string | null;
+    recordingUri?: string | null;
     isSaving: boolean;
     savedIndices: Set<number>;
     activeIndex: number;
     setActiveIndex: (index: number) => void;
     enrichCandidate: (index: number, data: Partial<BirdResult>) => void;
     updateHeroImage: (scientificName: string, url: string) => void;
-    onSave: (bird: BirdResult, capturedImage: string | null) => void;
+    onSave: (bird: BirdResult, capturedImage: string | null, recordingUri?: string | null) => void;
     onReset: () => void;
     isProcessing?: boolean;
 }
@@ -116,8 +120,10 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     onSave,
     onReset,
     isProcessing = false,
+    recordingUri,
 }) => {
     const router = useRouter();
+    const sourceMode = recordingUri ? 'sound' : 'photo';
 
     const activeBirdFromProps = enrichedCandidates[activeIndex] || result;
 
@@ -221,7 +227,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                 transition={500}
                                 cachePolicy="memory-disk"
                             />
-                        ) : capturedImage ? (
+                        ) : sourceMode === 'photo' && capturedImage ? (
                             <Image
                                 source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
                                 style={StyleSheet.absoluteFill}
@@ -229,6 +235,14 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                 transition={300}
                                 cachePolicy="memory-disk"
                             />
+                        ) : sourceMode === 'sound' ? (
+                            <View style={[StyleSheet.absoluteFill, { backgroundColor: '#1A1A1A' }]}>
+                                {/* Spectrogram-like background for sound */}
+                                <LinearGradient
+                                    colors={['#1A1A1A', '#2D3436', '#1A1A1A']}
+                                    style={StyleSheet.absoluteFill}
+                                />
+                            </View>
                         ) : isComparisonTab && capturedImage ? (
                             <Image
                                 source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
@@ -238,7 +252,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                 cachePolicy="memory-disk"
                             />
                         ) : null}
-                        <BlurView intensity={70} style={StyleSheet.absoluteFill} tint="dark" />
+                        <BlurView intensity={sourceMode === 'sound' ? 40 : 70} style={StyleSheet.absoluteFill} tint="dark" />
                     </View>
 
                     <Animated.ScrollView
@@ -294,12 +308,17 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                                 </View>
                                             )
                                         ) : (
-                                            capturedImage ? (
+                                            sourceMode === 'photo' && capturedImage ? (
                                                 <Image
                                                     source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
                                                     style={styles.circleImage}
                                                     cachePolicy="memory-disk"
                                                 />
+                                            ) : sourceMode === 'sound' && recordingUri ? (
+                                                <View style={[styles.circleImage, { backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' }]}>
+                                                    <Activity color={Colors.primary} size={48} />
+                                                    <Text style={{ color: Colors.white, fontSize: 12, marginTop: 8, fontWeight: '600' }}>YOUR CAPTURE</Text>
+                                                </View>
                                             ) : (
                                                 <View style={[styles.circleImage, { backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' }]}>
                                                     <Camera color="#666" size={48} />
@@ -312,13 +331,19 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         })}
                     </Animated.ScrollView>
 
-                    {/* User Captured Photo Thumbnail (Bottom Left) */}
-                    {capturedImage && (
+                    {/* User Captured Photo/Sound Thumbnail (Bottom Left) */}
+                    {sourceMode === 'photo' && capturedImage && (
                         <View style={styles.thumbnailContainer}>
                             <Image
                                 source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
                                 style={styles.thumbnailImage}
                             />
+                        </View>
+                    )}
+
+                    {sourceMode === 'sound' && recordingUri && !isComparisonTab && activeBird && (
+                        <View style={styles.listenBackContainer}>
+                            <MiniAudioPlayer uri={recordingUri} />
                         </View>
                     )}
 
@@ -354,6 +379,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                 <View style={styles.contentContainer}>
                     {!isComparisonTab && activeBird ? (
                         <BirdProfileContent
+                            key={`profile-${activeIndex}-${activeBird.scientific_name}`}
                             bird={activeBird}
                             inatPhotos={activeBird.inat_photos}
                             sounds={activeBird.sounds}
@@ -371,6 +397,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                                     params: { birdData: JSON.stringify(activeBird) }
                                 });
                             }}
+                            sourceMode={sourceMode}
                         />
                     ) : (
                         <View style={styles.correctionSection}>
@@ -394,7 +421,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     <View style={styles.bottomBar}>
                         <TouchableOpacity
                             style={styles.actionItem}
-                            onPress={() => onSave(activeBird, capturedImage)}
+                            onPress={() => onSave(activeBird, capturedImage, recordingUri)}
                             disabled={isSaving || isSavedForActive}
                         >
                             {isSaving ? (
@@ -683,5 +710,11 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(0, 0, 0, 0.3)',
         textShadowOffset: { width: 0, height: 2 },
         textShadowRadius: 4,
+    },
+    listenBackContainer: {
+        position: 'absolute',
+        bottom: 32,
+        left: 8,
+        zIndex: 60,
     },
 });
