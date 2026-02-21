@@ -1,5 +1,8 @@
+import { AuthModal } from '@/components/auth/AuthModal';
+import { Paywall } from '@/components/Paywall';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { subscriptionService } from '@/services/SubscriptionService';
 import { useRouter } from 'expo-router';
 import {
     ChevronLeft,
@@ -75,12 +78,25 @@ const SettingRow = ({
     </Pressable>
 );
 
+
 export default function SettingsScreen() {
-    const { user, session } = useAuth();
+    const { user, session, signOut } = useAuth();
     const isGuest = user?.is_anonymous;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [autosave, setAutosave] = useState(false);
+    const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
+    const [isPaywallVisible, setIsPaywallVisible] = useState(false);
+    const [isPro, setIsPro] = useState(false);
+
+    React.useEffect(() => {
+        checkSubscription();
+    }, []);
+
+    const checkSubscription = async () => {
+        const subscribed = await subscriptionService.isSubscribed();
+        setIsPro(subscribed);
+    };
 
     return (
         <View style={styles.container}>
@@ -107,15 +123,17 @@ export default function SettingsScreen() {
                     <View style={styles.premiumInfo}>
                         <View style={styles.premiumTextContainer}>
                             <Text style={styles.premiumTitle}>Premium Plan</Text>
-                            <Text style={styles.premiumSubtitle}>Status: Free Member</Text>
+                            <Text style={styles.premiumSubtitle}>Status: {isPro ? 'Cardinal Pro' : (isGuest ? 'Free Member' : 'Free Account')}</Text>
                         </View>
                         <View style={styles.crownContainer}>
                             <Crown color="#fbbf24" size={24} />
                         </View>
                     </View>
-                    <Pressable style={styles.upgradeBtn}>
-                        <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
-                    </Pressable>
+                    {!isPro && (
+                        <Pressable style={styles.upgradeBtn} onPress={() => setIsPaywallVisible(true)}>
+                            <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+                        </Pressable>
+                    )}
                 </MotiView>
 
                 {/* Account Section */}
@@ -127,27 +145,32 @@ export default function SettingsScreen() {
                             label="Create Permanent Account"
                             value="Save your collection"
                             tintColor={Colors.accent}
-                            onPress={() => {/* Trigger Signup Modal */ }}
+                            onPress={() => setIsAuthModalVisible(true)}
                         />
                     ) : (
                         <>
                             <SettingRow
                                 icon={<User />}
                                 label="Edit Profile"
+                                onPress={() => router.push('/edit-profile')}
                             />
+                            {isPro && (
+                                <SettingRow
+                                    icon={<Crown />}
+                                    label="Manage Subscription"
+                                    onPress={() => subscriptionService.showCustomerCenter()}
+                                    tintColor="#fbbf24"
+                                />
+                            )}
                             <SettingRow
                                 icon={<LogOut />}
                                 label="Sign Out"
                                 tintColor={Colors.error}
-                                onPress={() => {/* Handle Sign Out */ }}
+                                onPress={signOut}
+                                isLast
                             />
                         </>
                     )}
-                    <SettingRow
-                        label="Language"
-                        value="English"
-                        isLast
-                    />
                 </View>
 
                 {/* Preferences Section */}
@@ -198,6 +221,21 @@ export default function SettingsScreen() {
 
                 <Text style={styles.footerText}>Made with ❤️ for bird lovers</Text>
             </ScrollView>
+
+            <AuthModal
+                visible={isAuthModalVisible}
+                onClose={() => setIsAuthModalVisible(false)}
+                initialMode="signup"
+            />
+
+            {isPaywallVisible && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+                    <Paywall onClose={() => {
+                        setIsPaywallVisible(false);
+                        checkSubscription();
+                    }} />
+                </View>
+            )}
         </View>
     );
 }

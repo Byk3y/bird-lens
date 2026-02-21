@@ -1,6 +1,6 @@
 export const Colors = {
   // Brand - Northern Cardinal Palette
-  primary: '#D4202C', // Cardinal Red
+  primary: '#FF3B30', // Vibrant Cardinal Red
   secondary: '#111827', // Deep Mask Black
   accent: '#F97316', // Bill Orange-Red
 
