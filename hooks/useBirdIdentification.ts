@@ -219,58 +219,68 @@ export const useBirdIdentification = () => {
             attempts++;
             try {
                 setIsSaving(true);
-                let imageUrl = null;
-                let audioUrl = null;
+                let imageUrl: string | null = null;
+                let audioUrl: string | null = null;
 
                 const { Buffer } = require('buffer');
 
-                // Upload image if provided
+                // Define upload tasks
+                const uploadTasks = [];
+
+                // Task 1: Image Upload
                 if (capturedImage) {
-                    const fileName = `images/${user?.id}/${Date.now()}.webp`;
-                    const bytes = Buffer.from(capturedImage, 'base64');
+                    uploadTasks.push((async () => {
+                        const fileName = `images/${user?.id}/${Date.now()}.webp`;
+                        const bytes = Buffer.from(capturedImage, 'base64');
 
-                    const { error: uploadError } = await supabase.storage
-                        .from('sightings')
-                        .upload(fileName, bytes, {
-                            contentType: 'image/webp',
-                            upsert: true
-                        });
+                        const { error: uploadError } = await supabase.storage
+                            .from('sightings')
+                            .upload(fileName, bytes, {
+                                contentType: 'image/webp',
+                                upsert: true
+                            });
 
-                    if (uploadError) throw uploadError;
+                        if (uploadError) throw uploadError;
 
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('sightings')
-                        .getPublicUrl(fileName);
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('sightings')
+                            .getPublicUrl(fileName);
 
-                    imageUrl = publicUrl;
+                        imageUrl = publicUrl;
+                    })());
                 }
 
-                // Upload audio if provided
+                // Task 2: Audio Upload
                 if (recordingUri) {
-                    const fileName = `audio/${user?.id}/${Date.now()}.wav`;
-                    console.log(`[Save] Attempting audio upload: ${fileName} from ${recordingUri}`);
+                    uploadTasks.push((async () => {
+                        const fileName = `audio/${user?.id}/${Date.now()}.wav`;
 
-                    // Read file as base64 using legacy file system and direct buffer conversion
-                    const base64 = await FileSystem.readAsStringAsync(recordingUri, {
-                        encoding: FileSystem.EncodingType.Base64,
-                    });
-                    const audioBytes = Buffer.from(base64, 'base64');
-
-                    const { error: audioUploadError } = await supabase.storage
-                        .from('sightings')
-                        .upload(fileName, audioBytes, {
-                            contentType: 'audio/wav',
-                            upsert: true
+                        // Read file as base64 using legacy file system and direct buffer conversion
+                        const base64 = await FileSystem.readAsStringAsync(recordingUri, {
+                            encoding: FileSystem.EncodingType.Base64,
                         });
+                        const audioBytes = Buffer.from(base64, 'base64');
 
-                    if (audioUploadError) throw audioUploadError;
+                        const { error: audioUploadError } = await supabase.storage
+                            .from('sightings')
+                            .upload(fileName, audioBytes, {
+                                contentType: 'audio/wav',
+                                upsert: true
+                            });
 
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('sightings')
-                        .getPublicUrl(fileName);
+                        if (audioUploadError) throw audioUploadError;
 
-                    audioUrl = publicUrl;
-                    console.log(`[Save] Audio uploaded successfully: ${audioUrl}`);
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('sightings')
+                            .getPublicUrl(fileName);
+
+                        audioUrl = publicUrl;
+                    })());
+                }
+
+                // Run uploads in parallel
+                if (uploadTasks.length > 0) {
+                    await Promise.all(uploadTasks);
                 }
 
                 // Map bird result to sighting structure
