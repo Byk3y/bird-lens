@@ -26,7 +26,10 @@ export const OverlapAvatars: React.FC<OverlapAvatarsProps> = ({ tags, type }) =>
 
         for (const key of sortedKeys) {
             if (lowerTag.includes(key.toLowerCase()) && !usedKeys.has(key)) {
-                matchedUrls.push(assets[key]);
+                const matchedAsset = assets[key];
+                if (!matchedUrls.includes(matchedAsset)) {
+                    matchedUrls.push(matchedAsset);
+                }
                 usedKeys.add(key);
                 break; // Found a match for this tag, move to next tag
             }

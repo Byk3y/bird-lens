@@ -92,15 +92,29 @@ function isAppropriateObservation(obs: any): boolean {
 async function fetchTaxonInfo(scientificName: string): Promise<{ id: number; rank: string; name: string } | null> {
     try {
         const query = scientificName.trim();
-        const searchUrl = `${INAT_API_URL}/taxa?q=${encodeURIComponent(query)}&per_page=1`;
+        // 1. Try exact scientific name match first with rank filter
+        const searchUrl = INAT_API_URL + '/taxa?q=' + encodeURIComponent(scientificName) + '&rank=species,subspecies&per_page=10';
         const response = await fetchWithTimeout(searchUrl);
         if (!response.ok) return null;
 
         const data = await response.json();
-        // Try exact match, then first result
-        return data.results?.find((t: any) => t.name.toLowerCase() === query.toLowerCase()) || data.results?.[0] || null;
+
+        // Find best match: exact scientific name, or contains it
+        const matches = data.results || [];
+        const exactMatch = matches.find((t: any) => t.name.toLowerCase() === scientificName.toLowerCase());
+
+        if (exactMatch) return exactMatch;
+
+        // Fallback to first result if it seems related
+        const first = matches[0];
+        if (first && (first.name.toLowerCase().includes(scientificName.toLowerCase()) ||
+            scientificName.toLowerCase().includes(first.name.toLowerCase()))) {
+            return first;
+        }
+
+        return null;
     } catch (error) {
-        console.error(`Error fetching taxon info for ${scientificName}:`, error);
+        console.error('Error fetching taxon info for ' + scientificName + ':', error);
         return null;
     }
 }
@@ -111,7 +125,7 @@ async function fetchTaxonInfo(scientificName: string): Promise<{ id: number; ran
 async function fetchINatPhotos(taxonId: number): Promise<INatPhoto[]> {
     try {
         // Fetch full taxon details to get all taxon_photos
-        const detailUrl = `${INAT_API_URL}/taxa/${taxonId}`;
+        const detailUrl = INAT_API_URL + '/taxa/' + taxonId;
         const detailResponse = await fetchWithTimeout(detailUrl);
         if (!detailResponse.ok) return [];
 
@@ -146,7 +160,7 @@ async function fetchINatPhotos(taxonId: number): Promise<INatPhoto[]> {
             };
         }).filter(Boolean);
     } catch (error) {
-        console.error(`Error fetching iNat photos for taxon ${taxonId}:`, error);
+        console.error('Error fetching iNat photos for taxon ' + taxonId + ':', error);
         return [];
     }
 }
@@ -155,13 +169,13 @@ async function fetchINatPhotos(taxonId: number): Promise<INatPhoto[]> {
  * Fetches gendered photos from iNaturalist observations.
  * Uses Annotation system: term_id=9 (Sex), term_value_id=11 (Male) / 10 (Female)
  */
-async function fetchINatGenderedPhoto(scientificName: string, gender: "male" | "female"): Promise<string | null> {
+async function fetchINatGenderedPhoto(taxonId: number, gender: "male" | "female"): Promise<string | null> {
     try {
         const termValueId = gender === "male" ? 11 : 10;
         const fields = "photos.url,photos.license_code,photos.attribution,annotations,tags,description";
         // Filter out bad tags directly in API
         const notTags = "dead,specimen,museum,plucked,research,roadkill,carcass";
-        const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=9&term_value_id=${termValueId}&quality_grade=research&per_page=5&order_by=votes&not_tag=${notTags}&fields=${fields}`;
+        const url = INAT_API_URL + '/observations?taxon_id=' + taxonId + '&term_id=9&term_value_id=' + termValueId + '&quality_grade=research&per_page=5&order_by=votes&not_tag=' + notTags + '&fields=' + fields;
 
         const response = await fetchWithTimeout(url);
         if (!response.ok) return null;
@@ -175,9 +189,9 @@ async function fetchINatGenderedPhoto(scientificName: string, gender: "male" | "
         if (!photo?.url) return null;
 
         // Upgrade to large URL
-        return photo.url.replace('/square.', '/large.').replace('/medium.', '/large.');
+        return photo.url.replace('/square.', '/large.').replace('/medium.', '/large.').replace('/small.', '/large.');
     } catch (error) {
-        console.error(`Error fetching ${gender} photo for ${scientificName}:`, error);
+        console.error('Error fetching ' + gender + ' photo for taxon ' + taxonId + ':', error);
         return null;
     }
 }
@@ -186,12 +200,12 @@ async function fetchINatGenderedPhoto(scientificName: string, gender: "male" | "
  * Fetches juvenile photos from iNaturalist observations.
  * Uses Annotation system: term_id=1 (Life Stage), term_value_id=8 (Juvenile)
  */
-async function fetchINatJuvenilePhoto(scientificName: string): Promise<string | null> {
+async function fetchINatJuvenilePhoto(taxonId: number): Promise<string | null> {
     try {
         const fields = "photos.url,photos.license_code,photos.attribution,annotations,tags,description";
         // Filter out bad tags directly in API
         const notTags = "dead,specimen,museum,plucked,research,roadkill,carcass";
-        const url = `${INAT_API_URL}/observations?taxon_name=${encodeURIComponent(scientificName)}&term_id=1&term_value_id=8&quality_grade=research&per_page=5&order_by=votes&not_tag=${notTags}&fields=${fields}`;
+        const url = INAT_API_URL + '/observations?taxon_id=' + taxonId + '&term_id=1&term_value_id=8&quality_grade=research&per_page=5&order_by=votes&not_tag=' + notTags + '&fields=' + fields;
 
         const response = await fetchWithTimeout(url);
         if (!response.ok) return null;
@@ -205,9 +219,9 @@ async function fetchINatJuvenilePhoto(scientificName: string): Promise<string | 
         if (!photo?.url) return null;
 
         // Upgrade to large URL
-        return photo.url.replace('/square.', '/large.').replace('/medium.', '/large.');
+        return photo.url.replace('/square.', '/large.').replace('/medium.', '/large.').replace('/small.', '/large.');
     } catch (error) {
-        console.error(`Error fetching juvenile photo for ${scientificName}:`, error);
+        console.error('Error fetching juvenile photo for taxon ' + taxonId + ':', error);
         return null;
     }
 }
@@ -224,7 +238,7 @@ async function fetchWikimediaImage(scientificName: string): Promise<string | nul
             action: 'query',
             format: 'json',
             generator: 'search',
-            gsrsearch: `${scientificName} bird`,
+            gsrsearch: scientificName + ' bird',
             gsrnamespace: '6', // File namespace
             gsrlimit: '3',
             prop: 'imageinfo',
@@ -232,7 +246,7 @@ async function fetchWikimediaImage(scientificName: string): Promise<string | nul
             iiurlwidth: '1024',
         });
 
-        const response = await fetchWithTimeout(`${WIKIMEDIA_API_URL}?${params}`);
+        const response = await fetchWithTimeout(WIKIMEDIA_API_URL + '?' + params);
         if (!response.ok) return null;
 
         const data = await response.json();
@@ -248,7 +262,7 @@ async function fetchWikimediaImage(scientificName: string): Promise<string | nul
         }
         return null;
     } catch (error) {
-        console.error(`Error fetching Wikimedia image for ${scientificName}:`, error);
+        console.error('Error fetching Wikimedia image for ' + scientificName + ':', error);
         return null;
     }
 }
@@ -281,8 +295,8 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
             return [];
         }
 
-        const query = encodeURIComponent(`sp:"${scientificName}" q:A`);
-        const url = `https://xeno-canto.org/api/3/recordings?query=${query}&key=${apiKey}`;
+        const query = encodeURIComponent('sp:"' + scientificName + '" q:A');
+        const url = 'https://xeno-canto.org/api/3/recordings?query=' + query + '&key=' + apiKey;
 
         const response = await fetchWithTimeout(url);
         if (!response.ok) return [];
@@ -297,7 +311,7 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
             const osci = rec.osci?.large || rec.osci?.medium || rec.osci?.small || '';
             return {
                 id: rec.id,
-                scientific_name: `${rec.gen} ${rec.sp}`,
+                scientific_name: rec.gen + ' ' + rec.sp,
                 common_name: rec.en,
                 url: fixXenoCantoUrl(rec.file, rec),
                 waveform: fixXenoCantoUrl(osci),
@@ -316,7 +330,7 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
 
         return [...songs, ...calls];
     } catch (error) {
-        console.error(`Error fetching sounds for ${scientificName}:`, error);
+        console.error('Error fetching sounds for ' + scientificName + ':', error);
         return [];
     }
 }
@@ -328,7 +342,7 @@ async function fetchXenoCantoSounds(scientificName: string, apiKey: string): Pro
  * Fetches sequentially to minimize memory footprint within edge function limits.
  */
 export async function enrichSpecies(scientificName: string, xenoCantoApiKey: string): Promise<EnrichedMedia> {
-    console.log(`Enriching data for: ${scientificName}`);
+    console.log('Enriching data for: ' + scientificName);
 
     // 1. Get Taxon ID and Rank first to see if it's a species
     const taxonInfo = await fetchTaxonInfo(scientificName);
@@ -342,9 +356,9 @@ export async function enrichSpecies(scientificName: string, xenoCantoApiKey: str
     // We only fetch sex/age specific photos if it's a species-level taxon
     const [inatPhotos, malePhoto, femalePhoto, juvenilePhoto, sounds] = await Promise.all([
         fetchINatPhotos(taxonInfo.id),
-        isSpecies ? fetchINatGenderedPhoto(scientificName, "male") : Promise.resolve(null),
-        isSpecies ? fetchINatGenderedPhoto(scientificName, "female") : Promise.resolve(null),
-        isSpecies ? fetchINatJuvenilePhoto(scientificName) : Promise.resolve(null),
+        isSpecies ? fetchINatGenderedPhoto(taxonInfo.id, "male") : Promise.resolve(null),
+        isSpecies ? fetchINatGenderedPhoto(taxonInfo.id, "female") : Promise.resolve(null),
+        isSpecies ? fetchINatJuvenilePhoto(taxonInfo.id) : Promise.resolve(null),
         fetchXenoCantoSounds(scientificName, xenoCantoApiKey)
     ]);
 

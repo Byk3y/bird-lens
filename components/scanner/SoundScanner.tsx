@@ -2,7 +2,6 @@ import { ScannerHeader } from '@/components/scanner/ScannerHeader';
 import { Colors, Typography } from '@/constants/theme';
 import React, { useEffect } from 'react';
 import {
-    ActivityIndicator,
     Dimensions,
     Platform,
     StyleSheet,
@@ -12,7 +11,10 @@ import {
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
-    withSpring
+    withRepeat,
+    withSequence,
+    withSpring,
+    withTiming
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -28,10 +30,13 @@ interface SoundScannerProps {
     hasRecording: boolean;
     isProcessing: boolean;
     meteringLevel: number;
+    durationMillis: number;
+    progressMessage?: string | null;
+    error?: string | null;
     analysisData?: any;
 }
 
-const SoundBar = ({ meteringLevel, isRecording }: { index: number; meteringLevel: number; isRecording: boolean }) => {
+const SoundBar = ({ meteringLevel, isRecording, isProcessing, index }: { index: number; meteringLevel: number; isRecording: boolean, isProcessing: boolean }) => {
     const height = useSharedValue(4);
 
     useEffect(() => {
@@ -45,10 +50,23 @@ const SoundBar = ({ meteringLevel, isRecording }: { index: number; meteringLevel
                 damping: 15,
                 stiffness: 120,
             });
+        } else if (isProcessing) {
+            // Create a wave effect across bars
+            const delay = index * 50;
+            setTimeout(() => {
+                height.value = withRepeat(
+                    withSequence(
+                        withTiming(VISUALIZER_HEIGHT * (0.3 + Math.random() * 0.4), { duration: 500 }),
+                        withTiming(4, { duration: 500 })
+                    ),
+                    -1,
+                    true
+                );
+            }, delay);
         } else {
             height.value = withSpring(4);
         }
-    }, [meteringLevel, isRecording]);
+    }, [meteringLevel, isRecording, isProcessing]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         height: height.value,
@@ -73,7 +91,11 @@ export const SoundScanner: React.FC<SoundScannerProps> = ({
     hasRecording,
     isProcessing,
     meteringLevel,
+    durationMillis,
+    progressMessage,
+    error,
 }) => {
+    const showHint = isRecording && durationMillis < 5000;
     return (
         <View style={styles.soundWrapper}>
             <ScannerHeader onBack={onBack} flash="off" onFlashToggle={() => { }} isDark />
@@ -88,6 +110,7 @@ export const SoundScanner: React.FC<SoundScannerProps> = ({
                                 index={i}
                                 meteringLevel={meteringLevel}
                                 isRecording={isRecording}
+                                isProcessing={isProcessing}
                             />
                         ))}
                     </View>
@@ -102,24 +125,33 @@ export const SoundScanner: React.FC<SoundScannerProps> = ({
                         </View>
                     ) : (
                         <View style={styles.activeState}>
-                            <View style={styles.timePill}>
-                                <View style={[styles.statusDot, isRecording && styles.recordingDot]} />
-                                <Text style={styles.timeText}>{formattedTime}</Text>
-                            </View>
-                            <Text style={styles.statusText}>
-                                {isProcessing ? 'Analyzing vocalization...' : 'Capturing audio...'}
+                            {!isProcessing && !error && (
+                                <View style={styles.timePill}>
+                                    <View style={[styles.statusDot, isRecording && styles.recordingDot]} />
+                                    <Text style={styles.timeText}>{formattedTime}</Text>
+                                </View>
+                            )}
+                            <Text style={[styles.statusText, error ? styles.errorText : null]}>
+                                {error
+                                    ? "Service Unavailable"
+                                    : (isProcessing
+                                        ? (progressMessage || 'Analyzing vocalization...')
+                                        : (isRecording ? 'Capturing audio...' : 'Audio Captured')
+                                    )}
                             </Text>
+                            {error && (
+                                <Text style={styles.errorMessage}>
+                                    {error}
+                                </Text>
+                            )}
+                            {showHint && !isProcessing && (
+                                <Text style={styles.hintText}>Record at least 5 seconds for best results</Text>
+                            )}
                         </View>
                     )}
                 </View>
             </View>
 
-            {isProcessing && (
-                <View style={styles.processingOverlay}>
-                    <ActivityIndicator color={Colors.primary} size="large" />
-                    <Text style={styles.processingText}>Consulting our bird archives...</Text>
-                </View>
-            )}
         </View>
     );
 };
@@ -180,6 +212,23 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         letterSpacing: 1.5,
         textTransform: 'uppercase',
+    },
+    errorText: {
+        color: Colors.error,
+        fontWeight: '600',
+    },
+    errorMessage: {
+        ...Typography.body,
+        color: Colors.error,
+        textAlign: 'center',
+        marginTop: 8,
+        paddingHorizontal: 20,
+    },
+    hintText: {
+        ...Typography.caption,
+        color: Colors.primary,
+        fontWeight: '600',
+        marginTop: -8,
     },
     timePill: {
         flexDirection: 'row',

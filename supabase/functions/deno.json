@@ -2,8 +2,23 @@
     "compilerOptions": {
         "allowJs": true,
         "lib": [
-            "deno.window"
+            "deno.window",
+            "deno.ns",
+            "deno.unstable"
         ],
         "strict": true
+    },
+    "lint": {
+        "rules": {
+            "tags": [
+                "recommended"
+            ]
+        }
+    },
+    "fmt": {
+        "useTabs": false,
+        "lineWidth": 100,
+        "indentWidth": 2,
+        "singleQuote": false
     }
 }

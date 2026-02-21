@@ -3,7 +3,7 @@ import { BirdResult } from '../types/scanner';
 
 export type IdentificationChunk =
     | { type: 'progress'; message: string }
-    | { type: 'candidates'; data: any[] }
+    | { type: 'candidates'; data: any[]; raw_content?: string }
     | { type: 'media'; index: number; data: any }
     | { type: 'metadata'; index: number; data: any }
     | { type: 'heartbeat' }
@@ -110,7 +110,7 @@ export class IdentificationService {
      * Maps a BirdResult to the structure expected by the Supabase 'sightings' table.
      * This centralizes mapping logic for easier testing and consistency.
      */
-    static mapBirdToSighting(bird: BirdResult, userId: string): Record<string, any> {
+    static mapBirdToSighting(bird: BirdResult, userId: string, audioUrl?: string | null): Record<string, any> {
         return {
             user_id: userId,
             species_name: bird.name,
@@ -118,6 +118,7 @@ export class IdentificationService {
             rarity: bird.rarity,
             confidence: bird.confidence,
             image_url: bird.inat_photos?.[0]?.url || bird.wikipedia_image || null,
+            audio_url: audioUrl || null,
             metadata: {
                 also_known_as: bird.also_known_as,
                 taxonomy: bird.taxonomy,
@@ -140,7 +141,8 @@ export class IdentificationService {
                 male_image_url: bird.male_image_url,
                 juvenile_image_url: bird.juvenile_image_url,
                 wikipedia_image: bird.wikipedia_image,
-                gbif_taxon_key: bird.gbif_taxon_key
+                gbif_taxon_key: bird.gbif_taxon_key,
+                raw_ai_response: bird.metadata?.raw_ai_response
             }
         };
     }

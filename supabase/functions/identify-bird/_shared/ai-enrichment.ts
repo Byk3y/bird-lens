@@ -1,9 +1,7 @@
 import { cleanAndParseJson } from "./utils.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GEMINI_MODEL = "gemini-2.0-flash";
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_MODEL = "google/gemini-2.0-flash-001";
 
 /**
  * Helper to perform a fetch with a timeout
@@ -65,8 +63,8 @@ MANDATORY: Do not return "Unknown" for any field. Provide your best expert ornit
 `;
 
 export async function generateBirdMetadata(scientificName: string) {
-    if (!OPENROUTER_API_KEY && !GEMINI_API_KEY) {
-        console.error("No AI keys provided");
+    if (!OPENROUTER_API_KEY) {
+        console.error("No OpenRouter API key provided");
         return null;
     }
 
@@ -75,32 +73,21 @@ export async function generateBirdMetadata(scientificName: string) {
 
     // Helper to attempt AI call
     const attemptEnrichment = async (isPrimary: boolean): Promise<Response> => {
-        if (isPrimary && OPENROUTER_API_KEY) {
-            return await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://bird-identifier.supabase.co",
-                    "X-Title": "Bird Identifier",
-                },
-                body: JSON.stringify({
-                    model: openRouterModel,
-                    messages: [{ role: "user", content: promptText }],
-                    response_format: { type: "json_object" }
-                }),
-            });
-        } else if (GEMINI_API_KEY) {
-            return await fetchWithTimeout(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: promptText }] }],
-                    generationConfig: { responseMimeType: "application/json" }
-                }),
-            });
-        }
-        throw new Error("No AI key available for this attempt");
+        const model = isPrimary ? openRouterModel : GEMINI_MODEL;
+        return await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": 'Bearer ' + OPENROUTER_API_KEY,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://bird-identifier.supabase.co",
+                "X-Title": "Bird Identifier",
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [{ role: "user", content: promptText }],
+                response_format: { type: "json_object" }
+            }),
+        });
     };
 
     try {
@@ -111,26 +98,20 @@ export async function generateBirdMetadata(scientificName: string) {
             response = await attemptEnrichment(true);
             if (!response.ok) {
                 const err = await response.text().catch(() => "unknown");
-                console.warn(`[Enrichment] OpenRouter failed ${response.status}: ${err.substring(0, 100)}`);
+                console.warn('[Enrichment] OpenRouter failed ' + response.status + ': ' + err.substring(0, 100));
                 throw new Error("OpenRouter failed");
             }
         } catch (err) {
-            console.warn(`[Enrichment] Falling back to Gemini...`);
+            console.warn('[Enrichment] Falling back to Gemini...');
             isFallback = true;
             response = await attemptEnrichment(false);
             if (!response.ok) {
-                throw new Error(`Gemini also failed: ${response.status}`);
+                throw new Error('Gemini also failed: ' + response.status);
             }
         }
 
         const data = await response.json();
-        let content: string;
-
-        if (!isFallback) {
-            content = data.choices[0].message.content;
-        } else {
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        }
+        const content = data.choices?.[0]?.message?.content;
 
         if (!content) throw new Error("AI returned empty content");
 
@@ -140,7 +121,7 @@ export async function generateBirdMetadata(scientificName: string) {
         const meta = parsed.birds?.[0] || parsed.candidates?.[0] || (Array.isArray(parsed) ? parsed[0] : (parsed.name ? parsed : null));
 
         if (meta) {
-            console.log(`[Enrichment] Successfully generated metadata for ${scientificName} via ${isFallback ? 'Gemini' : 'OpenRouter'}`);
+            console.log('[Enrichment] Successfully generated metadata for ' + scientificName + ' via ' + (isFallback ? 'Gemini' : 'OpenRouter'));
         }
 
         return meta;
@@ -150,51 +131,32 @@ export async function generateBirdMetadata(scientificName: string) {
         return null;
     }
 }
-
 export async function generateBatchBirdMetadata(scientificNames: string[]) {
     if (scientificNames.length === 0) return [];
-    if (!OPENROUTER_API_KEY && !GEMINI_API_KEY) return [];
+    if (!OPENROUTER_API_KEY) return [];
 
     const promptText = enrichmentPromptInstructions.replace("[[SPECIES_NAMES]]", scientificNames.join(", "));
 
-    // Simplified fallback logic for batch
     const callAI = async () => {
-        if (OPENROUTER_API_KEY) {
-            const resp = await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    model: "openai/gpt-4o",
-                    messages: [{ role: "user", content: promptText }],
-                    response_format: { type: "json_object" }
-                }),
-            });
-            if (resp.ok) return resp;
-        }
-        if (GEMINI_API_KEY) {
-            return await fetchWithTimeout(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: promptText }] }],
-                    generationConfig: { responseMimeType: "application/json" }
-                }),
-            });
-        }
-        throw new Error("No keys");
+        return await fetchWithTimeout("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "openai/gpt-4o",
+                messages: [{ role: "user", content: promptText }],
+                response_format: { type: "json_object" }
+            }),
+        });
     };
 
     try {
         const response = await callAI();
         if (!response.ok) return [];
         const data = await response.json();
-
-        let content: string;
-        if (data.choices) content = data.choices[0].message.content;
-        else content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const content = data.choices?.[0]?.message?.content;
 
         if (!content) return [];
         const parsed = cleanAndParseJson(content, "Batch-Enrichment");

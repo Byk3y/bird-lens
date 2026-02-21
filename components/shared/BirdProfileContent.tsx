@@ -46,6 +46,7 @@ interface BirdProfileContentProps {
     onOpenTips?: (section?: string) => void;
     onOpenIdentification?: () => void;
     isEnrichmentComplete?: boolean;
+    sourceMode?: 'photo' | 'sound';
 }
 
 export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
@@ -59,6 +60,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     onOpenTips,
     onOpenIdentification,
     isEnrichmentComplete = true,
+    sourceMode = 'photo',
 }) => {
     const galleryRef = useRef<ScrollView>(null);
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
@@ -88,58 +90,153 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
 
             <View style={styles.gutter} />
 
-            {/* Gallery Section */}
-            <View style={styles.gallerySection}>
-                <View style={styles.sectionHeaderRow}>
-                    <View style={styles.sectionTitleLeft}>
-                        <ImageIcon size={22} color="#1A1A1A" />
-                        <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
-                    </View>
-                    <MoreHorizontal size={20} color="#999" />
-                </View>
-                <ScrollView
-                    key={bird.name}
-                    ref={galleryRef}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.galleryScroll}
-                >
-                    {/* Render existing photos */}
-                    {displayPhotos.map((photo, idx) => {
-                        const photoUrl = typeof photo === 'string' ? photo : (photo as INaturalistPhoto).url;
-                        return (
-                            <TouchableOpacity
-                                key={`photo-${photoUrl}-${idx}`}
-                                style={styles.galleryItem}
-                                onPress={() => onImagePress?.(idx)}
-                            >
-                                <Image
-                                    source={{ uri: photoUrl }}
-                                    style={styles.galleryImage}
-                                    cachePolicy="memory-disk"
-                                />
-                            </TouchableOpacity>
-                        );
-                    })}
-
-                    {/* Append pulse skeletons if loading and we have fewer than 6 items */}
-                    {isLoadingImages && [...Array(Math.max(0, 6 - displayPhotos.length))].map((_, idx) => (
-                        <View key={`skeleton-${idx}`} style={[styles.galleryItem, { backgroundColor: '#F3F3F3', overflow: 'hidden' }]}>
-                            <MotiView
-                                from={{ opacity: 1 }}
-                                animate={{ opacity: 0.5 }}
-                                transition={{
-                                    type: 'timing',
-                                    duration: 800,
-                                    loop: true,
-                                    repeatReverse: true,
-                                }}
-                                style={{ flex: 1, backgroundColor: '#E0E0E0' }}
-                            />
+            {/* Sound Section - Move to where gallery was if in sound identification mode */}
+            {sourceMode === 'sound' && (
+                <View style={[styles.section, { marginBottom: 32 }]}>
+                    <View style={[styles.sectionHeaderRow, { marginBottom: 16 }]}>
+                        <View style={styles.sectionTitleLeft}>
+                            <Activity size={22} color="#1A1A1A" />
+                            <Text style={styles.sectionTitle}>Sounds</Text>
                         </View>
-                    ))}
-                </ScrollView>
-            </View>
+                        <MoreHorizontal size={20} color="#999" />
+                    </View>
+
+                    {groupedSounds.total > 0 ? (
+                        <>
+                            {/* Songs Group */}
+                            {groupedSounds.songs.length > 0 && (
+                                <View style={styles.soundGroup}>
+                                    <View style={styles.soundGroupHeader}>
+                                        <Text style={styles.soundGroupTitle}>Song</Text>
+                                        <HelpCircle size={16} color="#1A1A1A" style={{ marginLeft: 6 }} />
+                                    </View>
+                                    {groupedSounds.songs.map((sound, idx) => (
+                                        <WaveformPlayer
+                                            key={`song-${sound.id || idx}`}
+                                            sound={sound}
+                                            activeSoundId={activeSoundId}
+                                            onPlay={(id) => {
+                                                setActiveSoundId(id);
+                                                Speech.stop();
+                                            }}
+                                        />
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Calls Group */}
+                            {groupedSounds.calls.length > 0 && (
+                                <View style={styles.soundGroup}>
+                                    <View style={styles.soundGroupHeader}>
+                                        <Text style={styles.soundGroupTitle}>Call</Text>
+                                        <HelpCircle size={16} color="#1A1A1A" style={{ marginLeft: 6 }} />
+                                    </View>
+                                    {groupedSounds.calls.map((sound, idx) => (
+                                        <WaveformPlayer
+                                            key={`call-${sound.id || idx}`}
+                                            sound={sound}
+                                            activeSoundId={activeSoundId}
+                                            onPlay={(id) => {
+                                                setActiveSoundId(id);
+                                                Speech.stop();
+                                            }}
+                                        />
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Catch-all Group */}
+                            {groupedSounds.others.length > 0 && (
+                                <View style={styles.soundGroup}>
+                                    <View style={styles.soundGroupHeader}>
+                                        <Text style={styles.soundGroupTitle}>Other Vocalizations</Text>
+                                        <HelpCircle size={16} color="#1A1A1A" style={{ marginLeft: 6 }} />
+                                    </View>
+                                    {groupedSounds.others.map((sound, idx) => (
+                                        <WaveformPlayer
+                                            key={`other-${sound.id || idx}`}
+                                            sound={sound}
+                                            activeSoundId={activeSoundId}
+                                            onPlay={(id) => {
+                                                setActiveSoundId(id);
+                                                Speech.stop();
+                                            }}
+                                        />
+                                    ))}
+                                </View>
+                            )}
+
+                            <Text style={styles.soundDisclaimer}>
+                                * Please note that same bird species can sound different due to dialect or mimicry.
+                            </Text>
+                        </>
+                    ) : isLoadingSounds ? (
+                        <View style={{ height: 60, justifyContent: 'center' }}>
+                            <ActivityIndicator size="small" color="#FF6B35" />
+                            <Text style={{ color: '#BBB', fontSize: 14, marginTop: 8, textAlign: 'center' }}>Searching archives for vocalizations...</Text>
+                        </View>
+                    ) : (
+                        <View style={{ height: 40, justifyContent: 'center' }}>
+                            <Text style={{ color: '#BBB', fontSize: 14 }}>No official sounds found in archives.</Text>
+                        </View>
+                    )}
+                </View>
+            )}
+
+            {/* Gallery Section - Only show if in photo mode or if we have photos in sound mode */}
+            {(sourceMode === 'photo' || displayPhotos.length > 0) && (
+                <View style={styles.gallerySection}>
+                    <View style={styles.sectionHeaderRow}>
+                        <View style={styles.sectionTitleLeft}>
+                            <ImageIcon size={22} color="#1A1A1A" />
+                            <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
+                        </View>
+                        <MoreHorizontal size={20} color="#999" />
+                    </View>
+                    <ScrollView
+                        key={bird.name}
+                        ref={galleryRef}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.galleryScroll}
+                    >
+                        {/* Render existing photos */}
+                        {displayPhotos.map((photo, idx) => {
+                            const photoUrl = typeof photo === 'string' ? photo : (photo as INaturalistPhoto).url;
+                            return (
+                                <TouchableOpacity
+                                    key={`photo-${photoUrl}-${idx}`}
+                                    style={styles.galleryItem}
+                                    onPress={() => onImagePress?.(idx)}
+                                >
+                                    <Image
+                                        source={{ uri: photoUrl }}
+                                        style={styles.galleryImage}
+                                        cachePolicy="memory-disk"
+                                    />
+                                </TouchableOpacity>
+                            );
+                        })}
+
+                        {/* Append pulse skeletons if loading and we have fewer than 6 items */}
+                        {isLoadingImages && [...Array(Math.max(0, 6 - displayPhotos.length))].map((_, idx) => (
+                            <View key={`skeleton-${idx}`} style={[styles.galleryItem, { backgroundColor: '#F3F3F3', overflow: 'hidden' }]}>
+                                <MotiView
+                                    from={{ opacity: 1 }}
+                                    animate={{ opacity: 0.5 }}
+                                    transition={{
+                                        type: 'timing',
+                                        duration: 800,
+                                        loop: true,
+                                        repeatReverse: true,
+                                    }}
+                                    style={{ flex: 1, backgroundColor: '#E0E0E0' }}
+                                />
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
             <View style={styles.gutter} />
 
@@ -177,8 +274,8 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
 
             <View style={styles.gutter} />
 
-            {/* Sound Section */}
-            {groupedSounds.total > 0 ? (
+            {/* Sound Section - Hide from original position if already shown at top */}
+            {sourceMode === 'photo' && groupedSounds.total > 0 && (
                 <View style={styles.section}>
                     <View style={[styles.sectionHeaderRow, { marginBottom: 16 }]}>
                         <View style={styles.sectionTitleLeft}>
@@ -255,7 +352,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         * Please note that same bird species can sound different due to dialect or mimicry.
                     </Text>
                 </View>
-            ) : isLoadingSounds ? (
+            )}
+
+            {sourceMode === 'photo' && isLoadingSounds && groupedSounds.total === 0 && (
                 <View style={styles.section}>
                     <View style={styles.sectionHeaderRow}>
                         <View style={styles.sectionTitleLeft}>
@@ -267,7 +366,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Text style={{ color: '#BBB', fontSize: 14 }}>Searching archives for vocalizations...</Text>
                     </View>
                 </View>
-            ) : null}
+            )}
 
             <View style={styles.gutter} />
 

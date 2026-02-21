@@ -2,6 +2,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { IdentificationService } from '@/services/IdentificationService';
 import { BirdResult } from '@/types/scanner';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { fetch } from 'expo/fetch';
 import { useState } from 'react';
@@ -19,14 +20,20 @@ export const useBirdIdentification = () => {
     const [result, setResult] = useState<BirdResult | null>(null);
     const [heroImages, setHeroImages] = useState<Record<string, string>>({});
     const [error, setError] = useState<string | null>(null);
+    const [progressMessage, setProgressMessage] = useState<string | null>(null);
+    const [abortController, setAbortController] = useState<AbortController | null>(null);
     const { user, isLoading: isAuthLoading } = useAuth();
 
     const identifyBird = async (imageB64?: string, audioB64?: string) => {
         if (isProcessing) return;
 
         try {
+            const controller = new AbortController();
+            setAbortController(controller);
+
             setIsProcessing(true);
             setError(null);
+            setProgressMessage('Identifying...');
             // Light feedback for identification start
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -46,6 +53,7 @@ export const useBirdIdentification = () => {
                     'apikey': SUPABASE_ANON_KEY,
                     'x-client-info': 'supabase-js-expo',
                 },
+                signal: controller.signal,
                 body: JSON.stringify({
                     image: imageB64,
                     audio: audioB64
@@ -62,18 +70,23 @@ export const useBirdIdentification = () => {
             if (!reader) throw new Error('No response body to read');
 
             let rawCandidates: any[] = [];
+            let finalBirds: BirdResult[] = [];
+            let rawAiResponse: string | null = null;
 
             await IdentificationService.processStream(reader, (chunk) => {
                 switch (chunk.type) {
                     case 'progress':
                         console.log(`[Stream Progress] ${chunk.message}`);
+                        setProgressMessage(chunk.message);
                         break;
 
                     case 'candidates': {
                         rawCandidates = chunk.data;
+                        rawAiResponse = chunk.raw_content || null;
                         const initialBirds = rawCandidates.map((bird: any) =>
                             IdentificationService.toBirdResult(bird)
                         );
+                        finalBirds = initialBirds;
                         setResult(initialBirds[0] || null);
                         setCandidates(initialBirds);
                         setEnrichedCandidates(initialBirds);
@@ -92,17 +105,22 @@ export const useBirdIdentification = () => {
                             return next;
                         });
 
-                        if (media.inat_photos?.length > 0 && rawCandidates[index]) {
+                        // Choose the best image for the hero section
+                        const heroUrl = media.inat_photos?.[0]?.url ||
+                            media.male_image_url ||
+                            media.wikipedia_image;
+
+                        if (heroUrl && rawCandidates[index]) {
                             setHeroImages(prev => ({
                                 ...prev,
-                                [rawCandidates[index].scientific_name]: media.inat_photos[0].url,
+                                [rawCandidates[index].scientific_name]: heroUrl,
                             }));
                         }
 
                         if (index === 0) {
                             setResult(prev => prev ? IdentificationService.toBirdResult(prev, media) : null);
                         }
-                        console.log(`Received media for candidate ${index}: ${media.inat_photos?.length || 0} photos`);
+                        console.log(`Received media for candidate ${index}: ${media.inat_photos?.length || 0} photos, fallback used: ${!media.inat_photos?.length && !!heroUrl}`);
                         break;
                     }
 
@@ -132,11 +150,25 @@ export const useBirdIdentification = () => {
                         setError(chunk.message || 'Identification failed. Please try again.');
                         break;
                 }
+
+                // If we have candidates and a raw response, attach it to the first bird
+                // This will be used in saveSighting
+                if (finalBirds.length > 0 && rawAiResponse) {
+                    finalBirds[0].metadata = {
+                        ...finalBirds[0].metadata,
+                        raw_ai_response: rawAiResponse
+                    };
+                }
             });
 
 
-            return result;
+            return finalBirds[0] || null;
         } catch (error: any) {
+            if (error.name === 'AbortError') {
+                console.log('Identification request cancelled by user');
+                return null;
+            }
+
             console.warn('Identification attempt status:', error.message || error);
 
             const status = error.status || error.context?.status || error.statusCode;
@@ -158,6 +190,8 @@ export const useBirdIdentification = () => {
             return null;
         } finally {
             setIsProcessing(false);
+            setProgressMessage(null);
+            setAbortController(null);
         }
     };
 
@@ -175,7 +209,7 @@ export const useBirdIdentification = () => {
         setHeroImages(prev => ({ ...prev, [scientificName]: url }));
     };
 
-    const saveSighting = async (bird: BirdResult, capturedImage?: string | null) => {
+    const saveSighting = async (bird: BirdResult, capturedImage?: string | null, recordingUri?: string | null) => {
         if (isSaving) return;
 
         let attempts = 0;
@@ -186,15 +220,16 @@ export const useBirdIdentification = () => {
             try {
                 setIsSaving(true);
                 let imageUrl = null;
+                let audioUrl = null;
+
+                const { Buffer } = require('buffer');
 
                 // Upload image if provided
                 if (capturedImage) {
-                    const fileName = `${user?.id}/${Date.now()}.webp`;
-
-                    const { Buffer } = require('buffer');
+                    const fileName = `images/${user?.id}/${Date.now()}.webp`;
                     const bytes = Buffer.from(capturedImage, 'base64');
 
-                    const { data: uploadData, error: uploadError } = await supabase.storage
+                    const { error: uploadError } = await supabase.storage
                         .from('sightings')
                         .upload(fileName, bytes, {
                             contentType: 'image/webp',
@@ -210,8 +245,36 @@ export const useBirdIdentification = () => {
                     imageUrl = publicUrl;
                 }
 
+                // Upload audio if provided
+                if (recordingUri) {
+                    const fileName = `audio/${user?.id}/${Date.now()}.wav`;
+                    console.log(`[Save] Attempting audio upload: ${fileName} from ${recordingUri}`);
+
+                    // Read file as base64 using legacy file system and direct buffer conversion
+                    const base64 = await FileSystem.readAsStringAsync(recordingUri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    });
+                    const audioBytes = Buffer.from(base64, 'base64');
+
+                    const { error: audioUploadError } = await supabase.storage
+                        .from('sightings')
+                        .upload(fileName, audioBytes, {
+                            contentType: 'audio/wav',
+                            upsert: true
+                        });
+
+                    if (audioUploadError) throw audioUploadError;
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('sightings')
+                        .getPublicUrl(fileName);
+
+                    audioUrl = publicUrl;
+                    console.log(`[Save] Audio uploaded successfully: ${audioUrl}`);
+                }
+
                 // Map bird result to sighting structure
-                const sightingData = IdentificationService.mapBirdToSighting(bird, user?.id || '');
+                const sightingData = IdentificationService.mapBirdToSighting(bird, user?.id || '', audioUrl);
 
                 // Add image_url if uploaded
                 if (imageUrl) {
@@ -244,10 +307,15 @@ export const useBirdIdentification = () => {
     };
 
     const resetResult = () => {
+        if (abortController) {
+            abortController.abort();
+            setAbortController(null);
+        }
         setResult(null);
         setCandidates([]);
         setEnrichedCandidates([]);
         setHeroImages({});
+        setProgressMessage(null);
     };
 
     return {
@@ -258,6 +326,7 @@ export const useBirdIdentification = () => {
         enrichedCandidates,
         heroImages,
         error,
+        progressMessage,
         identifyBird,
         enrichCandidate,
         updateHeroImage,

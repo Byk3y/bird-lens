@@ -41,8 +41,8 @@ Deno.test("IdentificationService.mapBirdToSighting should correctly map bird to 
     assertEquals(sighting.user_id, userId);
     assertEquals(sighting.species_name, bird.name);
     assertEquals(sighting.scientific_name, bird.scientific_name);
-    assertEquals(sighting.family, bird.taxonomy.family);
-    assertEquals(sighting.order, bird.taxonomy.order);
+    assertEquals(sighting.metadata.taxonomy.family, bird.taxonomy.family);
+    assertEquals(sighting.metadata.taxonomy.order, bird.taxonomy.order);
     assertEquals(sighting.confidence, bird.confidence);
     assertEquals(sighting.metadata.description, bird.description);
     assertEquals(sighting.metadata.inat_photos.length, 1);

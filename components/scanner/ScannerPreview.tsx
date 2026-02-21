@@ -11,9 +11,13 @@ import Animated, {
     withRepeat,
     withTiming
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SoundCaptureWaveform } from './SoundCaptureWaveform';
 
 interface ScannerPreviewProps {
-    imageUri: string;
+    imageUri: string | null;
+    audioUri?: string | null;
+    activeMode?: 'photo' | 'sound';
     isProcessing: boolean;
     progressMessage: string | null;
     error: string | null;
@@ -22,7 +26,8 @@ interface ScannerPreviewProps {
 
 const { width, height } = Dimensions.get('window');
 
-const DISCOVERY_MESSAGES = [
+const PHOTO_MESSAGES = [
+    "Wait for a moment...",
     "Analyzing plumage and patterns...",
     "Scanning bill and eye markings...",
     "Comparing against local species...",
@@ -31,29 +36,44 @@ const DISCOVERY_MESSAGES = [
     "Identifying unique field marks...",
 ];
 
+const SOUND_MESSAGES = [
+    "Wait for a moment...",
+    "Analyzing acoustic patterns...",
+    "Scanning frequency ranges...",
+    "Consulting song archives...",
+    "Isolating unique calls...",
+    "Matching vocalizations...",
+    "Refining auditory data...",
+];
+
 export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
     imageUri,
+    audioUri,
+    activeMode = 'photo',
     isProcessing,
     progressMessage,
     error,
     onReset
 }) => {
+    const insets = useSafeAreaInsets();
     const scanLineY = useSharedValue(0);
     const ringRotation = useSharedValue(0);
     const [statusIndex, setStatusIndex] = useState(0);
 
+    const messages = activeMode === 'sound' ? SOUND_MESSAGES : PHOTO_MESSAGES;
+
     useEffect(() => {
         if (isProcessing) {
             const interval = setInterval(() => {
-                setStatusIndex((prev: number) => (prev + 1) % DISCOVERY_MESSAGES.length);
+                setStatusIndex((prev: number) => (prev + 1) % messages.length);
             }, 1800);
             return () => clearInterval(interval);
         } else {
             setStatusIndex(0);
         }
-    }, [isProcessing]);
+    }, [isProcessing, messages]);
 
-    const displayMessage = progressMessage || DISCOVERY_MESSAGES[statusIndex];
+    const displayMessage = progressMessage || messages[statusIndex];
 
     useEffect(() => {
         scanLineY.value = withRepeat(
@@ -84,9 +104,13 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
     return (
         <View style={styles.container}>
             {/* Header / Close Button */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onReset} style={styles.closeButton}>
-                    <X size={24} color={Colors.text} />
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+                <TouchableOpacity
+                    onPress={onReset}
+                    style={styles.closeButton}
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                    <X size={26} color={Colors.text} strokeWidth={2.5} />
                 </TouchableOpacity>
             </View>
 
@@ -99,12 +123,26 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
                     <View style={[styles.corner, styles.bottomLeft]} />
                     <View style={[styles.corner, styles.bottomRight]} />
 
-                    {/* Image with subtle grid effect */}
+                    {/* Image or Sound Spectrogram */}
                     <View style={styles.imageRelative}>
-                        <Image
-                            source={{ uri: `data:image/webp;base64,${imageUri}` }}
-                            style={styles.image}
-                        />
+                        {activeMode === 'photo' && imageUri ? (
+                            <Image
+                                source={{ uri: `data:image/webp;base64,${imageUri}` }}
+                                style={styles.image}
+                            />
+                        ) : (
+                            <View style={[styles.image, { backgroundColor: '#1A1A1A' }]}>
+                                <LinearGradient
+                                    colors={['#1A1A1A', '#2D3436', '#1A1A1A']}
+                                    style={StyleSheet.absoluteFill}
+                                />
+                                {activeMode === 'sound' && (
+                                    <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+                                        <SoundCaptureWaveform />
+                                    </View>
+                                )}
+                            </View>
+                        )}
 
                         {/* Grid Overlay */}
                         <View style={styles.gridOverlay}>
@@ -161,7 +199,7 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
                 </View>
                 <View style={styles.textContainer}>
                     <Text style={[styles.analyzingText, error ? styles.errorTitle : null]}>
-                        {error ? "Service Unavailable" : "Scanning species..."}
+                        {error ? "Service Unavailable" : displayMessage}
                     </Text>
                     {error && (
                         <Text style={styles.errorMessage}>

@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Bird Lens - Bird Identifier",
-    "slug": "bird-identifier",
+    "name": "BirdSnap",
+    "slug": "birdsnap",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "birdidentifier",
-    "userInterfaceStyle": "automatic",
+    "scheme": "birdsnap",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.francis.dev.bird-identifier"
+      "bundleIdentifier": "com.francis.dev.birdsnap",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -35,6 +38,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9789b22b-8db4-46f3-a8f5-3066f7e38101"
+      }
+    },
+    "owner": "francis.dev"
   }
 }

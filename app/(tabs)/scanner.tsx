@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   StyleSheet,
   Text,
@@ -28,7 +29,7 @@ import { ScannerPreview } from '@/components/scanner/ScannerPreview';
 import { ScannerViewfinder } from '@/components/scanner/ScannerViewfinder';
 import { SnapTipsModal } from '@/components/scanner/SnapTipsModal';
 import { SoundScanner } from '@/components/scanner/SoundScanner';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
@@ -49,6 +50,7 @@ export default function ScannerScreen() {
   const { isLoading: isAuthLoading } = useAuth();
 
   const cameraRef = useRef<CameraView>(null);
+  const processedAudioUris = useRef<Set<string>>(new Set());
   const router = useRouter();
   const params = useLocalSearchParams<{ mode: ScanMode }>();
 
@@ -60,6 +62,7 @@ export default function ScannerScreen() {
     enrichedCandidates,
     heroImages,
     error,
+    progressMessage,
     identifyBird,
     enrichCandidate,
     updateHeroImage,
@@ -79,8 +82,11 @@ export default function ScannerScreen() {
     formattedTime,
     startRecording,
     stopRecording,
+    stopAndCleanup,
+    clearRecording,
     recordingUri,
     meteringLevel,
+    durationMillis,
   } = useAudioRecording();
 
   // Reset to photo mode and auto-request permission on mount
@@ -104,6 +110,15 @@ export default function ScannerScreen() {
 
 
   const [isFlashing, setIsFlashing] = useState(false);
+
+  const handleBack = async () => {
+    if (isRecording) {
+      await stopAndCleanup();
+    }
+    clearRecording();
+    resetResult();
+    router.back();
+  };
 
   const handlePickPhoto = async () => {
     // Check permission status from hook state first (instant)
@@ -199,8 +214,12 @@ export default function ScannerScreen() {
       if (isRecording) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         await stopRecording();
+
+        // Auto-trigger identification after stopping if we have a URI
+        // Note: we need to use a small delay or check the URI from the stopRecording result if possible
+        // but useAudioRecording updates state. We can use the fact that stopRecording is async.
       } else if (recordingUri) {
-        // Handle upload/identification
+        // Handle upload/identification manually if they press again
         try {
           const base64 = await FileSystem.readAsStringAsync(recordingUri, {
             encoding: 'base64',
@@ -215,6 +234,42 @@ export default function ScannerScreen() {
       }
     }
   };
+
+  // Add a side effect to auto-trigger identification when recording stops and we have a URI
+  useEffect(() => {
+    if (!isRecording && recordingUri && !result && !isProcessing && activeMode === 'sound' && !processedAudioUris.current.has(recordingUri)) {
+      const triggerIdentification = async () => {
+        try {
+          processedAudioUris.current.add(recordingUri);
+          const base64 = await FileSystem.readAsStringAsync(recordingUri, {
+            encoding: 'base64',
+          });
+          const identifiedBird = await identifyBird(undefined, base64);
+
+          if (!identifiedBird && !isProcessing) {
+            // If identification finished but no bird was found, maybe show an alert
+            // or allow user to try again
+            Alert.alert('No Match Found', 'We couldn\'t identify this bird sound. Try recording a clearer sample!');
+          }
+        } catch (err: any) {
+          console.error('Auto audio processing error:', err);
+          Alert.alert('Identification Failed', err.message || 'Something went wrong while analyzing the audio.');
+        }
+      };
+      triggerIdentification();
+    }
+  }, [isRecording, recordingUri, result, isProcessing, activeMode]);
+
+  // Handle errors
+  useEffect(() => {
+    if (error && !isProcessing && activeMode === 'sound') {
+      Alert.alert('Identification Error', error, [{
+        text: 'OK', onPress: () => {
+          // Option to reset or clear
+        }
+      }]);
+    }
+  }, [error, isProcessing, activeMode]);
 
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -253,15 +308,18 @@ export default function ScannerScreen() {
             onConfirm={confirmFraming}
             onShowTips={() => setShowSnapTips(true)}
           />
-        ) : capturedImage && !result && (isProcessing || error) ? (
+        ) : ((capturedImage || (activeMode === 'sound' && recordingUri)) && !result && (isProcessing || error)) ? (
           <ScannerPreview
             imageUri={capturedImage}
+            audioUri={recordingUri}
+            activeMode={activeMode}
             isProcessing={isProcessing}
-            progressMessage={null} // We are using dynamic messages now
+            progressMessage={progressMessage}
             error={error}
             onReset={() => {
               resetResult();
               setCapturedImage(null);
+              clearRecording();
             }}
           />
         ) : !result ? (
@@ -282,7 +340,7 @@ export default function ScannerScreen() {
                   )}
                   <View style={styles.overlay}>
                     <ScannerHeader
-                      onBack={() => router.back()}
+                      onBack={handleBack}
                       flash={flash}
                       onFlashToggle={() => setFlash(flash === 'off' ? 'on' : 'off')}
                     />
@@ -296,12 +354,13 @@ export default function ScannerScreen() {
               </GestureDetector>
             ) : (
               <SoundScanner
-                onBack={() => router.back()}
+                onBack={handleBack}
                 isRecording={isRecording}
                 formattedTime={formattedTime}
                 hasRecording={!!recordingUri}
                 isProcessing={isProcessing}
                 meteringLevel={meteringLevel}
+                durationMillis={durationMillis}
               />
             )}
 
@@ -324,6 +383,7 @@ export default function ScannerScreen() {
             enrichedCandidates={enrichedCandidates}
             heroImages={heroImages}
             capturedImage={capturedImage}
+            recordingUri={recordingUri}
             isProcessing={isProcessing}
             isSaving={isSaving}
             savedIndices={savedIndices}
@@ -331,8 +391,8 @@ export default function ScannerScreen() {
             setActiveIndex={setActiveIndex}
             enrichCandidate={enrichCandidate}
             updateHeroImage={updateHeroImage}
-            onSave={async (bird, image) => {
-              const success = await saveSighting(bird, image);
+            onSave={async (bird, image, recording) => {
+              const success = await saveSighting(bird, image, recording);
               if (success) {
                 setSavedIndices(prev => new Set(prev).add(activeIndex));
 
@@ -340,6 +400,7 @@ export default function ScannerScreen() {
                 setTimeout(() => {
                   resetResult();
                   setCapturedImage(null);
+                  clearRecording();
                   setSavedIndices(new Set());
                   setActiveIndex(0);
                   router.replace('/(tabs)/collection');
@@ -349,6 +410,7 @@ export default function ScannerScreen() {
             onReset={() => {
               resetResult();
               setCapturedImage(null);
+              clearRecording();
               setSavedIndices(new Set());
               setActiveIndex(0);
             }}

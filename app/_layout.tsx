@@ -8,8 +8,8 @@ import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { initAudioConfig } from '@/lib/audioConfig';
 import { AuthProvider } from '@/lib/auth';
-import { Audio } from 'expo-av';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -53,11 +53,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     // Basic setup for audio playback across the app
-    Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-      shouldDuckAndroid: true,
-    }).catch(err => console.warn('Audio.setAudioModeAsync error:', err));
+    initAudioConfig().catch(err => console.warn('initAudioConfig error:', err));
   }, []);
 
   return (
