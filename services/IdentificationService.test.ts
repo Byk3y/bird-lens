@@ -49,6 +49,17 @@ Deno.test("IdentificationService.mapBirdToSighting should correctly map bird to 
     assertEquals(sighting.metadata.sounds.length, 1);
 });
 
+Deno.test("IdentificationService.mapBirdToSighting should handle optional audioUrl", () => {
+    const bird: any = { name: 'Test Bird', scientific_name: 'Testus' };
+    const userId = 'user-123';
+    const audioUrl = 'https://storage.supabase.com/audio.wav';
+
+    const sighting = IdentificationService.mapBirdToSighting(bird, userId, audioUrl);
+
+    assertEquals(sighting.audio_url, audioUrl);
+    assertEquals(sighting.user_id, userId);
+});
+
 Deno.test("IdentificationService.processStream - processes all chunk types", async () => {
     const chunks: IdentificationChunk[] = [];
     const callback = (c: IdentificationChunk) => chunks.push(c);

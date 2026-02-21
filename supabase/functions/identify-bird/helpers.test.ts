@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-import { cleanAndParseJson, fixXenoCantoUrl, isWavHeaderPresent } from "./_shared/utils.ts";
+import { addWavHeader, cleanAndParseJson, fixXenoCantoUrl, isWavHeaderPresent, mapBirdNetToCandidates } from "./_shared/utils.ts";
 
 Deno.test("cleanAndParseJson - basic valid json", () => {
     const input = '{"candidates": [{"name": "Robin"}]}';
@@ -95,4 +95,69 @@ Deno.test("isWavHeaderPresent - returns false for non-WAV RIFF", () => {
 Deno.test("isWavHeaderPresent - returns false for arbitrary data", () => {
     const input = new Uint8Array(20).map((_, i) => i);
     assertEquals(isWavHeaderPresent(input), false);
+});
+
+Deno.test("addWavHeader - adds correct 44-byte header", () => {
+    const pcmData = new Uint8Array([1, 2, 3, 4]);
+    const wavData = addWavHeader(pcmData, 48000, 1, 16);
+
+    assertEquals(wavData.length, 44 + 4);
+    assertEquals(isWavHeaderPresent(wavData), true);
+
+    // Check RIFF size (36 + dataLength)
+    const view = new DataView(wavData.buffer);
+    assertEquals(view.getUint32(4, true), 36 + 4);
+
+    // Check data size
+    assertEquals(view.getUint32(40, true), 4);
+
+    // Check PCM data is preserved
+    assertEquals(wavData[44], 1);
+    assertEquals(wavData[47], 4);
+});
+
+Deno.test("mapBirdNetToCandidates - maps valid BirdNET response", () => {
+    const birdNetJson = {
+        predictions: [
+            {
+                species: [
+                    { species_name: "Cardinalis_cardinalis_Northern Cardinal", probability: 0.95 },
+                    { species_name: "Cyanocitta_cristata_Blue Jay", probability: 0.8 }
+                ]
+            },
+            {
+                species: [
+                    { species_name: "Cardinalis_cardinalis_Northern Cardinal", probability: 0.99 } // Higher prob in other segment
+                ]
+            }
+        ]
+    };
+
+    const candidates = mapBirdNetToCandidates(birdNetJson);
+
+    assertEquals(candidates.length, 2);
+    assertEquals(candidates[0].scientific_name, "Cardinalis_cardinalis");
+    assertEquals(candidates[0].name, "Northern Cardinal");
+    assertEquals(candidates[0].confidence, 0.99); // Took the max
+    assertEquals(candidates[1].scientific_name, "Cyanocitta_cristata");
+});
+
+Deno.test("mapBirdNetToCandidates - filters low confidence", () => {
+    const birdNetJson = {
+        predictions: [
+            {
+                species: [
+                    { species_name: "Bird_1_Common Name", probability: 0.05 }
+                ]
+            }
+        ]
+    };
+    const candidates = mapBirdNetToCandidates(birdNetJson);
+    assertEquals(candidates.length, 0);
+});
+
+Deno.test("mapBirdNetToCandidates - handles empty/malformed input", () => {
+    assertEquals(mapBirdNetToCandidates(null).length, 0);
+    assertEquals(mapBirdNetToCandidates({}).length, 0);
+    assertEquals(mapBirdNetToCandidates({ predictions: [] }).length, 0);
 });

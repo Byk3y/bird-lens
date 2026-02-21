@@ -91,3 +91,103 @@ export function isWavHeaderPresent(bytes: Uint8Array): boolean {
     if (bytes[8] !== 87 || bytes[9] !== 65 || bytes[10] !== 86 || bytes[11] !== 69) return false;
     return true;
 }
+
+/**
+ * Adds a WAV header to a raw PCM byte array.
+ * Assumes 16-bit, Mono, 48000Hz as standard for this app.
+ */
+export function addWavHeader(pcmData: Uint8Array, sampleRate = 48000, channels = 1, bitDepth = 16): Uint8Array {
+    const dataLength = pcmData.length;
+    const buffer = new ArrayBuffer(44 + dataLength);
+    const view = new DataView(buffer);
+
+    const writeString = (offset: number, str: string) => {
+        for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
+        }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM format
+    view.setUint16(22, channels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, (sampleRate * channels * bitDepth) / 8, true);
+    view.setUint16(32, (channels * bitDepth) / 8, true);
+    view.setUint16(34, bitDepth, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataLength, true);
+
+    new Uint8Array(buffer, 44).set(pcmData);
+    return new Uint8Array(buffer);
+}
+
+/**
+ * Maps raw BirdNET API output to internal candidate format.
+ */
+export function mapBirdNetToCandidates(birdNetJson: any): any[] {
+    if (!birdNetJson || !birdNetJson.predictions || !Array.isArray(birdNetJson.predictions)) {
+        return [];
+    }
+
+    const extractedCandidates: any[] = [];
+
+    birdNetJson.predictions.forEach((segment: any) => {
+        if (segment.species && Array.isArray(segment.species)) {
+            segment.species.forEach((speciesEntry: any) => {
+                const rawName = speciesEntry.species_name;
+                const probability = speciesEntry.probability;
+
+                if (rawName && probability !== undefined && probability >= 0.1) {
+                    // BirdNET often uses format: "Scientific_Name_Common_Name" or "Scientific_Name"
+                    // We want to extract the scientific name and common name accurately.
+                    // Usually the last part after the last underscore is the start of the common name
+                    // But scientific names can be "Genus_species".
+                    // A better approach: splits by underscore and tries to reconstruct.
+
+                    const parts = rawName.split('_');
+                    if (parts.length >= 3) {
+                        // Likely format: Genus_species_Common Name
+                        const scientificName = parts[0] + '_' + parts[1];
+                        const commonName = parts.slice(2).join(' ').trim();
+
+                        extractedCandidates.push({
+                            name: commonName,
+                            scientific_name: scientificName,
+                            confidence: probability,
+                            identifying_features: `Identified via BirdNET acoustic analysis`,
+                            taxonomy: {}
+                        });
+                    } else if (parts.length === 2) {
+                        // Format: ScientificName_CommonName
+                        extractedCandidates.push({
+                            name: parts[1].trim(),
+                            scientific_name: parts[0].trim(),
+                            confidence: probability,
+                            identifying_features: `Identified via BirdNET acoustic analysis`,
+                            taxonomy: {}
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    // Sort by confidence descending
+    extractedCandidates.sort((a, b) => b.confidence - a.confidence);
+
+    // Deduplicate (take highest confidence per species)
+    const uniqueCandidates: any[] = [];
+    const seenNames = new Set<string>();
+    for (const candidate of extractedCandidates) {
+        if (!seenNames.has(candidate.scientific_name)) {
+            seenNames.add(candidate.scientific_name);
+            uniqueCandidates.push(candidate);
+        }
+    }
+
+    return uniqueCandidates.slice(0, 3);
+}

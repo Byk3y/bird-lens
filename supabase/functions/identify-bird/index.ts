@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { generateBatchBirdMetadata, generateBirdMetadata } from "./_shared/ai-enrichment.ts";
 import { corsHeaders, createStreamResponse } from "./_shared/cors.ts";
 import { enrichSpecies } from "./_shared/enrichment.ts";
-import { cleanAndParseJson, isWavHeaderPresent } from "./_shared/utils.ts";
+import { addWavHeader, cleanAndParseJson, isWavHeaderPresent, mapBirdNetToCandidates } from "./_shared/utils.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 const XENO_CANTO_API_KEY = Deno.env.get("XENO_CANTO_API_KEY");
@@ -92,40 +92,6 @@ async function setCachedMedia(scientificName: string, name: string, mediaData: a
     }
 }
 
-/**
- * Adds a WAV header to a raw PCM byte array.
- * Assumes 16-bit, Mono, 48000Hz as per useAudioRecording.ts iOS/Android settings.
- */
-function addWavHeader(pcmData: Uint8Array, sampleRate = 48000, channels = 1, bitDepth = 16): Uint8Array {
-    const dataLength = pcmData.length;
-    const buffer = new ArrayBuffer(44 + dataLength);
-    const view = new DataView(buffer);
-
-    // RIFF header
-    const writeString = (offset: number, str: string) => {
-        for (let i = 0; i < str.length; i++) {
-            view.setUint8(offset + i, str.charCodeAt(i));
-        }
-    };
-
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + dataLength, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true); // PCM format
-    view.setUint16(22, channels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, (sampleRate * channels * bitDepth) / 8, true);
-    view.setUint16(32, (channels * bitDepth) / 8, true);
-    view.setUint16(34, bitDepth, true);
-    writeString(36, 'data');
-    view.setUint32(40, dataLength, true);
-
-    // Copy PCM data
-    new Uint8Array(buffer, 44).set(pcmData);
-    return new Uint8Array(buffer);
-}
 
 // ---------- Main Handler ----------
 
@@ -371,53 +337,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                                     if (birdNetJson && birdNetJson.predictions && Array.isArray(birdNetJson.predictions)) {
                                         console.log('[PHASE1] BirdNET Predictions:', JSON.stringify(birdNetJson.predictions.slice(0, 3)));
 
-                                        const extractedCandidates: any[] = [];
-
-                                        // 5a. Iterate through all time segments
-                                        birdNetJson.predictions.forEach((segment: any) => {
-                                            if (segment.species && Array.isArray(segment.species)) {
-                                                // 5b. Iterate through species identified in this segment
-                                                segment.species.forEach((speciesEntry: any) => {
-                                                    const rawName = speciesEntry.species_name;
-                                                    const probability = speciesEntry.probability;
-
-                                                    // 5c. Filter low confidence & missing data
-                                                    if (rawName && probability !== undefined && probability >= 0.1) {
-                                                        const firstUnderscoreIdx = rawName.indexOf('_');
-                                                        if (firstUnderscoreIdx !== -1) {
-                                                            const scientificName = rawName.substring(0, firstUnderscoreIdx).trim();
-                                                            const commonName = rawName.substring(firstUnderscoreIdx + 1).trim();
-
-                                                            if (scientificName && commonName) {
-                                                                extractedCandidates.push({
-                                                                    name: commonName,
-                                                                    scientific_name: scientificName,
-                                                                    confidence: probability,
-                                                                    identifying_features: `Identified via BirdNET acoustic analysis`,
-                                                                    taxonomy: {}
-                                                                });
-                                                            }
-                                                        }
-                                                    }
-                                                });
-                                            }
-                                        });
-
-                                        // 5d. Sort across all segments by confidence descending
-                                        extractedCandidates.sort((a, b) => b.confidence - a.confidence);
-
-                                        // 5e. Remove duplicates (taking the highest confidence for a species)
-                                        const uniqueCandidates: any[] = [];
-                                        const seenNames = new Set<string>();
-                                        for (const candidate of extractedCandidates) {
-                                            if (!seenNames.has(candidate.scientific_name)) {
-                                                seenNames.add(candidate.scientific_name);
-                                                uniqueCandidates.push(candidate);
-                                            }
-                                        }
-
-                                        // 5f. Take top 3
-                                        birdNetCandidates = uniqueCandidates.slice(0, 3);
+                                        birdNetCandidates = mapBirdNetToCandidates(birdNetJson);
 
                                         if (birdNetCandidates.length > 0) {
                                             usedBirdNet = true;
