@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
 
+import { AlertProvider } from '@/components/common/AlertProvider';
 import { useColorScheme } from '@/components/useColorScheme';
 import { initAudioConfig } from '@/lib/audioConfig';
 import { AuthProvider } from '@/lib/auth';
@@ -48,27 +49,35 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
+import { subscriptionService } from '@/services/SubscriptionService';
+
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
     // Basic setup for audio playback across the app
     initAudioConfig().catch(err => console.warn('initAudioConfig error:', err));
+
+    // Initialize RevenueCat
+    subscriptionService.initialize().catch(err => console.error('RevenueCat initialization error:', err));
   }, []);
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
-          <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
-          <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-      </ThemeProvider>
+      <AlertProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
+            <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
+            <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+            <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+        </ThemeProvider>
+      </AlertProvider>
     </AuthProvider>
   );
 }
