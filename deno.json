@@ -1,0 +1,7 @@
+{
+    "imports": {
+        "@/": "./",
+        "@react-native-async-storage/async-storage": "./services/__mocks__/@react-native-async-storage/async-storage.ts",
+        "@/lib/supabase": "./services/__mocks__/@/lib/supabase.ts"
+    }
+}

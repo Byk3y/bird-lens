@@ -1,10 +1,10 @@
 import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { generateBatchBirdMetadata, generateBirdMetadata } from "./_shared/ai-enrichment.ts";
-import { corsHeaders, createStreamResponse } from "./_shared/cors.ts";
-import { enrichSpecies } from "./_shared/enrichment.ts";
-import { addWavHeader, cleanAndParseJson, isWavHeaderPresent, mapBirdNetToCandidates } from "./_shared/utils.ts";
+import { generateBatchBirdMetadata, generateBirdMetadata } from "../_shared/ai-enrichment.ts";
+import { corsHeaders, createStreamResponse } from "../_shared/cors.ts";
+import { enrichSpecies } from "../_shared/enrichment.ts";
+import { addWavHeader, cleanAndParseJson, isWavHeaderPresent, mapBirdNetToCandidates } from "../_shared/utils.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 const XENO_CANTO_API_KEY = Deno.env.get("XENO_CANTO_API_KEY");

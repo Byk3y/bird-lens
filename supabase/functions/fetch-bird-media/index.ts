@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { generateBirdMetadata } from "./_shared/ai-enrichment.ts";
-import { corsHeaders } from "./_shared/cors.ts";
-import { enrichSpecies } from "./_shared/enrichment.ts";
+import { generateBirdMetadata } from "../_shared/ai-enrichment.ts";
+import { corsHeaders } from "../_shared/cors.ts";
+import { enrichSpecies } from "../_shared/enrichment.ts";
+import { mapMediaToResponse } from "../_shared/utils.ts";
 
 interface MediaRequest {
     scientific_name: string;
@@ -55,23 +56,14 @@ serve(async (req: Request) => {
         // If cache is valid AND has COMPLETE metadata, return it
         if (cached && !isStale && identificationData && !isMetadataIncomplete) {
             console.log(`Cache hit for media & metadata: ${scientific_name}`);
-            return new Response(JSON.stringify({
-                image: {
-                    url: cached.wikipedia_image || (cached.inat_photos?.[0]?.url) || null,
-                    attribution: null
-                },
-                map: {
-                    taxonKey: cached.gbif_taxon_key,
-                    tileUrl: cached.gbif_taxon_key ? `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?taxonKey=${cached.gbif_taxon_key}&style=purpleYellow.poly` : null
-                },
-                inat_photos: cached.inat_photos || [],
-                sounds: cached.sounds || [],
-                male_image_url: cached.male_image_url || null,
-                female_image_url: cached.female_image_url || null,
-                juvenile_image_url: cached.juvenile_image_url || null,
-                wikipedia_image: cached.wikipedia_image || null,
+            const responseData = mapMediaToResponse({
+                scientific_name,
+                media: cached,
+                taxonKey: cached.gbif_taxon_key,
+                wikipediaImage: cached.wikipedia_image,
                 metadata: identificationData
-            }), {
+            });
+            return new Response(JSON.stringify(responseData), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
@@ -141,23 +133,15 @@ serve(async (req: Request) => {
 
         if (upsertError) console.error("Cache update error:", upsertError);
 
-        return new Response(JSON.stringify({
-            image: {
-                url: wikipediaImage || (media.inat_photos?.[0]?.url) || null,
-                attribution: null
-            },
-            map: {
-                taxonKey: taxonKey,
-                tileUrl: taxonKey ? `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?taxonKey=${taxonKey}&style=purpleYellow.poly` : null
-            },
-            inat_photos: media.inat_photos || [],
-            sounds: media.sounds || [],
-            male_image_url: media.male_image_url || null,
-            female_image_url: media.female_image_url || null,
-            juvenile_image_url: media.juvenile_image_url || null,
-            wikipedia_image: wikipediaImage || null,
+        const responseData = mapMediaToResponse({
+            scientific_name,
+            media,
+            taxonKey,
+            wikipediaImage,
             metadata: identificationData
-        }), {
+        });
+
+        return new Response(JSON.stringify(responseData), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 

@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { corsHeaders } from '../_shared/cors.ts';
-import { fixXenoCantoUrl } from "../_shared/utils.ts";
+import { processXenoCantoRecordings } from "../_shared/utils.ts";
 
 interface XenoCantoRecording {
     id: string;
@@ -97,61 +97,9 @@ serve(async (req: Request) => {
             });
         }
 
-        // (Moved to ../_shared/utils.ts)
+        const results = processXenoCantoRecordings(data.recordings);
 
-        // Specific Filtering: 2 Songs and 2 Calls
-        const isSong = (rec: XenoCantoRecording) => rec.type.toLowerCase().includes('song');
-        const isCall = (rec: XenoCantoRecording) => rec.type.toLowerCase().includes('call') && !isSong(rec);
-
-        const songs = data.recordings
-            .filter(isSong)
-            .slice(0, 2)
-            .map(rec => {
-                const osci = rec.osci?.large || rec.osci?.medium || rec.osci?.small || '';
-                return {
-                    id: rec.id,
-                    scientific_name: rec.gen + ' ' + rec.sp,
-                    common_name: rec.en,
-                    url: fixXenoCantoUrl(rec.file, rec),
-                    waveform: fixXenoCantoUrl(osci),
-                    type: 'song',
-                    quality: rec.q,
-                    recorder: rec.rec,
-                    license: rec.lic,
-                    duration: rec.length,
-                    location: rec.loc,
-                    country: rec.cnt,
-                    lat: undefined,
-                    lon: undefined
-                };
-            });
-
-        const calls = data.recordings
-            .filter(isCall)
-            .slice(0, 2)
-            .map(rec => {
-                const osci = rec.osci?.large || rec.osci?.medium || rec.osci?.small || '';
-                return {
-                    id: rec.id,
-                    scientific_name: rec.gen + ' ' + rec.sp,
-                    common_name: rec.en,
-                    url: fixXenoCantoUrl(rec.file, rec),
-                    waveform: fixXenoCantoUrl(osci),
-                    type: 'call',
-                    quality: rec.q,
-                    recorder: rec.rec,
-                    license: rec.lic,
-                    duration: rec.length,
-                    location: rec.loc,
-                    country: rec.cnt,
-                    lat: undefined,
-                    lon: undefined
-                };
-            });
-
-        const results = [...songs, ...calls];
-
-        console.log(`Found ${songs.length} songs and ${calls.length} calls`);
+        console.log(`Found ${results.length} total recordings`);
 
         return new Response(JSON.stringify({ recordings: results }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
