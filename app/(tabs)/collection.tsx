@@ -122,6 +122,7 @@ export default function MeScreen() {
             scientific_name: sighting.scientific_name,
             rarity: sighting.rarity,
             confidence: sighting.confidence,
+            audio_url: sighting.audio_url,
             ...sighting.metadata
         };
 
