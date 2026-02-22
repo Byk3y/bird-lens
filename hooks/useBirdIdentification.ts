@@ -1,3 +1,4 @@
+import { useAlert } from '@/components/common/AlertProvider';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { IdentificationService } from '@/services/IdentificationService';
@@ -6,7 +7,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { fetch } from 'expo/fetch';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -23,6 +23,7 @@ export const useBirdIdentification = () => {
     const [progressMessage, setProgressMessage] = useState<string | null>(null);
     const [abortController, setAbortController] = useState<AbortController | null>(null);
     const { user, isLoading: isAuthLoading } = useAuth();
+    const { showAlert } = useAlert();
 
     const identifyBird = async (imageB64?: string, audioB64?: string) => {
         if (isProcessing) return;
@@ -179,11 +180,10 @@ export const useBirdIdentification = () => {
                 message.includes('RESOURCE_EXHAUSTED');
 
             if (isQuotaError) {
-                Alert.alert(
-                    'AI is taking a nap 😴',
-                    'We\'ve hit the Google Gemini free tier limit. Please wait about 30-60 seconds and try your capture again.',
-                    [{ text: 'Got it' }]
-                );
+                showAlert({
+                    title: 'AI is taking a nap 😴',
+                    message: "We've hit the Google Gemini free tier limit. Please wait about 30-60 seconds and try your capture again."
+                });
             } else {
                 setError(message);
             }
@@ -304,7 +304,12 @@ export const useBirdIdentification = () => {
                 const isRetryable = error.message?.includes('timed out') || error.status === 408 || error.name === 'StorageUnknownError';
 
                 if (attempts >= maxAttempts || !isRetryable) {
-                    Alert.alert('Save Error', attempts >= maxAttempts ? 'Saving timed out after multiple attempts. Please check your connection and try again.' : error.message);
+                    showAlert({
+                        title: 'Save Error',
+                        message: attempts >= maxAttempts
+                            ? 'Saving timed out after multiple attempts. Please check your connection and try again.'
+                            : error.message
+                    });
                     return false;
                 }
 

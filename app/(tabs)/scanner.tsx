@@ -1,3 +1,4 @@
+import { useAlert } from '@/components/common/AlertProvider';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
@@ -5,7 +6,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   StyleSheet,
   Text,
@@ -48,6 +48,7 @@ export default function ScannerScreen() {
   const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const { isLoading: isAuthLoading } = useAuth();
+  const { showAlert } = useAlert();
 
   const cameraRef = useRef<CameraView>(null);
   const processedAudioUris = useRef<Set<string>>(new Set());
@@ -125,7 +126,10 @@ export default function ScannerScreen() {
     if (mediaPermission?.status !== 'granted') {
       const { status } = await requestMediaPermission();
       if (status !== 'granted') {
-        alert('Sorry, we need camera roll permissions to make this work!');
+        showAlert({
+          title: 'Permission Required',
+          message: 'Sorry, we need camera roll permissions to make this work!'
+        });
         return;
       }
     }
@@ -169,9 +173,12 @@ export default function ScannerScreen() {
         await identifyBird(manipResult.base64);
         setPickedImage(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Processing picked image failed', error);
-      alert('Failed to process image');
+      showAlert({
+        title: 'Error',
+        message: 'Failed to process image'
+      });
     }
   };
 
@@ -249,11 +256,17 @@ export default function ScannerScreen() {
           if (!identifiedBird && !isProcessing) {
             // If identification finished but no bird was found, maybe show an alert
             // or allow user to try again
-            Alert.alert('No Match Found', 'We couldn\'t identify this bird sound. Try recording a clearer sample!');
+            showAlert({
+              title: 'No Match Found',
+              message: "We couldn't identify this bird sound. Try recording a clearer sample!"
+            });
           }
         } catch (err: any) {
           console.error('Auto audio processing error:', err);
-          Alert.alert('Identification Failed', err.message || 'Something went wrong while analyzing the audio.');
+          showAlert({
+            title: 'Identification Failed',
+            message: err.message || 'Something went wrong while analyzing the audio.'
+          });
         }
       };
       triggerIdentification();
@@ -263,11 +276,10 @@ export default function ScannerScreen() {
   // Handle errors
   useEffect(() => {
     if (error && !isProcessing && activeMode === 'sound') {
-      Alert.alert('Identification Error', error, [{
-        text: 'OK', onPress: () => {
-          // Option to reset or clear
-        }
-      }]);
+      showAlert({
+        title: 'Identification Error',
+        message: error
+      });
     }
   }, [error, isProcessing, activeMode]);
 
