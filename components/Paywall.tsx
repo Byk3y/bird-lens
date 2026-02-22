@@ -1,21 +1,32 @@
 import { useAlert } from '@/components/common/AlertProvider';
 import { subscriptionService } from '@/services/SubscriptionService';
-import { BlurView } from 'expo-blur';
-import { Check, Crown, X } from 'lucide-react-native';
-import { MotiView } from 'moti';
+import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
+import { Check } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PaywallProps {
     onClose: () => void;
 }
+
+const FEATURES = [
+    'Identify any bird by photo or sound, instantly',
+    'Access detailed profiles for 10,000+ species',
+    'Build and track your personal bird collection',
+    'Discover calls, songs, and habitat information',
+    'Unlimited identifications, no daily limits',
+    'Ad-free, distraction-free birding experience'
+];
 
 export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const [offerings, setOfferings] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
     const { showAlert } = useAlert();
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         loadOfferings();
@@ -39,9 +50,9 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
             const { success, error } = await subscriptionService.purchasePackage(pkg);
             if (success) {
                 showAlert({
-                    title: 'Success',
-                    message: 'Welcome to BirdSnap Pro!',
-                    actions: [{ text: 'Great!', onPress: onClose }]
+                    title: 'Welcome to BirdSnap Pro!',
+                    message: 'Your purchase was successful.',
+                    actions: [{ text: 'Start Discovering', onPress: onClose }]
                 });
             } else if (error && !error.userCancelled) {
                 showAlert({
@@ -79,81 +90,159 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         }
     };
 
+    // Auto-select the Annual package if available
+    const annualPackage = offerings?.availablePackages?.find(
+        (p: PurchasesPackage) => p.packageType === 'ANNUAL' || p.identifier.toLowerCase().includes('annual') || p.identifier.toLowerCase().includes('year')
+    ) || offerings?.availablePackages?.[0];
+
+    const monthlyPackage = offerings?.availablePackages?.find(
+        (p: PurchasesPackage) => p.packageType === 'MONTHLY' || p.identifier.toLowerCase().includes('monthly') || p.identifier.toLowerCase().includes('month')
+    );
+
+    // State to track selected plan type ('annual' or 'monthly')
+    // Default to annual
+    const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
+
+    // Determine the active package based on selection
+    const activePackage = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
+
     return (
         <View style={styles.container}>
-            <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="dark" />
+            {/* Background Hero Image - Standalone Layer at the top */}
+            <View style={styles.heroWrapper}>
+                <ImageBackground
+                    source={require('@/assets/images/paywall/hero-cardinal.webp')}
+                    style={styles.heroBackground}
+                    resizeMode="cover"
+                >
+                    <LinearGradient
+                        colors={['rgba(15, 10, 5, 0.2)', 'rgba(15, 10, 5, 0.8)', '#0F0A05']}
+                        locations={[0, 0.6, 1]}
+                        style={StyleSheet.absoluteFill}
+                    />
+                </ImageBackground>
+            </View>
 
-            <View style={styles.content}>
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                    <X color="#fff" size={24} />
-                </TouchableOpacity>
+            {/* Main UI Content Layer */}
+            <View style={[StyleSheet.absoluteFill, { paddingTop: Math.max(insets.top, 10) }]}>
+                {/* Top Bar */}
+                <View style={styles.topBar}>
+                    <TouchableOpacity onPress={handleRestore} style={styles.topButton}>
+                        <Text style={styles.topButtonText}>Restore</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={onClose} style={styles.topButton}>
+                        <Text style={[styles.topButtonText, { fontSize: 13, color: 'rgba(255, 255, 255, 0.4)' }]}>Maybe Later</Text>
+                    </TouchableOpacity>
+                </View>
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                    <MotiView
-                        from={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        style={styles.header}
-                    >
-                        <View style={styles.iconContainer}>
-                            <Crown color="#EFB11D" size={40} fill="#EFB11D" />
-                        </View>
-                        <Text style={styles.title}>BirdSnap Pro</Text>
-                        <Text style={styles.subtitle}>Unlock detailed identification, offline maps, and unlimited song recordings.</Text>
-                    </MotiView>
+                {/* Content Area - Changed to View for non-scrollable layout */}
+                <View style={styles.mainContent}>
+                    {/* Flexible spacer pushes everything down low */}
+                    <View style={{ flex: 1 }} />
 
-                    <View style={styles.features}>
-                        {[
-                            'Unlimited Bird Identification',
-                            'Advanced Bird Detail Insights',
-                            'Save Unlimited Sightings',
-                            'Custom Collections',
-                            'Ad-Free Experience'
-                        ].map((feature, index) => (
-                            <MotiView
-                                key={index}
-                                from={{ opacity: 0, translateX: -20 }}
-                                animate={{ opacity: 1, translateX: 0 }}
-                                transition={{ delay: index * 100 }}
-                                style={styles.featureItem}
-                            >
-                                <Check color="#4ADE80" size={20} />
-                                <Text style={styles.featureText}>{feature}</Text>
-                            </MotiView>
-                        ))}
-                    </View>
+                    <View style={styles.innerContent}>
+                        <Text style={styles.title}>BirdSnap</Text>
 
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#EFB11D" style={{ marginTop: 40 }} />
-                    ) : offerings?.availablePackages ? (
-                        <View style={styles.packagesContainer}>
-                            {offerings.availablePackages.map((pkg: PurchasesPackage, index: number) => (
-                                <TouchableOpacity
-                                    key={pkg.identifier}
-                                    style={[styles.packageCard, index === 0 && styles.featuredPackage]}
-                                    onPress={() => handlePurchase(pkg)}
-                                    disabled={purchasing}
-                                >
-                                    <View>
-                                        <Text style={styles.packageTitle}>{pkg.product.title}</Text>
-                                        <Text style={styles.packageDescription}>{pkg.product.description}</Text>
+                        <View style={styles.featuresList}>
+                            {FEATURES.map((feature, index) => (
+                                <View key={index} style={styles.featureRow}>
+                                    <View style={styles.checkBadge}>
+                                        <Check color="#fff" size={12} strokeWidth={3} />
                                     </View>
-                                    <Text style={styles.packagePrice}>{pkg.product.priceString}</Text>
-                                </TouchableOpacity>
+                                    <Text style={styles.featureText}>{feature}</Text>
+                                </View>
                             ))}
                         </View>
-                    ) : (
-                        <Text style={styles.errorText}>Unable to load subscription plans. Please check your internet connection or try again later.</Text>
-                    )}
 
-                    <TouchableOpacity onPress={handleRestore} style={styles.restoreButton}>
-                        <Text style={styles.restoreText}>Restore Purchases</Text>
-                    </TouchableOpacity>
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#D35400" style={{ marginVertical: 20 }} />
+                        ) : (
+                            <View style={styles.pricingSection}>
+                                <Text style={styles.pricingMainTitle}>
+                                    Try 7 days free
+                                </Text>
 
-                    <Text style={styles.footerNote}>
-                        Payment will be charged to your Apple ID account at the confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period.
-                    </Text>
-                </ScrollView>
+                                <View style={styles.planSelector}>
+                                    {/* Annual Plan Card */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.planCard,
+                                            selectedPlan === 'annual' ? styles.planCardSelected : styles.planCardUnselected
+                                        ]}
+                                        activeOpacity={0.8}
+                                        onPress={() => setSelectedPlan('annual')}
+                                    >
+                                        <View style={styles.planCardHeaderRow}>
+                                            <Text style={styles.planCardTitle}>Annual</Text>
+                                            <View style={styles.badgeContainer}>
+                                                <Text style={styles.badgeText}>BEST VALUE</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.priceLineContainer}>
+                                            <Text style={styles.heroPriceText}>
+                                                {annualPackage ? `${annualPackage.product.priceString.replace(/[\d.,]+/, (match: string) => (parseFloat(match.replace(/,/g, '')) / 12).toFixed(2))} / month` : '$2.08 / month'}
+                                            </Text>
+                                            <Text style={styles.clarificationPriceText}>
+                                                {annualPackage ? `${annualPackage.product.priceString} / year` : '$24.99 / year'}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    {/* Monthly Plan Card */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.planCard,
+                                            styles.planCardMonthly,
+                                            selectedPlan === 'monthly' ? styles.planCardSelected : styles.planCardUnselected
+                                        ]}
+                                        activeOpacity={0.8}
+                                        onPress={() => setSelectedPlan('monthly')}
+                                    >
+                                        <View style={styles.planCardHeaderMonthly}>
+                                            <Text style={styles.planCardTitle}>Monthly</Text>
+                                        </View>
+                                        <Text style={styles.planCardPrice}>{monthlyPackage ? `${monthlyPackage.product.priceString} / month` : '$4.99 / month'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Bottom Actions nested directly in flow */}
+                        <View style={styles.bottomContainer}>
+                            <Text style={styles.pricingSubText}>
+                                We'll remind you 3 days before your trial ends.
+                            </Text>
+
+                            <TouchableOpacity
+                                style={[styles.ctaButton, purchasing && styles.ctaButtonDisabled]}
+                                activeOpacity={0.9}
+                                onPress={() => activePackage && handlePurchase(activePackage)}
+                                disabled={purchasing}
+                            >
+                                <Text style={styles.ctaText}>
+                                    {purchasing ? 'Processing...' : 'Continue'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <Text style={styles.legalText}>
+                                Cancel anytime in settings. Renewals are automatic unless cancelled 24 hours before the trial ends.
+                            </Text>
+                        </View>
+                    </View>
+                </View>
             </View>
+
+            {/* Hovering Lottie animation indicating Double Click to Pay */}
+            {purchasing && Platform.OS === 'ios' && (
+                <View style={styles.doubleClickAnimationContainer}>
+                    <LottieView
+                        source={require('@/assets/animations/bird-loading.lottie')}
+                        autoPlay
+                        loop
+                        style={styles.doubleClickLottie}
+                    />
+                </View>
+            )}
         </View>
     );
 };
@@ -161,120 +250,247 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'transparent',
+        backgroundColor: '#0F0A05',
     },
-    content: {
-        flex: 1,
-        marginTop: 60,
-        backgroundColor: '#1C1C1E',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        paddingHorizontal: 20,
-    },
-    closeButton: {
+    heroWrapper: {
+        width: '100%',
+        height: '60%', // Image takes up top 60%
         position: 'absolute',
-        top: 20,
-        right: 20,
+        top: 0,
+        overflow: 'hidden',
+    },
+    heroBackground: {
+        width: '100%',
+        height: '100%',
+    },
+    topBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
         zIndex: 10,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 20,
-        padding: 8,
     },
-    scrollContent: {
-        paddingTop: 40,
-        paddingBottom: 60,
+    topButton: {
+        paddingVertical: 10,
     },
-    header: {
-        alignItems: 'center',
-        marginBottom: 30,
+    topButtonText: {
+        color: 'rgba(255, 255, 255, 0.4)',
+        fontSize: 16,
+        fontWeight: '500',
     },
-    iconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(239, 177, 29, 0.15)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 15,
+    mainContent: {
+        flex: 1,
+    },
+    innerContent: {
+        paddingHorizontal: 25,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 25,
     },
     title: {
-        fontSize: 32,
-        fontWeight: '800',
-        color: '#fff',
-        marginBottom: 10,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#A0A0A5',
+        fontSize: 34,
+        fontFamily: 'PoppinsBold',
+        fontWeight: '700', // Explicitly keep bold weight
+        color: '#FFFFFF',
         textAlign: 'center',
-        lineHeight: 22,
-        paddingHorizontal: 20,
+        marginBottom: 20,
+        letterSpacing: 0.5,
     },
-    features: {
-        marginBottom: 40,
+    featuresList: {
+        gap: 8,
+        marginBottom: 20,
     },
-    featureItem: {
+    featureRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+    },
+    checkBadge: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#D35400',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
     },
     featureText: {
-        color: '#E5E5E7',
+        color: '#E5E5E5',
         fontSize: 16,
-        marginLeft: 12,
+        fontWeight: '500',
+        flex: 1,
     },
-    packagesContainer: {
-        gap: 15,
+    doubleClickAnimationContainer: {
+        position: 'absolute',
+        top: '22%', // Align roughly with the physical side button on iOS devices (moved slightly higher)
+        right: 10,
+        zIndex: 100,
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none', // Don't block touches below it
     },
-    packageCard: {
-        backgroundColor: '#2C2C2E',
-        borderRadius: 16,
-        padding: 20,
+    doubleClickLottie: {
+        width: 140,
+        height: 140,
+    },
+    bottomContainer: {
+        width: '100%',
+        marginTop: 4, // Reduced gap between cards and text
+    },
+    pricingSection: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    planSelector: {
+        width: '100%',
+        gap: 8,
+        marginBottom: 4, // Reduced gap below cards
+        marginTop: 6,
+    },
+    planCard: {
+        width: '100%',
+        borderRadius: 12,
+        padding: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderWidth: 2,
+    },
+    planCardMonthly: {
+        paddingVertical: 10,
+    },
+    planCardSelected: {
+        borderColor: '#F97316',
+        backgroundColor: 'rgba(249, 115, 22, 0.05)',
+    },
+    planCardUnselected: {
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    planCardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'transparent',
+        marginBottom: 2,
     },
-    featuredPackage: {
-        borderColor: '#EFB11D',
-        backgroundColor: '#3A3A3C',
+    planCardHeaderMonthly: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
     },
-    packageTitle: {
-        color: '#fff',
-        fontSize: 18,
+    planCardTitle: {
+        color: '#FFFFFF',
+        fontSize: 16,
         fontWeight: '700',
     },
-    packageDescription: {
-        color: '#A0A0A5',
-        fontSize: 14,
-        marginTop: 2,
+    badgeContainer: {
+        backgroundColor: '#F97316',
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 10,
     },
-    packagePrice: {
-        color: '#EFB11D',
-        fontSize: 20,
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+    },
+    planCardSubtext: {
+        color: '#F97316',
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    planCardPrice: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 13,
+        fontWeight: '500',
+    },
+    pricingMainTitle: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    planCardHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        width: '100%',
+    },
+    planCardRightSide: {
+        alignItems: 'flex-end',
+    },
+    priceLineContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        width: '100%',
+        marginTop: 4,
+    },
+    heroPriceText: {
+        color: '#FFFFFF',
+        fontSize: 24,
         fontWeight: '800',
     },
-    restoreButton: {
-        marginTop: 30,
-        alignItems: 'center',
-    },
-    restoreText: {
-        color: '#A0A0A5',
-        fontSize: 14,
-        textDecorationLine: 'underline',
-    },
-    footerNote: {
-        marginTop: 30,
+    clarificationPriceText: {
+        color: 'rgba(255, 255, 255, 0.4)',
         fontSize: 12,
-        color: '#636366',
+        fontWeight: '600',
+    },
+    pricingMainText: {
+        color: '#FFFFFF',
+        fontSize: 15,
         textAlign: 'center',
+        marginBottom: 2,
+    },
+    boldText: {
+        fontWeight: '700',
+    },
+    pricingSubText: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 12,
+        textAlign: 'center',
+        marginBottom: 8, // Pulled tighter to button
+        paddingHorizontal: 10,
         lineHeight: 16,
+        fontWeight: '500',
+    },
+    ctaButton: {
+        backgroundColor: '#D35400',
+        width: '100%',
+        paddingVertical: 14,
+        borderRadius: 25,
+        alignItems: 'center',
+        shadowColor: '#D35400',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 5,
+    },
+    ctaButtonDisabled: {
+        opacity: 0.6,
+    },
+    ctaText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+    },
+    legalText: {
+        color: 'rgba(255, 255, 255, 0.4)',
+        fontSize: 10,
+        textAlign: 'center',
+        lineHeight: 14,
+        marginTop: 12,
+        paddingHorizontal: 15,
+    },
+    termsText: {
+        color: 'rgba(255, 255, 255, 0.4)',
+        fontSize: 10,
+        textAlign: 'center',
+        lineHeight: 14,
+        marginTop: 5,
     },
     errorText: {
         color: '#FF453A',
         textAlign: 'center',
-        marginTop: 20,
-        fontSize: 14,
+        padding: 20,
     }
 });
+
