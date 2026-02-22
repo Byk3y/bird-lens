@@ -1,6 +1,8 @@
+import { AuthModal } from '@/components/auth/AuthModal';
+import { useAlert } from '@/components/common/AlertProvider';
 import { CustomActionSheet } from '@/components/common/CustomActionSheet';
-import { CustomAlert } from '@/components/common/CustomAlert';
 import { SkeletonScreen } from '@/components/common/SkeletonScreen';
+import { GuestNudge } from '@/components/shared/GuestNudge';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -14,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { Forward, Gem, Mic, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useCallback, useRef, useState } from 'react';
-import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -30,10 +32,12 @@ export default function MeScreen() {
     const [sightings, setSightings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
-    const [isAlertVisible, setIsAlertVisible] = useState(false);
+    const { showAlert } = useAlert();
     const [isDeleting, setIsDeleting] = useState(false);
     const [selectedSighting, setSelectedSighting] = useState<any>(null);
     const [sightingToDelete, setSightingToDelete] = useState<string | null>(null);
+    const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
+    const isGuest = user?.is_anonymous;
     const lastFetchRef = useRef<number>(0);
 
     // Load cached data instantly on mount, then fetch fresh data
@@ -143,7 +147,15 @@ export default function MeScreen() {
 
     const handleDeleteConfirm = (id: string) => {
         setSightingToDelete(id);
-        setIsAlertVisible(true);
+        showAlert({
+            title: 'Delete Sighting',
+            message: 'Are you sure you want to remove this bird from your collection?',
+            actions: [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', onPress: () => deleteSighting(id), style: 'destructive' }
+            ],
+            isDestructive: true
+        });
     };
 
     const deleteSighting = async (id: string) => {
@@ -161,12 +173,14 @@ export default function MeScreen() {
 
             const updated = sightings.filter(s => s.id !== id);
             setSightings(updated);
-            setIsAlertVisible(false);
             // Update cache to reflect deletion
             AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: updated, timestamp: Date.now() })).catch(() => { });
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error deleting sighting:', err);
-            Alert.alert("Error", "Could not delete this sighting. Please try again.");
+            showAlert({
+                title: 'Error',
+                message: 'Could not delete this sighting. Please try again.'
+            });
         } finally {
             setIsDeleting(false);
         }
@@ -212,6 +226,11 @@ export default function MeScreen() {
                     contentContainerStyle={styles.grid}
                     bounces={true}
                 >
+                    {isGuest && (
+                        <View style={{ width: '100%', paddingHorizontal: 4 }}>
+                            <GuestNudge onPress={() => setIsAuthModalVisible(true)} />
+                        </View>
+                    )}
                     {loading ? (
                         <SkeletonScreen items={4} />
                     ) : (
@@ -291,15 +310,10 @@ export default function MeScreen() {
                 ]}
             />
 
-            <CustomAlert
-                visible={isAlertVisible}
-                title="Delete Sighting"
-                message="Are you sure you want to remove this bird from your collection?"
-                onClose={() => !isDeleting && setIsAlertVisible(false)}
-                onConfirm={() => sightingToDelete && deleteSighting(sightingToDelete)}
-                confirmText="Delete"
-                isDestructive={true}
-                isLoading={isDeleting}
+            <AuthModal
+                visible={isAuthModalVisible}
+                onClose={() => setIsAuthModalVisible(false)}
+                initialMode="signup"
             />
         </View>
     );
