@@ -1,10 +1,11 @@
 import { useAlert } from '@/components/common/AlertProvider';
+import { Links } from '@/constants/Links';
 import { subscriptionService } from '@/services/SubscriptionService';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import { Check } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -225,7 +226,12 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                             </TouchableOpacity>
 
                             <Text style={styles.legalText}>
-                                Cancel anytime in settings. Renewals are automatic unless cancelled 24 hours before the trial ends.
+                                Cancel anytime in settings. Renewals are automatic unless cancelled 24 hours before the trial ends.{'\n'}
+                                <Text style={styles.termsText} onPress={() => Linking.openURL(Links.TERMS_OF_USE)}>Terms of Use</Text>
+                                {' • '}
+                                <Text style={styles.termsText} onPress={() => Linking.openURL(Links.PRIVACY_POLICY)}>Privacy Policy</Text>
+                                {' • '}
+                                <Text style={styles.termsText} onPress={() => subscriptionService.restorePurchases()}>Restore Purchases</Text>
                             </Text>
                         </View>
                     </View>

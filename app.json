@@ -14,7 +14,7 @@
       "backgroundColor": "#0F0A05"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.francis.dev.birdsnap",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -35,6 +35,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "BirdSnap needs your camera to photograph and identify birds.",
+          "microphonePermission": "BirdSnap needs your microphone to record and identify bird calls."
+        }
+      ],
       [
         "expo-media-library",
         {
