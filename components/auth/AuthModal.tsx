@@ -3,6 +3,7 @@ import { Links } from '@/constants/Links';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import {
     ArrowLeft,
     Eye,
@@ -15,7 +16,6 @@ import {
     Dimensions,
     Keyboard,
     KeyboardAvoidingView,
-    Linking,
     Modal,
     Platform,
     Pressable,
@@ -23,7 +23,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    View,
+    View
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -362,13 +362,13 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                                 By joining Birdsnap, you acknowledge that you have read and agree to our{' '}
                                                 <Text
                                                     style={styles.legalLink}
-                                                    onPress={() => Linking.openURL(Links.TERMS_OF_USE)}
+                                                    onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
                                                 >
                                                     Terms of Use
                                                 </Text> and{' '}
                                                 <Text
                                                     style={styles.legalLink}
-                                                    onPress={() => Linking.openURL(Links.PRIVACY_POLICY)}
+                                                    onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
                                                 >
                                                     Privacy Policy
                                                 </Text>

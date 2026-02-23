@@ -2,10 +2,11 @@ import { useAlert } from '@/components/common/AlertProvider';
 import { Links } from '@/constants/Links';
 import { subscriptionService } from '@/services/SubscriptionService';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import LottieView from 'lottie-react-native';
 import { Check } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ImageBackground, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -184,7 +185,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                                 {annualPackage ? `${annualPackage.product.priceString.replace(/[\d.,]+/, (match: string) => (parseFloat(match.replace(/,/g, '')) / 12).toFixed(2))} / month` : '$2.08 / month'}
                                             </Text>
                                             <Text style={styles.clarificationPriceText}>
-                                                {annualPackage ? `${annualPackage.product.priceString} / year` : '$24.99 / year'}
+                                                {annualPackage ? `${annualPackage.product.priceString} billed annually` : '$24.99 billed annually'}
                                             </Text>
                                         </View>
                                     </TouchableOpacity>
@@ -202,7 +203,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                         <View style={styles.planCardHeaderMonthly}>
                                             <Text style={styles.planCardTitle}>Monthly</Text>
                                         </View>
-                                        <Text style={styles.planCardPrice}>{monthlyPackage ? `${monthlyPackage.product.priceString} / month` : '$4.99 / month'}</Text>
+                                        <Text style={styles.planCardPrice}>{monthlyPackage ? `${monthlyPackage.product.priceString} billed monthly` : '$4.99 billed monthly'}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -226,12 +227,26 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                             </TouchableOpacity>
 
                             <Text style={styles.legalText}>
-                                Cancel anytime in settings. Renewals are automatic unless cancelled 24 hours before the trial ends.{'\n'}
-                                <Text style={styles.termsText} onPress={() => Linking.openURL(Links.TERMS_OF_USE)}>Terms of Use</Text>
+                                Renewals are automatic unless cancelled 24 hours before the trial ends. By subscribing, you agree to our{' '}
+                                <Text
+                                    style={styles.legalLink}
+                                    onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
+                                >
+                                    Terms of Use
+                                </Text> and{' '}
+                                <Text
+                                    style={styles.legalLink}
+                                    onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
+                                >
+                                    Privacy Policy
+                                </Text>.
                                 {' • '}
-                                <Text style={styles.termsText} onPress={() => Linking.openURL(Links.PRIVACY_POLICY)}>Privacy Policy</Text>
-                                {' • '}
-                                <Text style={styles.termsText} onPress={() => subscriptionService.restorePurchases()}>Restore Purchases</Text>
+                                <Text
+                                    style={styles.legalLink}
+                                    onPress={handleRestore}
+                                >
+                                    Restore Purchases
+                                </Text>
                             </Text>
                         </View>
                     </View>
@@ -431,12 +446,12 @@ const styles = StyleSheet.create({
     },
     heroPriceText: {
         color: '#FFFFFF',
-        fontSize: 24,
-        fontWeight: '800',
+        fontSize: 19,
+        fontWeight: '700',
     },
     clarificationPriceText: {
-        color: 'rgba(255, 255, 255, 0.4)',
-        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: 14,
         fontWeight: '600',
     },
     pricingMainText: {
@@ -485,6 +500,10 @@ const styles = StyleSheet.create({
         lineHeight: 14,
         marginTop: 12,
         paddingHorizontal: 15,
+    },
+    legalLink: {
+        color: '#F97316',
+        fontWeight: '600',
     },
     termsText: {
         color: 'rgba(255, 255, 255, 0.4)',

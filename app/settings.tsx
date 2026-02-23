@@ -1,9 +1,12 @@
 import { AuthModal } from '@/components/auth/AuthModal';
 import { Paywall } from '@/components/Paywall';
+import { Links } from '@/constants/Links';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { subscriptionService } from '@/services/SubscriptionService';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import {
     ChevronLeft,
     ChevronRight,
@@ -240,16 +243,18 @@ export default function SettingsScreen() {
                 <View style={styles.section}>
                     <SettingRow
                         label="App Info"
-                        value="v1.0.4"
+                        value={`v${Constants.expoConfig?.version || '1.0.0'}`}
                     />
                     <SettingRow
                         label="Tell Friends"
                     />
                     <SettingRow
                         label="Privacy Policy"
+                        onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
                     />
                     <SettingRow
                         label="Terms of Use"
+                        onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
                         isLast
                     />
                 </View>
