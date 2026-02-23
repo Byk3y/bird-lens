@@ -1,5 +1,6 @@
 import { Colors, Typography } from '@/constants/theme';
 import { ScanMode } from '@/types/scanner';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HelpCircle, Image as ImageIcon, UploadCloud } from 'lucide-react-native';
 import React from 'react';
@@ -21,6 +22,8 @@ interface ScannerControlsProps {
     isRecording?: boolean;
     hasRecording?: boolean;
     onGalleryPress?: () => void;
+    zoom: number;
+    onZoomChange: (value: number) => void;
 }
 
 export const ScannerControls: React.FC<ScannerControlsProps> = ({
@@ -33,9 +36,37 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
     isRecording = false,
     hasRecording = false,
     onGalleryPress,
+    zoom,
+    onZoomChange,
 }) => {
+    const handleZoomPress = (level: number) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // Map 1x to 0 zoom and 2x to 0.2 zoom (typical for mobile camera apps)
+        onZoomChange(level === 1 ? 0 : 0.2);
+    };
+
     return (
         <View style={[styles.bottomArea, activeMode === 'sound' && styles.soundBottomArea]}>
+            {/* Zoom Selector - Floating above the white bar */}
+            {activeMode === 'photo' && (
+                <View style={styles.zoomContainer}>
+                    <View style={styles.zoomPill}>
+                        <TouchableOpacity
+                            onPress={() => handleZoomPress(1)}
+                            style={[styles.zoomButton, zoom === 0 && styles.zoomButtonActive]}
+                        >
+                            <Text style={[styles.zoomText, zoom === 0 && styles.zoomTextActive]}>1x</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => handleZoomPress(2)}
+                            style={[styles.zoomButton, zoom > 0 && styles.zoomButtonActive]}
+                        >
+                            <Text style={[styles.zoomText, zoom > 0 && styles.zoomTextActive]}>2x</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
             {/* Mode Switcher */}
             <View style={styles.modeSwitcher}>
                 <TouchableOpacity onPress={() => onModeChange('photo')} disabled={isRecording}>
@@ -131,7 +162,7 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
 const styles = StyleSheet.create({
     bottomArea: {
         backgroundColor: Colors.white,
-        paddingTop: 28,
+        paddingTop: 28, // Restored to original
         paddingBottom: 80,
         position: 'absolute',
         bottom: 0,
@@ -140,6 +171,38 @@ const styles = StyleSheet.create({
     },
     soundBottomArea: {
         backgroundColor: Colors.white,
+    },
+    zoomContainer: {
+        position: 'absolute',
+        top: -60, // Float above the white area
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+    },
+    zoomPill: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0,0,0,0.4)', // Darker glass for overlay
+        borderRadius: 24,
+        padding: 4,
+        gap: 4,
+    },
+    zoomButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    zoomButtonActive: {
+        backgroundColor: Colors.primary,
+    },
+    zoomText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: Colors.white, // White text for dark overlay
+    },
+    zoomTextActive: {
+        color: Colors.white,
     },
     modeSwitcher: {
         flexDirection: 'row',

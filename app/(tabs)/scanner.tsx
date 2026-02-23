@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureDetector } from 'react-native-gesture-handler';
 
 // Hooks
 import { useAudioRecording } from '@/hooks/useAudioRecording';
@@ -309,7 +309,7 @@ export default function ScannerScreen() {
 
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <>
       <StatusBar style="light" translucent />
       <View style={styles.container}>
         {pickedImage && !result && !isProcessing ? (
@@ -356,11 +356,7 @@ export default function ScannerScreen() {
                       flash={flash}
                       onFlashToggle={() => setFlash(flash === 'off' ? 'on' : 'off')}
                     />
-                    <ScannerViewfinder
-                      zoom={zoom}
-                      onZoomChange={setZoom}
-                      onTrackInteraction={handleTrackInteraction}
-                    />
+                    <ScannerViewfinder />
                   </View>
                 </View>
               </GestureDetector>
@@ -386,6 +382,8 @@ export default function ScannerScreen() {
               isRecording={isRecording}
               hasRecording={!!recordingUri}
               onGalleryPress={handlePickPhoto}
+              zoom={zoom}
+              onZoomChange={setZoom}
             />
           </View>
         ) : (
@@ -434,7 +432,7 @@ export default function ScannerScreen() {
           onClose={() => setShowSnapTips(false)}
         />
       </View>
-    </GestureHandlerRootView>
+    </>
   );
 }
 
