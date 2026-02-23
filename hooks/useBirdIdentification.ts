@@ -5,6 +5,7 @@ import { IdentificationService } from '@/services/IdentificationService';
 import { BirdResult } from '@/types/scanner';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { fetch } from 'expo/fetch';
 import { useState } from 'react';
 import { getCurrentLocation } from './useLocation';
@@ -36,11 +37,16 @@ export const useBirdIdentification = () => {
 
             setIsProcessing(true);
             setError(null);
-            setProgressMessage('Determining location...');
 
-            // Fetch location first (non-blocking if it fails)
-            const locationData = await getCurrentLocation();
-            setLastLocation(locationData);
+            // Check permission silently first to decide if we show the "Determining..." message
+            const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
+            let locationData = null;
+
+            if (currentStatus === 'granted' || currentStatus === 'undetermined') {
+                setProgressMessage('Determining location...');
+                locationData = await getCurrentLocation();
+                setLastLocation(locationData);
+            }
 
             setProgressMessage('Identifying...');
             // Light feedback for identification start
