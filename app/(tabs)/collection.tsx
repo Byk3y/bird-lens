@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { Forward, Gem, Mic, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useCallback, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -233,26 +233,55 @@ export default function MeScreen() {
                     <Text style={styles.sectionTitle}>My Collections ({sightings.length})</Text>
                 </View>
 
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.grid}
-                    bounces={true}
-                >
-                    {isGuest && (
-                        <View style={{ width: '100%', paddingHorizontal: 4 }}>
-                            <GuestNudge onPress={() => setIsAuthModalVisible(true)} />
-                        </View>
-                    )}
-                    {loading ? (
+                {loading ? (
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.grid}
+                        bounces={true}
+                    >
+                        {isGuest && (
+                            <View style={{ width: '100%', paddingHorizontal: 4 }}>
+                                <GuestNudge onPress={() => setIsAuthModalVisible(true)} />
+                            </View>
+                        )}
                         <SkeletonScreen items={4} />
-                    ) : (
-                        <>
-                            {sightings.map((sighting, index) => (
+                    </ScrollView>
+                ) : (
+                    <FlatList
+                        data={[...sightings, { id: 'plus-card', isPlus: true }]}
+                        keyExtractor={item => item.id}
+                        numColumns={2}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.flatListContent}
+                        columnWrapperStyle={styles.columnWrapper}
+                        ListHeaderComponent={isGuest ? (
+                            <View style={{ width: '100%', paddingHorizontal: 4, marginBottom: 16 }}>
+                                <GuestNudge onPress={() => setIsAuthModalVisible(true)} />
+                            </View>
+                        ) : null}
+                        renderItem={({ item, index }) => {
+                            if (item.isPlus) {
+                                return (
+                                    <MotiView
+                                        from={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        style={styles.cardWrapper}
+                                    >
+                                        <Pressable style={styles.plusCard} onPress={() => router.push('/scanner')}>
+                                            <Plus color="#94a3b8" size={40} strokeWidth={1.5} />
+                                        </Pressable>
+                                    </MotiView>
+                                );
+                            }
+
+                            const sighting = item;
+                            return (
                                 <MotiView
                                     key={sighting.id}
                                     from={{ opacity: 0, translateY: 20 }}
                                     animate={{ opacity: 1, translateY: 0 }}
-                                    transition={{ delay: index * 100 }}
+                                    transition={{ delay: Math.min(index * 50, 400) }}
+                                    style={styles.cardWrapper}
                                 >
                                     <Pressable
                                         style={styles.collectionCard}
@@ -291,19 +320,10 @@ export default function MeScreen() {
                                         </View>
                                     </Pressable>
                                 </MotiView>
-                            ))}
-
-                            <MotiView
-                                from={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                            >
-                                <Pressable style={styles.plusCard} onPress={() => router.push('/scanner')}>
-                                    <Plus color="#94a3b8" size={40} strokeWidth={1.5} />
-                                </Pressable>
-                            </MotiView>
-                        </>
-                    )}
-                </ScrollView>
+                            );
+                        }}
+                    />
+                )}
             </View>
 
             <CustomActionSheet
@@ -415,11 +435,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingBottom: 40,
     },
+    flatListContent: {
+        paddingBottom: 40,
+    },
+    columnWrapper: {
+        justifyContent: 'space-between',
+    },
+    cardWrapper: {
+        width: (width - 32) / 2, // Accounting for paddings and gap
+        marginBottom: 12,
+    },
     collectionCard: {
-        width: (width - 24) / 2,
+        width: '100%',
         borderRadius: 12,
         backgroundColor: Colors.white,
-        marginBottom: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.03,
@@ -471,7 +500,7 @@ const styles = StyleSheet.create({
         padding: 2,
     },
     plusCard: {
-        width: (width - 24) / 2,
+        width: '100%',
         aspectRatio: 0.75,
         borderRadius: 12,
         borderWidth: 2,
@@ -480,6 +509,5 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: Colors.white,
-        marginBottom: 12,
     },
 });

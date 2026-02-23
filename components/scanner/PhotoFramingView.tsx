@@ -2,7 +2,7 @@ import { Colors, Typography } from '@/constants/theme';
 import { Check, HelpCircle, Image as ImageIcon, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -334,7 +334,7 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
     if (!imageLayout) return <View style={styles.container} />;
 
     return (
-        <GestureHandlerRootView style={styles.container}>
+        <View style={styles.container}>
             <View style={styles.contentContainer}>
 
                 {/* Global Pinch Handler */}
@@ -453,7 +453,7 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
                     <X color="#fff" size={34} strokeWidth={3} />
                 </TouchableOpacity>
             </View>
-        </GestureHandlerRootView>
+        </View>
     );
 };
 

@@ -25,7 +25,7 @@ import {
     TextInput,
     View
 } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     runOnJS,
     useAnimatedStyle,
@@ -233,7 +233,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
         >
             <AnimatePresence>
                 {visible && (
-                    <GestureHandlerRootView style={{ flex: 1 }}>
+                    <View style={{ flex: 1 }}>
                         <MotiView
                             from={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -378,7 +378,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                 </SafeAreaView>
                             </SwipeToClose>
                         </MotiView>
-                    </GestureHandlerRootView>
+                    </View>
                 )}
             </AnimatePresence>
         </Modal>
