@@ -11,6 +11,7 @@ import { AlertProvider } from '@/components/common/AlertProvider';
 import { useColorScheme } from '@/components/useColorScheme';
 import { initAudioConfig } from '@/lib/audioConfig';
 import { AuthProvider } from '@/lib/auth';
+import { onboardingState } from '@/lib/onboardingState';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -32,13 +33,14 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
+    console.log('[RootLayout] loaded:', loaded, 'error:', error);
     if (error) throw error;
-  }, [error]);
+  }, [error, loaded]);
 
   useEffect(() => {
     if (loaded) {
+      console.log('[RootLayout] Hiding Splash Screen');
       SplashScreen.hideAsync();
     }
   }, [loaded]);
@@ -51,34 +53,83 @@ export default function RootLayout() {
 }
 
 import { subscriptionService } from '@/services/SubscriptionService';
+import { useRouter, useSegments } from 'expo-router';
+import { useState } from 'react';
+
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const segments = useSegments();
+  const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
+  // 1. One-time system initialization
   useEffect(() => {
-    // Basic setup for audio playback across the app
-    initAudioConfig().catch(err => console.warn('initAudioConfig error:', err));
+    async function initializeSystem() {
+      try {
+        await Promise.all([
+          initAudioConfig().catch(err => console.warn('initAudioConfig error:', err)),
+          subscriptionService.initialize().catch(err => console.error('RevenueCat initialization error:', err))
+        ]);
 
-    // Initialize RevenueCat
-    subscriptionService.initialize().catch(err => console.error('RevenueCat initialization error:', err));
+        const completed = await onboardingState.isCompleted();
+        setOnboardingCompleted(completed);
+        setIsReady(true);
+      } catch (e) {
+        console.error('[RootLayoutNav] System initialization error:', e);
+        setIsReady(true);
+      }
+    }
+    initializeSystem();
   }, []);
 
+  // 1b. Listen for onboarding state changes (Sync across components)
+  useEffect(() => {
+    const unsubscribe = onboardingState.onChange((completed) => {
+      console.log('[RootLayoutNav] Onboarding state changed:', completed);
+      setOnboardingCompleted(completed);
+    });
+    return unsubscribe;
+  }, []);
+
+  // 2. Routing logic (Guards)
+  useEffect(() => {
+    if (!isReady || onboardingCompleted === null) return;
+
+    const isIntroFlow = segments[0] === 'welcome' || segments[0] === 'onboarding' || segments[0] === 'paywall';
+
+    if (!onboardingCompleted && !isIntroFlow) {
+      router.replace('/welcome');
+    }
+  }, [segments, isReady, onboardingCompleted]);
+
+  if (!isReady) {
+    return null;
+  }
+
   return (
-    <AuthProvider>
-      <AlertProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
-            <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
-            <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
-            <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </Stack>
-        </ThemeProvider>
-      </AlertProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <AlertProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack>
+              <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
+              <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
+              <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+              <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+              <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            </Stack>
+          </ThemeProvider>
+        </AlertProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
