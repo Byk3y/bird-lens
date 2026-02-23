@@ -12,6 +12,7 @@ interface AuthContextType {
     signUp: (email: string, password: string) => Promise<{ error: any }>;
     signIn: (email: string, password: string) => Promise<{ error: any }>;
     signOut: () => Promise<void>;
+    deleteAccount: () => Promise<{ error: any }>;
     resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
     signUp: async () => ({ error: null }),
     signIn: async () => ({ error: null }),
     signOut: async () => { },
+    deleteAccount: async () => ({ error: null }),
     resetPassword: async () => ({ error: null }),
 });
 
@@ -134,6 +136,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error };
     };
 
+    const deleteAccount = async () => {
+        try {
+            const { data, error } = await supabase.functions.invoke('delete-user');
+            if (error) throw error;
+
+            // On success, sign out and clear subscription
+            await supabase.auth.signOut();
+            subscriptionService.logOut();
+            handleAnonymousSignIn();
+
+            return { error: null };
+        } catch (error: any) {
+            console.error('Error deleting account:', error);
+            return { error };
+        }
+    };
+
     const isGuest = !!user?.is_anonymous;
 
     return (
@@ -146,6 +165,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             signUp,
             signIn,
             signOut,
+            deleteAccount,
             resetPassword
         }}>
             {children}
