@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface SettingRowProps {
     icon?: React.ReactNode;
     label: string;
+    subtitle?: string;
     value?: string;
     hasSwitch?: boolean;
     switchValue?: boolean;
@@ -39,6 +40,7 @@ interface SettingRowProps {
 const SettingRow = ({
     icon,
     label,
+    subtitle,
     value,
     hasSwitch,
     switchValue,
@@ -60,7 +62,10 @@ const SettingRow = ({
             </View>
         )}
         <View style={[styles.rowContent, isLast && styles.noBorder]}>
-            <Text style={styles.label}>{label}</Text>
+            <View style={styles.labelContainer}>
+                <Text style={styles.label}>{label}</Text>
+                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+            </View>
             <View style={styles.rightContent}>
                 {value && <Text style={styles.value}>{value}</Text>}
                 {hasSwitch ? (
@@ -142,8 +147,8 @@ export default function SettingsScreen() {
                     {isGuest ? (
                         <SettingRow
                             icon={<User />}
-                            label="Create Permanent Account"
-                            value="Save your collection"
+                            label="Sign Up or Log In"
+                            subtitle="Save your collection to the cloud"
                             tintColor={Colors.accent}
                             onPress={() => setIsAuthModalVisible(true)}
                         />
@@ -369,6 +374,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: Colors.text,
+    },
+    labelContainer: {
+        flex: 1,
+    },
+    subtitle: {
+        fontSize: 13,
+        color: Colors.textTertiary,
+        marginTop: 2,
     },
     rightContent: {
         flexDirection: 'row',
