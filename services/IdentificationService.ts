@@ -33,7 +33,8 @@ export class IdentificationService {
      */
     static async processStream(
         reader: ReadableStreamDefaultReader<Uint8Array>,
-        onChunk: (chunk: IdentificationChunk) => void
+        onChunk: (chunk: IdentificationChunk) => void,
+        signal?: AbortSignal
     ): Promise<void> {
         const decoder = new TextDecoder();
         let buffer = '';
@@ -41,6 +42,9 @@ export class IdentificationService {
 
         try {
             while (true) {
+                // Check signal before reading
+                if (signal?.aborted) throw Object.assign(new Error('Aborted'), { name: 'AbortError' });
+
                 const { done, value } = await reader.read();
                 if (done) break;
 
@@ -70,7 +74,21 @@ export class IdentificationService {
                     onChunk(chunk as IdentificationChunk);
                 }
             }
-        } catch (error) {
+        } catch (error: any) {
+            // Robust check for any form of cancellation/abort
+            const errorMsg = error.message || '';
+            const isAbort =
+                error.name === 'AbortError' ||
+                errorMsg.includes('Aborted') ||
+                errorMsg.includes('canceled') ||
+                errorMsg.includes('Canceled') ||
+                signal?.aborted;
+
+            if (isAbort) {
+                console.log('[IdentificationService] Stream processing aborted safely');
+                return;
+            }
+
             console.error('[IdentificationService] Stream processing error:', error);
             if (receivedCandidates) {
                 // Stream broke after we already got candidates — results are usable
@@ -80,7 +98,11 @@ export class IdentificationService {
                 onChunk({ type: 'error', message: 'Stream interrupted unexpectedly' });
             }
         } finally {
-            reader.releaseLock();
+            try {
+                reader.releaseLock();
+            } catch (e) {
+                // Ignore lock release errors
+            }
         }
     }
 

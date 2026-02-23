@@ -40,6 +40,8 @@ const SoundBar = ({ meteringLevel, isRecording, isProcessing, index }: { index: 
     const height = useSharedValue(4);
 
     useEffect(() => {
+        let timeoutId: any;
+
         if (isRecording) {
             // Map metering level (-160 to 0) to height (4 to VISUALIZER_HEIGHT)
             const normalizedLevel = Math.max(0, (meteringLevel + 160) / 160);
@@ -51,9 +53,8 @@ const SoundBar = ({ meteringLevel, isRecording, isProcessing, index }: { index: 
                 stiffness: 120,
             });
         } else if (isProcessing) {
-            // Create a wave effect across bars
-            const delay = index * 50;
-            setTimeout(() => {
+            const delay = index * 40;
+            timeoutId = setTimeout(() => {
                 height.value = withRepeat(
                     withSequence(
                         withTiming(VISUALIZER_HEIGHT * (0.3 + Math.random() * 0.4), { duration: 500 }),
@@ -64,8 +65,13 @@ const SoundBar = ({ meteringLevel, isRecording, isProcessing, index }: { index: 
                 );
             }, delay);
         } else {
+            // When not recording or processing, ensure all animations are stopped and reset to base height
             height.value = withSpring(4);
         }
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
     }, [meteringLevel, isRecording, isProcessing]);
 
     const animatedStyle = useAnimatedStyle(() => ({

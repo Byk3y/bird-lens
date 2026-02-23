@@ -112,6 +112,14 @@ export default function ScannerScreen() {
 
   const [isFlashing, setIsFlashing] = useState(false);
 
+  // Cleanup on unmount or navigate away
+  useEffect(() => {
+    return () => {
+      resetResult();
+      stopAndCleanup();
+    };
+  }, []);
+
   const handleBack = async () => {
     if (isRecording) {
       await stopAndCleanup();
@@ -253,9 +261,9 @@ export default function ScannerScreen() {
           });
           const identifiedBird = await identifyBird(undefined, base64);
 
-          if (!identifiedBird && !isProcessing) {
-            // If identification finished but no bird was found, maybe show an alert
-            // or allow user to try again
+          // Only show "No Match" if it's NOT aborted (identifiedBird === null)
+          // identifiedBird is undefined when aborted
+          if (identifiedBird === null && !isProcessing) {
             showAlert({
               title: 'No Match Found',
               message: "We couldn't identify this bird sound. Try recording a clearer sample!"
@@ -276,6 +284,13 @@ export default function ScannerScreen() {
   // Handle errors
   useEffect(() => {
     if (error && !isProcessing && activeMode === 'sound') {
+      // Block cancel messages from showing alerts as they are intentional
+      const isCancelMessage =
+        error.toLowerCase().includes('cancel') ||
+        error.toLowerCase().includes('abort');
+
+      if (isCancelMessage) return;
+
       showAlert({
         title: 'Identification Error',
         message: error
@@ -362,7 +377,15 @@ export default function ScannerScreen() {
               </GestureDetector>
             ) : (
               <SoundScanner
-                onBack={handleBack}
+                onBack={() => {
+                  if (recordingUri || isRecording) {
+                    stopAndCleanup();
+                    clearRecording();
+                    resetResult();
+                  } else {
+                    setActiveMode('photo');
+                  }
+                }}
                 isRecording={isRecording}
                 formattedTime={formattedTime}
                 hasRecording={!!recordingUri}

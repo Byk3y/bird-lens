@@ -28,12 +28,13 @@ export const useBirdIdentification = () => {
     const { user, isLoading: isAuthLoading } = useAuth();
     const { showAlert } = useAlert();
 
-    const identifyBird = async (imageB64?: string, audioB64?: string) => {
+    const identifyBird = async (imageB64?: string, audioB64?: string): Promise<BirdResult | null | undefined> => {
         if (isProcessing) return;
 
+        const controller = new AbortController();
+        setAbortController(controller);
+
         try {
-            const controller = new AbortController();
-            setAbortController(controller);
 
             setIsProcessing(true);
             setError(null);
@@ -45,6 +46,10 @@ export const useBirdIdentification = () => {
             if (currentStatus === 'granted' || currentStatus === 'undetermined') {
                 setProgressMessage('Determining location...');
                 locationData = await getCurrentLocation();
+
+                // Early exit if user cancelled during location fetch
+                if (controller.signal.aborted) return undefined;
+
                 setLastLocation(locationData);
             }
 
@@ -175,20 +180,28 @@ export const useBirdIdentification = () => {
                         raw_ai_response: rawAiResponse
                     };
                 }
-            });
+            }, controller.signal);
 
 
             return finalBirds[0] || null;
         } catch (error: any) {
-            if (error.name === 'AbortError') {
+            const errorMsg = error.message || '';
+            const isManualAbort =
+                error.name === 'AbortError' ||
+                errorMsg.includes('canceled') ||
+                errorMsg.includes('Canceled') ||
+                errorMsg.includes('aborted') ||
+                controller.signal.aborted;
+
+            if (isManualAbort) {
                 console.log('Identification request cancelled by user');
-                return null;
+                return undefined;
             }
 
             console.warn('Identification attempt status:', error.message || error);
 
             const status = error.status || error.context?.status || error.statusCode;
-            const message = error.message;
+            const message = error.message || 'Identification failed';
 
             const isQuotaError = status === 429 ||
                 message.includes('Quota') ||
@@ -354,8 +367,9 @@ export const useBirdIdentification = () => {
         setCandidates([]);
         setEnrichedCandidates([]);
         setHeroImages({});
-        setProgressMessage(null);
         setLastLocation(null);
+        setError(null);
+        setProgressMessage(null);
     };
 
     return {
