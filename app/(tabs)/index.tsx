@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Components
@@ -31,67 +30,65 @@ export default function HomeScreen() {
   }, [permission]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.container}>
-        {/* Background Gradient */}
-        <LinearGradient
-          colors={[Colors.primary, Colors.background]}
-          locations={[0, 0.7]}
-          style={[styles.headerGradient, { height: 320 }]}
-        />
+    <View style={styles.container}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[Colors.primary, Colors.background]}
+        locations={[0, 0.7]}
+        style={[styles.headerGradient, { height: 320 }]}
+      />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingTop: insets.top + Spacing.md,
-            paddingBottom: 120
-          }}
-        >
-          <HomeHeader />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: insets.top + Spacing.md,
+          paddingBottom: 120
+        }}
+      >
+        <HomeHeader />
 
-          <ActionGrid />
+        <ActionGrid />
 
-          {/* Camera Permission Overlay (Only if denied) */}
-          {permission && !permission.granted && permission.status !== 'undetermined' && (
-            <View style={styles.permissionOverlay}>
-              <View style={styles.overlayCard}>
-                <View style={styles.overlayHeader}>
-                  <View style={styles.overlayIconCircle}>
-                    <Camera color={Colors.primary} size={24} />
-                  </View>
-                  <View style={styles.overlayTextContent}>
-                    <Text style={styles.overlayTitle}>Camera Ready?</Text>
-                    <Text style={styles.overlaySubtitle}>Identify birds instantly with your lens.</Text>
-                  </View>
+        {/* Camera Permission Overlay (Only if denied) */}
+        {permission && !permission.granted && permission.status !== 'undetermined' && (
+          <View style={styles.permissionOverlay}>
+            <View style={styles.overlayCard}>
+              <View style={styles.overlayHeader}>
+                <View style={styles.overlayIconCircle}>
+                  <Camera color={Colors.primary} size={24} />
                 </View>
-                <TouchableOpacity
-                  style={styles.overlayButton}
-                  onPress={requestPermission}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.overlayButtonText}>Enable Camera</Text>
-                </TouchableOpacity>
+                <View style={styles.overlayTextContent}>
+                  <Text style={styles.overlayTitle}>Camera Ready?</Text>
+                  <Text style={styles.overlaySubtitle}>Identify birds instantly with your lens.</Text>
+                </View>
               </View>
+              <TouchableOpacity
+                style={styles.overlayButton}
+                onPress={requestPermission}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.overlayButtonText}>Enable Camera</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
+        )}
 
-          {/* AI Enhancer Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Sparkles color={Colors.primary} size={20} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>Bird Photo AI Enhancer</Text>
-              <View style={styles.betaBadge}>
-                <Text style={styles.betaText}>BETA</Text>
-              </View>
+        {/* AI Enhancer Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Sparkles color={Colors.primary} size={20} style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>Bird Photo AI Enhancer</Text>
+            <View style={styles.betaBadge}>
+              <Text style={styles.betaText}>BETA</Text>
             </View>
-
-            <AIEnhancerCard />
           </View>
 
-          <ExploreSection />
-        </ScrollView>
-      </View>
-    </GestureHandlerRootView>
+          <AIEnhancerCard />
+        </View>
+
+        <ExploreSection />
+      </ScrollView>
+    </View>
   );
 }
 

@@ -8,10 +8,9 @@ import {
     ActivityIndicator,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, TouchableOpacity } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
 interface ScannerControlsProps {
