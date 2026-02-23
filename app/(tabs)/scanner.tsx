@@ -90,9 +90,8 @@ export default function ScannerScreen() {
     durationMillis,
   } = useAudioRecording();
 
-  // Reset to photo mode and auto-request permission on mount
+  // Auto-request permission on mount if needed
   useEffect(() => {
-    setActiveMode('photo');
     if (permission && !permission.granted && permission.canAskAgain) {
       requestPermission();
     }
