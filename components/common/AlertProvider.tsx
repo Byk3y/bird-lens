@@ -69,6 +69,9 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const confirmAction = config.actions?.find(a => a.style !== 'cancel');
     const cancelAction = config.actions?.find(a => a.style === 'cancel');
 
+    // If no actions provided, we only want an OK button (notification style)
+    const hasCancelAction = !!cancelAction;
+
     return (
         <AlertContext.Provider value={{ showAlert, hideAlert }}>
             {children}
@@ -79,7 +82,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 onClose={handleCancel}
                 onConfirm={handleConfirm}
                 confirmText={confirmAction?.text || 'OK'}
-                cancelText={cancelAction?.text || 'Cancel'}
+                cancelText={hasCancelAction ? cancelAction?.text || 'Cancel' : undefined}
                 isDestructive={config.isDestructive || confirmAction?.style === 'destructive'}
                 isLoading={isLoading}
             />

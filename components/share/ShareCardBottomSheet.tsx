@@ -1,10 +1,10 @@
 import { useShareCard } from '@/hooks/useShareCard';
 import { BirdResult } from '@/types/scanner';
+import { AnimatePresence, MotiView } from 'moti';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
-    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,7 +16,7 @@ import { FieldGuideCard } from './FieldGuideCard';
 import { MagazineCard, ShareCardData } from './MagazineCard';
 import { WildCard } from './WildCard';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PREVIEW_SCALE = (SCREEN_WIDTH * 0.72) / 1080;
 const PREVIEW_SIZE = 1080 * PREVIEW_SCALE;
 const PADDING = (SCREEN_WIDTH - PREVIEW_SIZE) / 2;
@@ -76,125 +76,142 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     };
 
     return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            transparent
-            onRequestClose={onClose}
-        >
-            <View style={styles.overlay}>
-                <TouchableOpacity
-                    style={styles.backdrop}
-                    activeOpacity={1}
-                    onPress={onClose}
-                />
-                <View style={styles.sheet}>
-                    {/* Handle */}
-                    <View style={styles.handleRow}>
-                        <View style={styles.handle} />
-                    </View>
-
-                    {/* Title */}
-                    <Text style={styles.title}>Share your sighting</Text>
-
-                    {/* Template Previews */}
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.previewScroll}
-                        snapToInterval={PREVIEW_SIZE + 16}
-                        snapToAlignment="center"
-                        decelerationRate="fast"
+        <AnimatePresence>
+            {visible && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents="box-none">
+                    <MotiView
+                        from={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ type: 'timing', duration: 300 }}
+                        style={StyleSheet.absoluteFill}
                     >
-                        {TEMPLATES.map((tmpl) => (
-                            <TouchableOpacity
-                                key={tmpl.key}
-                                onPress={() => setSelectedTemplate(tmpl.key)}
-                                activeOpacity={0.85}
-                            >
-                                <View
-                                    style={[
-                                        styles.previewCard,
-                                        selectedTemplate === tmpl.key && styles.previewCardSelected,
-                                    ]}
-                                >
-                                    <View style={styles.previewInner}>
-                                        {renderCardTemplate(tmpl.key, PREVIEW_SCALE)}
-                                    </View>
-                                </View>
-                                <Text
-                                    style={[
-                                        styles.templateLabel,
-                                        selectedTemplate === tmpl.key && styles.templateLabelSelected,
-                                    ]}
-                                >
-                                    {tmpl.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                        <TouchableOpacity
+                            style={styles.backdrop}
+                            activeOpacity={1}
+                            onPress={onClose}
+                        />
+                    </MotiView>
 
-                    {/* Action Buttons */}
-                    <View style={styles.actions}>
-                        <TouchableOpacity
-                            style={styles.secondaryBtn}
-                            onPress={saveToPhotos}
-                            disabled={isCapturing}
+                    <MotiView
+                        from={{ translateY: SCREEN_HEIGHT }}
+                        animate={{ translateY: 0 }}
+                        exit={{ translateY: SCREEN_HEIGHT }}
+                        transition={{ type: 'timing', duration: 350 }}
+                        style={styles.sheetContainer}
+                    >
+                        <View style={styles.sheet}>
+                            {/* Handle */}
+                            <View style={styles.handleRow}>
+                                <View style={styles.handle} />
+                            </View>
+
+                            {/* Title */}
+                            <Text style={styles.title}>Share your sighting</Text>
+
+                            {/* Template Previews */}
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.previewScroll}
+                                snapToInterval={PREVIEW_SIZE + 16}
+                                snapToAlignment="center"
+                                decelerationRate="fast"
+                            >
+                                {TEMPLATES.map((tmpl) => (
+                                    <TouchableOpacity
+                                        key={tmpl.key}
+                                        onPress={() => setSelectedTemplate(tmpl.key)}
+                                        activeOpacity={0.85}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.previewCard,
+                                                selectedTemplate === tmpl.key && styles.previewCardSelected,
+                                            ]}
+                                        >
+                                            <View style={styles.previewInner}>
+                                                {renderCardTemplate(tmpl.key, PREVIEW_SCALE)}
+                                            </View>
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.templateLabel,
+                                                selectedTemplate === tmpl.key && styles.templateLabelSelected,
+                                            ]}
+                                        >
+                                            {tmpl.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
+                            {/* Action Buttons */}
+                            <View style={styles.actions}>
+                                <TouchableOpacity
+                                    style={styles.secondaryBtn}
+                                    onPress={saveToPhotos}
+                                    disabled={isCapturing}
+                                >
+                                    {isCapturing ? (
+                                        <ActivityIndicator size="small" color="#F97316" />
+                                    ) : (
+                                        <Text style={styles.secondaryBtnText}>Save to Photos</Text>
+                                    )}
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.primaryBtn}
+                                    onPress={shareCard}
+                                    disabled={isCapturing}
+                                >
+                                    {isCapturing ? (
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                    ) : (
+                                        <Text style={styles.primaryBtnText}>Share</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </MotiView>
+
+                    {/* Off-screen full-size card for capture */}
+                    <View style={styles.offscreen} pointerEvents="none">
+                        <ViewShot
+                            ref={viewShotRef}
+                            options={{
+                                format: 'png',
+                                quality: 1,
+                                width: 1080,
+                                height: 1080,
+                            }}
                         >
-                            {isCapturing ? (
-                                <ActivityIndicator size="small" color="#F97316" />
-                            ) : (
-                                <Text style={styles.secondaryBtnText}>Save to Photos</Text>
-                            )}
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.primaryBtn}
-                            onPress={shareCard}
-                            disabled={isCapturing}
-                        >
-                            {isCapturing ? (
-                                <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                                <Text style={styles.primaryBtnText}>Share</Text>
-                            )}
-                        </TouchableOpacity>
+                            {renderCardTemplate(selectedTemplate, 1)}
+                        </ViewShot>
                     </View>
                 </View>
-            </View>
-
-            {/* Off-screen full-size card for capture */}
-            <View style={styles.offscreen} pointerEvents="none">
-                <ViewShot
-                    ref={viewShotRef}
-                    options={{
-                        format: 'png',
-                        quality: 1,
-                        width: 1080,
-                        height: 1080,
-                    }}
-                >
-                    {renderCardTemplate(selectedTemplate, 1)}
-                </ViewShot>
-            </View>
-        </Modal>
+            )}
+        </AnimatePresence>
     );
 };
 
 const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        justifyContent: 'flex-end',
-    },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    sheetContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        justifyContent: 'flex-end',
     },
     sheet: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingBottom: 44,
-        maxHeight: '85%',
+        maxHeight: SCREEN_HEIGHT * 0.85,
     },
     handleRow: {
         alignItems: 'center',

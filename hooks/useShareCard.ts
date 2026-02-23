@@ -1,12 +1,14 @@
+import { useAlert } from '@/components/common/AlertProvider';
+import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useRef, useState } from 'react';
-import { Alert } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 
 export function useShareCard() {
     const viewShotRef = useRef<ViewShot>(null);
     const [isCapturing, setIsCapturing] = useState(false);
+    const { showAlert } = useAlert();
 
     const captureCard = useCallback(async (): Promise<string | null> => {
         if (!viewShotRef.current?.capture) return null;
@@ -16,12 +18,15 @@ export function useShareCard() {
             return uri;
         } catch (err) {
             console.error('Failed to capture card:', err);
-            Alert.alert('Error', 'Failed to capture the share card.');
+            showAlert({
+                title: 'Error',
+                message: 'Failed to capture the share card.'
+            });
             return null;
         } finally {
             setIsCapturing(false);
         }
-    }, []);
+    }, [showAlert]);
 
     const saveToPhotos = useCallback(async () => {
         const uri = await captureCard();
@@ -30,19 +35,26 @@ export function useShareCard() {
         try {
             const { status } = await MediaLibrary.requestPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert(
-                    'Permission Required',
-                    'Please allow access to your photo library to save share cards.'
-                );
+                showAlert({
+                    title: 'Permission Required',
+                    message: 'Please allow access to your photo library to save share cards.'
+                });
                 return;
             }
             await MediaLibrary.saveToLibraryAsync(uri);
-            Alert.alert('Saved!', 'Your bird card has been saved to Photos.');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            showAlert({
+                title: 'Saved!',
+                message: 'Your bird card has been saved to Photos.'
+            });
         } catch (err) {
             console.error('Failed to save to photos:', err);
-            Alert.alert('Error', 'Failed to save to your photo library.');
+            showAlert({
+                title: 'Error',
+                message: 'Failed to save to your photo library.'
+            });
         }
-    }, [captureCard]);
+    }, [captureCard, showAlert]);
 
     const shareCard = useCallback(async () => {
         const uri = await captureCard();
@@ -51,7 +63,10 @@ export function useShareCard() {
         try {
             const isAvailable = await Sharing.isAvailableAsync();
             if (!isAvailable) {
-                Alert.alert('Sharing not available', 'Sharing is not supported on this device.');
+                showAlert({
+                    title: 'Sharing not available',
+                    message: 'Sharing is not supported on this device.'
+                });
                 return;
             }
             await Sharing.shareAsync(uri, {
@@ -61,7 +76,7 @@ export function useShareCard() {
         } catch (err) {
             console.error('Failed to share:', err);
         }
-    }, [captureCard]);
+    }, [captureCard, showAlert]);
 
     return {
         viewShotRef,

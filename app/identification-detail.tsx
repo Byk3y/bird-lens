@@ -51,7 +51,7 @@ export default function IdentificationDetailScreen() {
         <View style={styles.screenWrapper}>
             <BlurView
                 intensity={30}
-                tint="dark"
+                tint="light"
                 style={StyleSheet.absoluteFill}
             />
             <TouchableOpacity

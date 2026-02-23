@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { AnimatePresence, MotiView } from 'moti';
 import React from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface CustomAlertProps {
     visible: boolean;
@@ -22,7 +22,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
     onClose,
     onConfirm,
     confirmText = 'Confirm',
-    cancelText = 'Cancel',
+    cancelText,
     isDestructive = false,
     isLoading = false,
 }) => {
@@ -34,51 +34,46 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
 
     const handleConfirm = () => {
         if (isLoading) return;
-        Haptics.notificationAsync(
+        Haptics.impactAsync(
             isDestructive
-                ? Haptics.NotificationFeedbackType.Warning
-                : Haptics.NotificationFeedbackType.Success
+                ? Haptics.ImpactFeedbackStyle.Medium
+                : Haptics.ImpactFeedbackStyle.Light
         );
         onConfirm();
     };
 
     return (
-        <Modal
-            transparent
-            visible={visible}
-            animationType="none"
-            onRequestClose={handleCancel}
-        >
-            <AnimatePresence>
-                {visible && (
-                    <View style={styles.overlay}>
-                        <MotiView
-                            from={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ type: 'timing', duration: 250 }}
-                            style={StyleSheet.absoluteFill}
-                        >
-                            <Pressable
-                                style={styles.backdrop}
-                                onPress={handleCancel}
-                                disabled={isLoading}
-                            />
-                        </MotiView>
+        <AnimatePresence>
+            {visible && (
+                <View style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="box-none">
+                    <MotiView
+                        from={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ type: 'timing', duration: 250 }}
+                        style={StyleSheet.absoluteFill}
+                    >
+                        <Pressable
+                            style={styles.backdrop}
+                            onPress={handleCancel}
+                            disabled={isLoading}
+                        />
+                    </MotiView>
 
-                        <MotiView
-                            from={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ type: 'timing', duration: 200 }}
-                            style={styles.alertContainer}
-                        >
-                            <View style={styles.content}>
-                                <Text style={styles.title}>{title}</Text>
-                                <Text style={styles.message}>{message}</Text>
-                            </View>
+                    <MotiView
+                        from={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ type: 'timing', duration: 200 }}
+                        style={styles.alertContainer}
+                    >
+                        <View style={styles.content}>
+                            <Text style={styles.title}>{title}</Text>
+                            <Text style={styles.message}>{message}</Text>
+                        </View>
 
-                            <View style={styles.actions}>
+                        <View style={styles.actions}>
+                            {cancelText && (
                                 <TouchableOpacity
                                     style={[styles.button, styles.cancelButton]}
                                     onPress={handleCancel}
@@ -86,28 +81,32 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
                                 >
                                     <Text style={styles.cancelText}>{cancelText}</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.button, styles.confirmButton]}
-                                    onPress={handleConfirm}
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? (
-                                        <ActivityIndicator color={isDestructive ? '#FF3B30' : '#007AFF'} />
-                                    ) : (
-                                        <Text style={[
-                                            styles.confirmText,
-                                            isDestructive && styles.destructiveText
-                                        ]}>
-                                            {confirmText}
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </MotiView>
-                    </View>
-                )}
-            </AnimatePresence>
-        </Modal>
+                            )}
+                            <TouchableOpacity
+                                style={[
+                                    styles.button,
+                                    styles.confirmButton,
+                                    !cancelText && styles.fullWidthButton
+                                ]}
+                                onPress={handleConfirm}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color={isDestructive ? '#FF3B30' : '#007AFF'} />
+                                ) : (
+                                    <Text style={[
+                                        styles.confirmText,
+                                        isDestructive && styles.destructiveText
+                                    ]}>
+                                        {confirmText}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </MotiView>
+                </View>
+            )}
+        </AnimatePresence>
     );
 };
 
@@ -169,6 +168,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#F2F2F7',
     },
     confirmButton: {
+        backgroundColor: '#F2F2F7',
+    },
+    fullWidthButton: {
         backgroundColor: '#F2F2F7',
     },
     cancelText: {
