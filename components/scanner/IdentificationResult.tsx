@@ -1,3 +1,4 @@
+import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors, Spacing, Typography } from '@/constants/theme';
@@ -183,6 +184,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
 
     const [isImageViewerVisible, setIsImageViewerVisible] = React.useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
+    const [shareSheetVisible, setShareSheetVisible] = React.useState(false);
 
     const playScientificName = () => {
         if (activeBird?.scientific_name) {
@@ -445,7 +447,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             <Text style={styles.actionText}>New</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.actionItem}>
+                        <TouchableOpacity style={styles.actionItem} onPress={() => setShareSheetVisible(true)}>
                             <Share2 color={Colors.text} size={24} />
                             <Text style={styles.actionText}>Share</Text>
                         </TouchableOpacity>
@@ -459,6 +461,17 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                 initialIndex={selectedImageIndex}
                 onClose={() => setIsImageViewerVisible(false)}
             />
+
+            {/* Share Card Bottom Sheet */}
+            {activeBird && (
+                <ShareCardBottomSheet
+                    visible={shareSheetVisible}
+                    onClose={() => setShareSheetVisible(false)}
+                    bird={activeBird}
+                    imageUrl={heroImages[activeBird.scientific_name]}
+                    locationName={activeBird.distribution_area}
+                />
+            )}
         </View >
     );
 };
