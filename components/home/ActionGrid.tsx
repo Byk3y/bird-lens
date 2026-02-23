@@ -21,14 +21,14 @@ export const ActionGrid: React.FC = () => {
                     title={"Photo\nIdentification"}
                     icon={<Camera color={Colors.white} size={18} strokeWidth={2.5} />}
                     style={styles.gridCard}
-                    gradient={['#F97316', '#F97316']}
+                    gradient={[Colors.primary, '#FF5E55']}
                     onPress={() => router.push({ pathname: '/(tabs)/scanner', params: { mode: 'photo' } })}
                 />
                 <ActionCard
                     title={"Sound\nIdentification"}
                     icon={<AudioLines color={Colors.white} size={18} strokeWidth={2.5} />}
                     style={styles.gridCard}
-                    gradient={['#F97316', '#F97316']}
+                    gradient={[Colors.primary, '#FF5E55']}
                     onPress={() => router.push({ pathname: '/(tabs)/scanner', params: { mode: 'sound' } })}
                 />
             </View>

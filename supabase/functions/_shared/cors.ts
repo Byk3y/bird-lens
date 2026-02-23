@@ -1,6 +1,9 @@
 export const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': 'https://zupcpodceganwtzztclr.supabase.co',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
 };
 
 export function createResponse(data: any, status = 200) {

@@ -107,7 +107,7 @@ serve(async (req: Request) => {
 
     } catch (error: any) {
         console.error('Error fetching sounds:', error);
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: "An internal server error occurred while fetching sounds." }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

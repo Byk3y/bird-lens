@@ -55,12 +55,31 @@ export default function EditProfileScreen() {
     const handleSave = async () => {
         if (!user) return;
 
+        const trimmedNickname = nickname.trim();
+        const MAX_LN = 30;
+
+        if (trimmedNickname.length > MAX_LN) {
+            showAlert({
+                title: 'Error',
+                message: `Nickname must be ${MAX_LN} characters or less.`
+            });
+            return;
+        }
+
+        if (trimmedNickname.length < 2) {
+            showAlert({
+                title: 'Error',
+                message: 'Nickname must be at least 2 characters.'
+            });
+            return;
+        }
+
         setIsSaving(true);
         try {
             const { error } = await supabase
                 .from('profiles')
                 .update({
-                    nickname: nickname.trim(),
+                    nickname: trimmedNickname,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', user.id);
@@ -134,6 +153,7 @@ export default function EditProfileScreen() {
                                 placeholder="Add nickname"
                                 placeholderTextColor="#94a3b8"
                                 autoCorrect={false}
+                                maxLength={30}
                             />
                         </View>
 

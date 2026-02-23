@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { Tabs } from 'expo-router';
-import { Camera, Home, User } from 'lucide-react-native';
+import { Camera, CircleUserRound, LayoutGrid } from 'lucide-react-native';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,25 +17,29 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 88 : 68,
+          height: Platform.OS === 'ios' ? 92 : 72,
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
+          paddingHorizontal: 30, // Pulls the side icons closer to the center
           elevation: 0,
           shadowOpacity: 0,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginBottom: Platform.OS === 'ios' ? 0 : 10,
+          marginBottom: Platform.OS === 'ios' ? 5 : 12, // Lifted labels a bit
         },
+        tabBarIconStyle: {
+          marginTop: 6, // Gave icons a bit more breathing room from the top
+        }
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Home color={color} size={24} />,
+          tabBarIcon: ({ color }) => <LayoutGrid color={color} size={24} />,
         }}
       />
       <Tabs.Screen
@@ -57,7 +61,7 @@ export default function TabLayout() {
         name="collection"
         options={{
           title: 'Me',
-          tabBarIcon: ({ color }) => <User color={color} size={24} />,
+          tabBarIcon: ({ color }) => <CircleUserRound color={color} size={24} />,
         }}
       />
     </Tabs>

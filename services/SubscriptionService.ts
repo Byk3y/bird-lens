@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import Purchases, { LOG_LEVEL, PurchasesOffering } from 'react-native-purchases';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import RevenueCatUI from 'react-native-purchases-ui';
 
 const API_KEY = Platform.select({
@@ -12,7 +12,7 @@ const ENTITLEMENT_ID = 'Birdsnap Pro';
 
 export class SubscriptionService {
     private static instance: SubscriptionService;
-    private offerings: PurchasesOffering[] = [];
+    private isConfigured = false;
 
     private constructor() { }
 
@@ -27,14 +27,20 @@ export class SubscriptionService {
      * Initialize the RevenueCat SDK
      */
     public async initialize(): Promise<void> {
+        if (this.isConfigured) {
+            console.log('RevenueCat is already configured, skipping.');
+            return;
+        }
+
         if (!API_KEY) {
             console.warn('RevenueCat API Key is missing. Subscription service will not work.');
             return;
         }
 
         try {
-            Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+            Purchases.setLogLevel(LOG_LEVEL.INFO);
             Purchases.configure({ apiKey: API_KEY });
+            this.isConfigured = true;
             console.log('RevenueCat initialized successfully');
         } catch (error) {
             console.error('Failed to initialize RevenueCat:', error);

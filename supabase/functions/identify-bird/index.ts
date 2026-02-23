@@ -99,14 +99,8 @@ serve(async (req: Request) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
     try {
-        // --- 1. Internal Auth Check ---
-        const authHeader = req.headers.get('Authorization') || req.headers.get('apikey');
-        if (!authHeader) {
-            return new Response(JSON.stringify({ error: "No authorization header" }), {
-                status: 401,
-                headers: { ...corsHeaders, "Content-Type": "application/json" }
-            });
-        }
+        // JWT verification is handled by Supabase (verify_jwt: true)
+        // No manual auth header check needed
 
         if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is missing");
 
@@ -114,6 +108,23 @@ serve(async (req: Request) => {
         let image = body.image;
         let imagePath = body.imagePath;
         let audio = body.audio;
+
+        // --- Input size validation ---
+        const MAX_IMAGE_BASE64_LENGTH = 15_000_000;  // ~10MB decoded
+        const MAX_AUDIO_BASE64_LENGTH = 2_000_000;   // ~1.5MB decoded
+
+        if (image && image.length > MAX_IMAGE_BASE64_LENGTH) {
+            return new Response(JSON.stringify({ error: "Image too large. Maximum 10MB." }), {
+                status: 413,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+        if (audio && audio.length > MAX_AUDIO_BASE64_LENGTH) {
+            return new Response(JSON.stringify({ error: "Audio too large. Maximum 1.5MB." }), {
+                status: 413,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
 
         console.log('Request received. Image length: ' + (image?.length || 0) + ', ImagePath: ' + imagePath + ', Audio length: ' + (audio?.length || 0));
 
@@ -509,7 +520,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                 } catch (streamError: any) { // @ts-ignore: Deno.serve error type
                     if (heartbeatId) clearInterval(heartbeatId);
                     console.error("[STREAM ERROR]", streamError);
-                    try { writeChunk(controller, { type: "error", message: streamError.message }); } catch { /* ignore stream close */ }
+                    try { writeChunk(controller, { type: "error", message: "An internal server error occurred during identification." }); } catch { /* ignore stream close */ }
                     controller.close();
                 }
             }
@@ -518,7 +529,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
         return createStreamResponse(stream);
     } catch (error: any) { // Type 'unknown' requires casting for .message access
         console.error("Critical Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: "An internal server error occurred during identification." }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });

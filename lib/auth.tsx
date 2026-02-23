@@ -12,6 +12,7 @@ interface AuthContextType {
     signUp: (email: string, password: string) => Promise<{ error: any }>;
     signIn: (email: string, password: string) => Promise<{ error: any }>;
     signOut: () => Promise<void>;
+    resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
     signUp: async () => ({ error: null }),
     signIn: async () => ({ error: null }),
     signOut: async () => { },
+    resetPassword: async () => ({ error: null }),
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -56,7 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (!isMounted) return;
 
             // Debug session state changes
-            console.log('Auth event:', event, session?.user?.id);
+            console.log('Auth event:', event);
 
             // Handle session changes carefully
             if (event === 'SIGNED_OUT') {
@@ -82,7 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             const { data, error } = await supabase.auth.signInAnonymously();
             if (error) throw error;
-            console.log('Signed in anonymously:', data.user?.id);
+            console.log('Signed in anonymously successfully.');
         } catch (error) {
             console.error('Anonymous sign-in failed:', error);
         } finally {
@@ -127,6 +129,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         handleAnonymousSignIn();
     };
 
+    const resetPassword = async (email: string) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        return { error };
+    };
+
     const isGuest = !!user?.is_anonymous;
 
     return (
@@ -138,7 +145,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             signInAnonymously: handleAnonymousSignIn,
             signUp,
             signIn,
-            signOut
+            signOut,
+            resetPassword
         }}>
             {children}
         </AuthContext.Provider>

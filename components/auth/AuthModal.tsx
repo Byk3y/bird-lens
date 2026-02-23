@@ -74,19 +74,44 @@ interface AuthModalProps {
     initialMode?: 'login' | 'signup';
 }
 
+const validateEmail = (email: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+const validatePassword = (pwd: string): string | null => {
+    if (pwd.length < 8) return 'Password must be at least 8 characters.';
+    if (!/[A-Z]/.test(pwd)) return 'Password must include an uppercase letter.';
+    if (!/[0-9]/.test(pwd)) return 'Password must include a number.';
+    return null;
+};
+
 export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModalProps) => {
     const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const { signIn, signUp } = useAuth();
+
+    // Rate Limiting States
+    const [failedAttempts, setFailedAttempts] = useState(0);
+    const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+
+    const { signIn, signUp, resetPassword } = useAuth();
     const { showAlert } = useAlert();
 
     const emailRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
 
     const handleSubmit = async () => {
+        if (lockoutUntil && Date.now() < lockoutUntil) {
+            const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+            showAlert({
+                title: 'Too many attempts',
+                message: `Please try again in ${remaining} seconds.`
+            });
+            return;
+        }
+
         const trimmedEmail = email.trim();
         const trimmedPassword = password.trim();
 
@@ -98,6 +123,25 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
             return;
         }
 
+        if (!validateEmail(trimmedEmail)) {
+            showAlert({
+                title: 'Invalid Email',
+                message: 'Please enter a valid email address.'
+            });
+            return;
+        }
+
+        if (mode === 'signup') {
+            const pwdError = validatePassword(trimmedPassword);
+            if (pwdError) {
+                showAlert({
+                    title: 'Weak Password',
+                    message: pwdError
+                });
+                return;
+            }
+        }
+
         setIsLoading(true);
         try {
             const { error } = mode === 'login'
@@ -105,11 +149,26 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                 : await signUp(trimmedEmail, trimmedPassword);
 
             if (error) {
-                showAlert({
-                    title: 'Authentication Error',
-                    message: error.message
-                });
+                const newAttempts = failedAttempts + 1;
+                setFailedAttempts(newAttempts);
+
+                if (newAttempts >= 5) {
+                    setLockoutUntil(Date.now() + 60000); // lock for 60 seconds
+                    setFailedAttempts(0); // reset counter for next cycle
+                    showAlert({
+                        title: 'Temporarily Locked',
+                        message: 'Too many failed attempts. Please try again in 1 minute.'
+                    });
+                } else {
+                    showAlert({
+                        title: 'Authentication Error',
+                        message: error.message
+                    });
+                }
             } else {
+                setFailedAttempts(0);
+                setLockoutUntil(null);
+
                 if (mode === 'signup') {
                     showAlert({
                         title: 'Success!',
@@ -119,6 +178,40 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                 } else {
                     onClose();
                 }
+            }
+        } catch (err) {
+            showAlert({
+                title: 'Error',
+                message: 'An unexpected error occurred. Please try again.'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleForgotPassword = async () => {
+        const trimmedEmail = email.trim();
+        if (!validateEmail(trimmedEmail)) {
+            showAlert({
+                title: 'Invalid Email',
+                message: 'Please enter a valid email address to reset your password.'
+            });
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const { error } = await resetPassword(trimmedEmail);
+            if (error) {
+                showAlert({
+                    title: 'Error',
+                    message: error.message
+                });
+            } else {
+                showAlert({
+                    title: 'Password Reset',
+                    message: 'Check your email for a password reset link.'
+                });
             }
         } catch (err) {
             showAlert({
@@ -218,7 +311,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                                     </Pressable>
 
                                                     {mode === 'login' && (
-                                                        <Pressable style={styles.forgotBtn}>
+                                                        <Pressable style={styles.forgotBtn} onPress={handleForgotPassword}>
                                                             <Text style={styles.forgotText}>Forgot your password?</Text>
                                                         </Pressable>
                                                     )}

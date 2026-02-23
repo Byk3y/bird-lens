@@ -32,6 +32,7 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
                 <TouchableOpacity
                     style={[styles.iconBtn, styles.backBtn, { backgroundColor: buttonBg }]}
                     onPress={onBack}
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
                     <X color={iconColor} size={30} strokeWidth={3} />
                 </TouchableOpacity>
@@ -70,15 +71,14 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     iconBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
     },
     backBtn: {
-        marginLeft: 16,
-        marginTop: 8,
+        // Removed margins that shift hit area
     },
     premiumBadge: {
         flexDirection: 'row',

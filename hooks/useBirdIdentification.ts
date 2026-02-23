@@ -283,8 +283,17 @@ export const useBirdIdentification = () => {
                     await Promise.all(uploadTasks);
                 }
 
+                // Guard against missing user
+                if (!user?.id) {
+                    showAlert({
+                        title: 'Error',
+                        message: 'You must be signed in to save sightings.',
+                    });
+                    return false;
+                }
+
                 // Map bird result to sighting structure
-                const sightingData = IdentificationService.mapBirdToSighting(bird, user?.id || '', audioUrl);
+                const sightingData = IdentificationService.mapBirdToSighting(bird, user.id, audioUrl);
 
                 // Add image_url if uploaded
                 if (imageUrl) {
