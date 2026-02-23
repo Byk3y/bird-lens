@@ -19,6 +19,7 @@ interface BirdIdentificationRequest {
     image?: string;
     imagePath?: string;
     audio?: string;
+    location?: string;
 }
 
 const writeChunk = (controller: ReadableStreamDefaultController, data: unknown) => {
@@ -108,6 +109,7 @@ serve(async (req: Request) => {
         let image = body.image;
         let imagePath = body.imagePath;
         let audio = body.audio;
+        let location = body.location;
 
         // --- Input size validation ---
         const MAX_IMAGE_BASE64_LENGTH = 15_000_000;  // ~10MB decoded
@@ -197,7 +199,11 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
         // Include current date for better seasonality-based identification
         const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-        const contextPrompt = 'Current Date: ' + currentDate + '.\n\n';
+        const locationContext = location
+            ? `The user is currently located in ${location}. Prioritize bird species commonly found in this region and consider local migration patterns.`
+            : '';
+
+        const contextPrompt = `Today is ${currentDate}. ${locationContext}\n\n`;
 
         const fastPrompt = image
             ? persona + '\n\n' + contextPrompt + 'Identify the bird in this image.\n' + fastPromptInstructions

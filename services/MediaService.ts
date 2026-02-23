@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAnonKey } from '@/lib/supabase';
 import { BirdSound, INaturalistPhoto } from '@/types/scanner';
 
 export interface BirdMedia {
@@ -114,6 +114,9 @@ export class MediaService {
         try {
             const { data, error } = await supabase.functions.invoke('fetch-bird-media', {
                 body: { scientific_name: scientificName },
+                headers: {
+                    Authorization: `Bearer ${supabaseAnonKey}`
+                }
             });
 
             if (error) {

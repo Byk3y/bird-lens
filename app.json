@@ -34,7 +34,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BirdSnap uses your location to improve bird identification accuracy for your region."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -110,7 +110,12 @@ export class IdentificationService {
      * Maps a BirdResult to the structure expected by the Supabase 'sightings' table.
      * This centralizes mapping logic for easier testing and consistency.
      */
-    static mapBirdToSighting(bird: BirdResult, userId: string, audioUrl?: string | null): Record<string, any> {
+    static mapBirdToSighting(
+        bird: BirdResult,
+        userId: string,
+        audioUrl?: string | null,
+        location?: { locationName: string; latitude: number; longitude: number } | null
+    ): Record<string, any> {
         return {
             user_id: userId,
             species_name: bird.name,
@@ -119,6 +124,9 @@ export class IdentificationService {
             confidence: bird.confidence,
             image_url: bird.inat_photos?.[0]?.url || bird.wikipedia_image || null,
             audio_url: audioUrl || null,
+            location_name: location?.locationName || null,
+            latitude: location?.latitude || null,
+            longitude: location?.longitude || null,
             metadata: {
                 also_known_as: bird.also_known_as,
                 taxonomy: bird.taxonomy,

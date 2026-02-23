@@ -7,6 +7,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { fetch } from 'expo/fetch';
 import { useState } from 'react';
+import { getCurrentLocation } from './useLocation';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -22,6 +23,7 @@ export const useBirdIdentification = () => {
     const [error, setError] = useState<string | null>(null);
     const [progressMessage, setProgressMessage] = useState<string | null>(null);
     const [abortController, setAbortController] = useState<AbortController | null>(null);
+    const [lastLocation, setLastLocation] = useState<{ locationName: string; latitude: number; longitude: number } | null>(null);
     const { user, isLoading: isAuthLoading } = useAuth();
     const { showAlert } = useAlert();
 
@@ -34,13 +36,19 @@ export const useBirdIdentification = () => {
 
             setIsProcessing(true);
             setError(null);
+            setProgressMessage('Determining location...');
+
+            // Fetch location first (non-blocking if it fails)
+            const locationData = await getCurrentLocation();
+            setLastLocation(locationData);
+
             setProgressMessage('Identifying...');
             // Light feedback for identification start
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-            // Get session if it exists, but don't block for ghost users
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token || SUPABASE_ANON_KEY;
+            // We use the project's Anon Key specifically for identification requests to ensure
+            // maximum reliability and avoid gateway 401 issues with user session tokens.
+            const token = SUPABASE_ANON_KEY;
 
             console.log('Identification request initiated...');
 
@@ -57,7 +65,8 @@ export const useBirdIdentification = () => {
                 signal: controller.signal,
                 body: JSON.stringify({
                     image: imageB64,
-                    audio: audioB64
+                    audio: audioB64,
+                    location: locationData?.locationName || null
                 }),
             });
 
@@ -293,7 +302,7 @@ export const useBirdIdentification = () => {
                 }
 
                 // Map bird result to sighting structure
-                const sightingData = IdentificationService.mapBirdToSighting(bird, user.id, audioUrl);
+                const sightingData = IdentificationService.mapBirdToSighting(bird, user.id, audioUrl, lastLocation);
 
                 // Add image_url if uploaded
                 if (imageUrl) {
@@ -340,6 +349,7 @@ export const useBirdIdentification = () => {
         setEnrichedCandidates([]);
         setHeroImages({});
         setProgressMessage(null);
+        setLastLocation(null);
     };
 
     return {
