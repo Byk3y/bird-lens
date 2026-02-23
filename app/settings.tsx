@@ -21,12 +21,12 @@ import {
     Alert,
     Pressable,
     SafeAreaView,
-    ScrollView,
     StyleSheet,
     Switch,
     Text,
     View
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SettingRowProps {

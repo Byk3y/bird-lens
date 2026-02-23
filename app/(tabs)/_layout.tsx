@@ -17,14 +17,16 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 92 : 72,
+          height: Platform.OS === 'ios' ? 60 + insets.bottom : 72,
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
-          paddingHorizontal: 30, // Pulls the side icons closer to the center
+          paddingHorizontal: 16,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
           elevation: 0,
           shadowOpacity: 0,
+          zIndex: 100,
         },
         tabBarLabelStyle: {
           fontSize: 11,
