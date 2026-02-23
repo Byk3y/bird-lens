@@ -22,34 +22,36 @@ export const ScannerViewfinder: React.FC<ScannerViewfinderProps> = ({
     const [trackHeight, setTrackHeight] = React.useState(0);
     return (
         <View style={styles.content}>
-            {/* Viewfinder Corners */}
-            <View style={styles.viewfinderContainer}>
-                <View style={styles.minimalViewfinder}>
-                    <View style={[styles.miniCorner, styles.topLeft]} />
-                    <View style={[styles.miniCorner, styles.topRight]} />
-                    <View style={[styles.miniCorner, styles.bottomLeft]} />
-                    <View style={[styles.miniCorner, styles.bottomRight]} />
-                </View>
-
-                {/* Vertical Zoom Slider */}
-                <View style={styles.zoomControl}>
-                    <TouchableOpacity onPress={() => onZoomChange(Math.min(zoom + 0.1, 1))}>
-                        <Text style={styles.zoomSymbol}>+</Text>
-                    </TouchableOpacity>
-                    <View
-                        style={styles.zoomTrackContainer}
-                        onLayout={(e) => setTrackHeight(e.nativeEvent.layout.height)}
-                        onStartShouldSetResponder={() => true}
-                        onResponderGrant={(e) => onTrackInteraction(e, trackHeight)}
-                        onResponderMove={(e) => onTrackInteraction(e, trackHeight)}
-                    >
-                        <View style={styles.zoomTrack}>
-                            <View style={[styles.zoomIndicator, { bottom: `${zoom * 100}%` }]} />
-                        </View>
+            <View style={styles.viewfinderWrapper}>
+                {/* Viewfinder Corners */}
+                <View style={styles.viewfinderContainer}>
+                    <View style={styles.minimalViewfinder}>
+                        <View style={[styles.miniCorner, styles.topLeft]} />
+                        <View style={[styles.miniCorner, styles.topRight]} />
+                        <View style={[styles.miniCorner, styles.bottomLeft]} />
+                        <View style={[styles.miniCorner, styles.bottomRight]} />
                     </View>
-                    <TouchableOpacity onPress={() => onZoomChange(Math.max(zoom - 0.1, 0))}>
-                        <Text style={styles.zoomSymbol}>−</Text>
-                    </TouchableOpacity>
+
+                    {/* Vertical Zoom Slider */}
+                    <View style={styles.zoomControl}>
+                        <TouchableOpacity onPress={() => onZoomChange(Math.min(zoom + 0.1, 1))}>
+                            <Text style={styles.zoomSymbol}>+</Text>
+                        </TouchableOpacity>
+                        <View
+                            style={styles.zoomTrackContainer}
+                            onLayout={(e) => setTrackHeight(e.nativeEvent.layout.height)}
+                            onStartShouldSetResponder={() => true}
+                            onResponderGrant={(e) => onTrackInteraction(e, trackHeight)}
+                            onResponderMove={(e) => onTrackInteraction(e, trackHeight)}
+                        >
+                            <View style={styles.zoomTrack}>
+                                <View style={[styles.zoomIndicator, { bottom: `${zoom * 100}%` }]} />
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={() => onZoomChange(Math.max(zoom - 0.1, 0))}>
+                            <Text style={styles.zoomSymbol}>−</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
 
@@ -65,21 +67,24 @@ export const ScannerViewfinder: React.FC<ScannerViewfinderProps> = ({
 const styles = StyleSheet.create({
     content: {
         flex: 1,
-        justifyContent: 'flex-end',
         alignItems: 'center',
-        paddingBottom: 20,
+    },
+    viewfinderWrapper: {
+        flex: 1,
+        justifyContent: 'center',
+        width: '100%',
+        paddingBottom: 120,
     },
     viewfinderContainer: {
         width: '100%',
-        height: '60%',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 40,
     },
     minimalViewfinder: {
-        width: '100%',
-        height: '100%',
+        flex: 1,
+        aspectRatio: 1,
         borderWidth: 0,
         position: 'relative',
     },
@@ -130,7 +135,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.primary,
     },
     viewfinderInfo: {
-        marginBottom: 210,
+        marginBottom: 40,
         alignItems: 'center',
         gap: 2,
     },
