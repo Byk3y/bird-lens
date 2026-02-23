@@ -21,7 +21,7 @@ interface TellFriendsModalProps {
     onClose: () => void;
 }
 
-const SHARE_MESSAGE = "Check out Picture Bird! It's an amazing app for identifying birds. Download it here: https://picturebird.app";
+const SHARE_MESSAGE = "Check out Birdsnap! It's an amazing app for identifying birds. Download it here: https://thebirdsnap.com";
 
 export const TellFriendsModal: React.FC<TellFriendsModalProps> = ({ visible, onClose }) => {
 
@@ -41,8 +41,8 @@ export const TellFriendsModal: React.FC<TellFriendsModalProps> = ({ visible, onC
                 case 'more':
                     const isAvailable = await Sharing.isAvailableAsync();
                     if (isAvailable) {
-                        await Sharing.shareAsync('https://picturebird.app', {
-                            dialogTitle: 'Tell friends about Picture Bird',
+                        await Sharing.shareAsync('https://thebirdsnap.com', {
+                            dialogTitle: 'Tell friends about Birdsnap',
                         });
                     }
                     break;
@@ -81,10 +81,10 @@ export const TellFriendsModal: React.FC<TellFriendsModalProps> = ({ visible, onC
                                 from={{ opacity: 0, scale: 0.9, translateY: 20 }}
                                 animate={{ opacity: 1, scale: 1, translateY: 0 }}
                                 exit={{ opacity: 0, scale: 0.9, translateY: 20 }}
-                                transition={{ type: 'spring', damping: 15 }}
+                                transition={{ type: 'timing', duration: 300 }}
                                 style={styles.card}
                             >
-                                <Text style={styles.title}>Tell friends about Picture Bird</Text>
+                                <Text style={styles.title}>Tell friends about Birdsnap</Text>
 
                                 <View style={styles.optionsGrid}>
                                     <ShareOption
@@ -118,7 +118,7 @@ export const TellFriendsModal: React.FC<TellFriendsModalProps> = ({ visible, onC
                                 from={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.5 }}
-                                transition={{ type: 'spring', damping: 12, delay: 100 }}
+                                transition={{ type: 'timing', duration: 250, delay: 100 }}
                                 style={styles.closeBtnContainer}
                             >
                                 <TouchableOpacity

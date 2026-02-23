@@ -90,23 +90,13 @@ const SettingRow = ({
 
 
 export default function SettingsScreen() {
-    const { user, session, signOut, deleteAccount } = useAuth();
+    const { user, session, signOut, deleteAccount, isPro, refreshSubscription } = useAuth();
     const isGuest = user?.is_anonymous;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [autosave, setAutosave] = useState(false);
     const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
-    const [isPro, setIsPro] = useState(false);
-
-    React.useEffect(() => {
-        checkSubscription();
-    }, []);
-
-    const checkSubscription = async () => {
-        const subscribed = await subscriptionService.isSubscribed();
-        setIsPro(subscribed);
-    };
 
     const handleDeleteAccount = () => {
         Alert.alert(
@@ -272,7 +262,7 @@ export default function SettingsScreen() {
                 <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
                     <Paywall onClose={() => {
                         setIsPaywallVisible(false);
-                        checkSubscription();
+                        refreshSubscription();
                     }} />
                 </View>
             )}

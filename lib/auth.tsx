@@ -8,6 +8,8 @@ interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isGuest: boolean;
+    isPro: boolean;
+    refreshSubscription: () => Promise<void>;
     signInAnonymously: () => Promise<void>;
     signUp: (email: string, password: string) => Promise<{ error: any }>;
     signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -21,6 +23,8 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     isLoading: true,
     isGuest: true,
+    isPro: false,
+    refreshSubscription: async () => { },
     signInAnonymously: async () => { },
     signUp: async () => ({ error: null }),
     signIn: async () => ({ error: null }),
@@ -33,6 +37,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isPro, setIsPro] = useState(false);
+
+    const refreshSubscription = async () => {
+        const subscribed = await subscriptionService.isSubscribed();
+        setIsPro(subscribed);
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -51,6 +61,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             } else {
                 // Link RevenueCat identity if session exists
                 subscriptionService.logIn(session.user.id);
+                // Initial subscription check
+                subscriptionService.isSubscribed().then(setIsPro);
                 setIsLoading(false);
             }
         });
@@ -72,6 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setSession(session);
                 setUser(session.user);
                 subscriptionService.logIn(session.user.id);
+                subscriptionService.isSubscribed().then(setIsPro);
                 setIsLoading(false);
             }
         });
@@ -161,6 +174,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             user,
             isLoading,
             isGuest,
+            isPro,
+            refreshSubscription,
             signInAnonymously: handleAnonymousSignIn,
             signUp,
             signIn,

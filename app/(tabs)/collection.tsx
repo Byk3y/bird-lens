@@ -2,6 +2,7 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { useAlert } from '@/components/common/AlertProvider';
 import { CustomActionSheet } from '@/components/common/CustomActionSheet';
 import { SkeletonScreen } from '@/components/common/SkeletonScreen';
+import { Paywall } from '@/components/Paywall';
 import { GuestNudge } from '@/components/shared/GuestNudge';
 import { TellFriendsModal } from '@/components/shared/TellFriendsModal';
 import { Colors, Spacing, Typography } from '@/constants/theme';
@@ -29,7 +30,7 @@ const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, audio_url, sci
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, isPro } = useAuth();
     const [sightings, setSightings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
@@ -39,6 +40,7 @@ export default function MeScreen() {
     const [sightingToDelete, setSightingToDelete] = useState<string | null>(null);
     const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
     const [isTellFriendsVisible, setIsTellFriendsVisible] = useState(false);
+    const [isPaywallVisible, setIsPaywallVisible] = useState(false);
     const isGuest = user?.is_anonymous;
     const lastFetchRef = useRef<number>(0);
 
@@ -209,15 +211,20 @@ export default function MeScreen() {
                         </Pressable>
                     </View>
 
-                    <MotiView
-                        from={{ opacity: 0, scale: 0.9, translateY: 10 }}
-                        animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                        transition={{ duration: 800 }}
-                        style={styles.subscribeBanner}
-                    >
-                        <Gem color="#fbbf24" size={20} />
-                        <Text style={styles.subscribeText}>Subscribe Now</Text>
-                    </MotiView>
+
+                    {!isPro && (
+                        <Pressable onPress={() => setIsPaywallVisible(true)}>
+                            <MotiView
+                                from={{ opacity: 0, scale: 0.9, translateY: 10 }}
+                                animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                                transition={{ duration: 800 }}
+                                style={styles.subscribeBanner}
+                            >
+                                <Gem color="#fbbf24" size={20} />
+                                <Text style={styles.subscribeText}>Subscribe Now</Text>
+                            </MotiView>
+                        </Pressable>
+                    )}
                 </View>
             </LinearGradient>
 
@@ -325,6 +332,14 @@ export default function MeScreen() {
                 visible={isTellFriendsVisible}
                 onClose={() => setIsTellFriendsVisible(false)}
             />
+
+            {isPaywallVisible && (
+                <View style={StyleSheet.absoluteFill}>
+                    <Paywall
+                        onClose={() => setIsPaywallVisible(false)}
+                    />
+                </View>
+            )}
         </View>
     );
 }
