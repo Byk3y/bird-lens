@@ -9,11 +9,13 @@ import {
     ChevronRight,
     Crown,
     LogOut,
+    Trash2,
     User
 } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useState } from 'react';
 import {
+    Alert,
     Pressable,
     SafeAreaView,
     ScrollView,
@@ -85,7 +87,7 @@ const SettingRow = ({
 
 
 export default function SettingsScreen() {
-    const { user, session, signOut } = useAuth();
+    const { user, session, signOut, deleteAccount } = useAuth();
     const isGuest = user?.is_anonymous;
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -101,6 +103,26 @@ export default function SettingsScreen() {
     const checkSubscription = async () => {
         const subscribed = await subscriptionService.isSubscribed();
         setIsPro(subscribed);
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            "Delete Account",
+            "This will permanently delete your account and all sightings. This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        const { error } = await deleteAccount();
+                        if (error) {
+                            Alert.alert("Error", "Failed to delete account. Please try again.");
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     return (
@@ -172,8 +194,16 @@ export default function SettingsScreen() {
                                 label="Sign Out"
                                 tintColor={Colors.error}
                                 onPress={signOut}
-                                isLast
                             />
+                            {!isGuest && (
+                                <SettingRow
+                                    icon={<Trash2 />}
+                                    label="Delete Account"
+                                    tintColor={Colors.error}
+                                    onPress={handleDeleteAccount}
+                                    isLast
+                                />
+                            )}
                         </>
                     )}
                 </View>

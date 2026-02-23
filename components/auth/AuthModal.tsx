@@ -1,10 +1,10 @@
 import { useAlert } from '@/components/common/AlertProvider';
+import { Links } from '@/constants/Links';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     ArrowLeft,
-    ChevronDown,
     Eye,
     EyeOff
 } from 'lucide-react-native';
@@ -15,6 +15,7 @@ import {
     Dimensions,
     Keyboard,
     KeyboardAvoidingView,
+    Linking,
     Modal,
     Platform,
     Pressable,
@@ -351,10 +352,6 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                                         </Pressable>
                                                     </View>
 
-                                                    <View style={styles.socialToggle}>
-                                                        <Text style={styles.socialToggleText}>or continue with </Text>
-                                                        <ChevronDown color={Colors.textTertiary} size={16} />
-                                                    </View>
                                                 </View>
                                             </View>
                                         </Pressable>
@@ -363,8 +360,18 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                         <View style={styles.legalFooter}>
                                             <Text style={styles.legalText}>
                                                 By joining Birdsnap, you acknowledge that you have read and agree to our{' '}
-                                                <Text style={styles.legalLink}>Terms of Use</Text> and{' '}
-                                                <Text style={styles.legalLink}>Privacy Policy</Text>
+                                                <Text
+                                                    style={styles.legalLink}
+                                                    onPress={() => Linking.openURL(Links.TERMS_OF_USE)}
+                                                >
+                                                    Terms of Use
+                                                </Text> and{' '}
+                                                <Text
+                                                    style={styles.legalLink}
+                                                    onPress={() => Linking.openURL(Links.PRIVACY_POLICY)}
+                                                >
+                                                    Privacy Policy
+                                                </Text>
                                             </Text>
                                         </View>
                                     </KeyboardAvoidingView>
