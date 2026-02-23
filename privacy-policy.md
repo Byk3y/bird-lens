@@ -1,6 +1,6 @@
 # Privacy Policy for BirdSnap
 
-**Last Updated: February 20, 2026**
+**Last Updated: February 23, 2026**
 
 Welcome to BirdSnap ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your information when you use our mobile application.
 
@@ -9,7 +9,7 @@ Welcome to BirdSnap ("we," "our," or "us"). We are committed to protecting your 
 We collect several types of information to provide and improve our services:
 
 ### A. Information Linked to Your Identity
-The following data is collected and linked to your specific account (captured via Google Sign-In and stored using Supabase):
+The following data is collected and linked to your specific account (stored using Supabase):
 
 *   **Contact Information:** Name and Email Address. We use this to manage your account, verify subscriptions, and send important app updates.
 *   **Location Data:** Precise and Coarse Location. We collect your GPS coordinates when you identify or save a bird sighting so you can view your personal "Sighting Map."
@@ -34,14 +34,13 @@ We use the collected data for:
 ## 3. Third-Party Services
 BirdSnap utilizes the following trusted third-party services:
 *   **Supabase:** For secure database storage and authentication.
-*   **Google Auth:** For secure sign-in.
 *   **iNaturalist, Wikipedia, & Xeno-Canto:** We access public APIs from these sources to enrich bird data. Your personal photos are **not** shared with these entities unless specifically requested by you for community identification features.
 
 ## 4. Tracking and Advertising
 **We do not track you.** We do **not** sell your personal information to data brokers or share it with third-party advertisers. We do not use your information to follow your activity across other apps or websites.
 
 ## 5. Your Choices and Data Deletion
-You can access, modify, or delete your account information within the app settings. If you choose to delete your account, all associated sightings, photos, and personal data will be permanently removed from our servers.
+You can access, modify, or delete your account information within the app settings. **We provide a clear "Delete Account" option within the Settings menu.** If you choose to delete your account, all associated sightings, photos, and personal data will be permanently removed from our servers in compliance with Apple's developer guidelines.
 
 ## 6. Children's Privacy
 BirdSnap is intended for a general audience. We do not knowingly collect personal information from children under the age of 13.
