@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -43,16 +44,19 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
                 )}
             </View>
 
-            {/* Bottom Info Section */}
-            <View style={styles.infoSection}>
+            {/* Bottom Info Section with Subtle Gradient */}
+            <LinearGradient
+                colors={['#FFFFFF', '#F5F5F0']}
+                style={styles.infoSection}
+            >
                 <Text style={styles.commonName} numberOfLines={1}>
                     {data.name}
                 </Text>
                 <Text style={styles.scientificName} numberOfLines={1}>
                     {data.scientificName}
                 </Text>
-                <Text style={styles.familyName} numberOfLines={1}>
-                    {data.familyName}
+                <Text style={styles.familyPrefix} numberOfLines={1}>
+                    Family: <Text style={styles.familyName}>{data.familyName}</Text>
                 </Text>
 
                 <View style={styles.divider} />
@@ -69,7 +73,7 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
                         ) : null}
                     </View>
                 </View>
-            </View>
+            </LinearGradient>
         </View>
     );
 };
@@ -79,6 +83,8 @@ const styles = StyleSheet.create({
         width: 1080,
         height: 1080,
         backgroundColor: '#FFFFFF',
+        borderBottomWidth: 12, // Distinct orange border to ground the card
+        borderBottomColor: '#F97316',
     },
     header: {
         paddingHorizontal: 40,
@@ -133,16 +139,20 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     scientificName: {
-        fontSize: 14 * 2.5,
+        fontSize: 16 * 2.5, // Increased from 14
         fontStyle: 'italic',
         color: '#666666',
-        marginBottom: 6,
+        marginBottom: 8,
+    },
+    familyPrefix: {
+        fontSize: 14 * 2.5,
+        fontWeight: '500',
+        color: '#999999',
+        marginBottom: 16, // Increased spacing slightly
     },
     familyName: {
-        fontSize: 13 * 2.5,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#F97316',
-        marginBottom: 12,
     },
     divider: {
         height: 1.5,
@@ -161,7 +171,8 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     metaText: {
-        fontSize: 12 * 2.5,
-        color: '#999999',
+        fontSize: 13 * 2.5, // Increased slightly to fill space
+        color: '#888888',
+        fontWeight: '500',
     },
 });
