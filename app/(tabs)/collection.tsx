@@ -3,6 +3,7 @@ import { useAlert } from '@/components/common/AlertProvider';
 import { CustomActionSheet } from '@/components/common/CustomActionSheet';
 import { SkeletonScreen } from '@/components/common/SkeletonScreen';
 import { GuestNudge } from '@/components/shared/GuestNudge';
+import { TellFriendsModal } from '@/components/shared/TellFriendsModal';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -37,6 +38,7 @@ export default function MeScreen() {
     const [selectedSighting, setSelectedSighting] = useState<any>(null);
     const [sightingToDelete, setSightingToDelete] = useState<string | null>(null);
     const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
+    const [isTellFriendsVisible, setIsTellFriendsVisible] = useState(false);
     const isGuest = user?.is_anonymous;
     const lastFetchRef = useRef<number>(0);
 
@@ -196,7 +198,10 @@ export default function MeScreen() {
             >
                 <View style={styles.headerContent}>
                     <View style={styles.topActions}>
-                        <Pressable style={styles.headerBtn}>
+                        <Pressable
+                            style={styles.headerBtn}
+                            onPress={() => setIsTellFriendsVisible(true)}
+                        >
                             <Forward color={Colors.white} size={22} />
                         </Pressable>
                         <Pressable style={styles.headerBtn} onPress={() => router.push('/settings')}>
@@ -314,6 +319,11 @@ export default function MeScreen() {
                 visible={isAuthModalVisible}
                 onClose={() => setIsAuthModalVisible(false)}
                 initialMode="signup"
+            />
+
+            <TellFriendsModal
+                visible={isTellFriendsVisible}
+                onClose={() => setIsTellFriendsVisible(false)}
             />
         </View>
     );
