@@ -13,12 +13,21 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
         <View style={styles.card}>
             {/* Full-bleed background photo */}
             {data.imageUrl ? (
-                <Image
-                    source={{ uri: data.imageUrl }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    cachePolicy="memory-disk"
-                />
+                <>
+                    <Image
+                        source={{ uri: data.imageUrl }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                        blurRadius={40}
+                        cachePolicy="memory-disk"
+                    />
+                    <Image
+                        source={{ uri: data.imageUrl }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="contain"
+                        cachePolicy="memory-disk"
+                    />
+                </>
             ) : (
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: '#2D3436' }]} />
             )}
@@ -43,6 +52,9 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
                 </Text>
                 <Text style={styles.scientificName} numberOfLines={1}>
                     {data.scientificName}
+                </Text>
+                <Text style={styles.familyNameSmall}>
+                    {data.familyName}
                 </Text>
 
                 <View style={styles.metaRow}>
@@ -78,9 +90,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     appIcon: {
-        width: 20 * 2.5,
-        height: 20 * 2.5,
-        borderRadius: 4 * 2.5,
+        width: 28 * 2.5,
+        height: 28 * 2.5,
+        borderRadius: 6 * 2.5,
     },
     brandText: {
         fontSize: 14 * 2.5,
@@ -107,6 +119,12 @@ const styles = StyleSheet.create({
         fontSize: 15 * 2.5,
         fontStyle: 'italic',
         color: 'rgba(255,255,255,0.7)',
+        marginBottom: 4,
+    },
+    familyNameSmall: {
+        fontSize: 13 * 2.5,
+        fontStyle: 'italic',
+        color: 'rgba(255,255,255,0.6)',
         marginBottom: 18,
     },
     metaRow: {

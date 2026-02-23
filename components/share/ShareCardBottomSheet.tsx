@@ -1,7 +1,7 @@
 import { useShareCard } from '@/hooks/useShareCard';
 import { BirdResult } from '@/types/scanner';
 import { AnimatePresence, MotiView } from 'moti';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -14,14 +14,17 @@ import {
 import ViewShot from 'react-native-view-shot';
 import { FieldGuideCard } from './FieldGuideCard';
 import { MagazineCard, ShareCardData } from './MagazineCard';
+import { MinimalCard } from './MinimalCard';
 import { WildCard } from './WildCard';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PREVIEW_SCALE = (SCREEN_WIDTH * 0.72) / 1080;
+const PREVIEW_SCALE = (SCREEN_WIDTH * 0.64) / 1080;
 const PREVIEW_SIZE = 1080 * PREVIEW_SCALE;
+const GAP = 16;
 const PADDING = (SCREEN_WIDTH - PREVIEW_SIZE) / 2;
+const SNAP_INTERVAL = PREVIEW_SIZE + GAP;
 
-type TemplateType = 'magazine' | 'wild' | 'fieldguide';
+type TemplateType = 'magazine' | 'wild' | 'fieldguide' | 'minimal';
 
 interface ShareCardBottomSheetProps {
     visible: boolean;
@@ -32,9 +35,10 @@ interface ShareCardBottomSheetProps {
 }
 
 const TEMPLATES: { key: TemplateType; label: string }[] = [
-    { key: 'magazine', label: 'Magazine' },
     { key: 'wild', label: 'Wild' },
+    { key: 'magazine', label: 'Magazine' },
     { key: 'fieldguide', label: 'Field Guide' },
+    { key: 'minimal', label: 'Minimal' },
 ];
 
 export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
@@ -44,13 +48,15 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     imageUrl,
     locationName,
 }) => {
-    const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('magazine');
+    const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('wild');
+    const scrollRef = useRef<ScrollView>(null);
     const { viewShotRef, isCapturing, saveToPhotos, shareCard } = useShareCard();
 
     const cardData: ShareCardData = {
         name: bird.name,
         scientificName: bird.scientific_name,
         familyName: bird.taxonomy?.family || 'Unknown',
+        orderName: bird.taxonomy?.order,
         confidence: bird.confidence ?? 0.99,
         dateIdentified: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
@@ -71,6 +77,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                 {template === 'magazine' && <MagazineCard data={cardData} />}
                 {template === 'wild' && <WildCard data={cardData} />}
                 {template === 'fieldguide' && <FieldGuideCard data={cardData} />}
+                {template === 'minimal' && <MinimalCard data={cardData} />}
             </View>
         );
     };
@@ -113,18 +120,39 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                             <ScrollView
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.previewScroll}
-                                snapToInterval={PREVIEW_SIZE + 16}
-                                snapToAlignment="center"
+                                contentContainerStyle={[
+                                    styles.previewScroll,
+                                    { paddingHorizontal: PADDING }
+                                ]}
+                                snapToInterval={SNAP_INTERVAL}
+                                snapToAlignment="start"
                                 decelerationRate="fast"
+                                scrollEventThrottle={16}
+                                onScroll={(event) => {
+                                    const offsetX = event.nativeEvent.contentOffset.x;
+                                    const index = Math.round(offsetX / SNAP_INTERVAL);
+                                    if (TEMPLATES[index] && selectedTemplate !== TEMPLATES[index].key) {
+                                        setSelectedTemplate(TEMPLATES[index].key);
+                                    }
+                                }}
+                                ref={scrollRef}
                             >
-                                {TEMPLATES.map((tmpl) => (
+                                {TEMPLATES.map((tmpl, index) => (
                                     <TouchableOpacity
                                         key={tmpl.key}
-                                        onPress={() => setSelectedTemplate(tmpl.key)}
-                                        activeOpacity={0.85}
+                                        onPress={() => {
+                                            setSelectedTemplate(tmpl.key);
+                                            scrollRef.current?.scrollTo({ x: index * SNAP_INTERVAL, animated: true });
+                                        }}
+                                        activeOpacity={0.9}
+                                        style={{ width: PREVIEW_SIZE }}
                                     >
-                                        <View
+                                        <MotiView
+                                            animate={{
+                                                scale: 1,
+                                                opacity: 1,
+                                            }}
+                                            transition={{ type: 'timing', duration: 200 }}
                                             style={[
                                                 styles.previewCard,
                                                 selectedTemplate === tmpl.key && styles.previewCardSelected,
@@ -133,7 +161,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                                             <View style={styles.previewInner}>
                                                 {renderCardTemplate(tmpl.key, PREVIEW_SCALE)}
                                             </View>
-                                        </View>
+                                        </MotiView>
                                         <Text
                                             style={[
                                                 styles.templateLabel,
@@ -233,21 +261,27 @@ const styles = StyleSheet.create({
         letterSpacing: -0.3,
     },
     previewScroll: {
-        paddingHorizontal: PADDING,
         paddingBottom: 8,
+        flexDirection: 'row',
         gap: 16,
     },
     previewCard: {
         width: PREVIEW_SIZE,
         height: PREVIEW_SIZE,
-        borderRadius: 12,
+        borderRadius: 16,
         overflow: 'hidden',
-        borderWidth: 3,
-        borderColor: 'transparent',
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#EFEFEF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 3,
     },
     previewCardSelected: {
         borderColor: '#F97316',
+        borderWidth: 2,
     },
     previewInner: {
         width: PREVIEW_SIZE,

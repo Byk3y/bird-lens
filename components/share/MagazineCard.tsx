@@ -7,6 +7,7 @@ export interface ShareCardData {
     name: string;
     scientificName: string;
     familyName: string;
+    orderName?: string;
     confidence: number;
     dateIdentified: string;
     locationName?: string;
@@ -31,12 +32,21 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
             {/* Bird Photo */}
             <View style={styles.photoContainer}>
                 {data.imageUrl ? (
-                    <Image
-                        source={{ uri: data.imageUrl }}
-                        style={styles.photo}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                    />
+                    <>
+                        <Image
+                            source={{ uri: data.imageUrl }}
+                            style={StyleSheet.absoluteFill}
+                            contentFit="cover"
+                            blurRadius={40}
+                            cachePolicy="memory-disk"
+                        />
+                        <Image
+                            source={{ uri: data.imageUrl }}
+                            style={styles.photo}
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
+                        />
+                    </>
                 ) : (
                     <View style={[styles.photo, styles.photoPlaceholder]}>
                         <Text style={styles.placeholderEmoji}>🐦</Text>
@@ -46,7 +56,7 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
 
             {/* Bottom Info Section with Subtle Gradient */}
             <LinearGradient
-                colors={['#FFFFFF', '#F5F5F0']}
+                colors={['#FFFFFF', '#F0EEE5']}
                 style={styles.infoSection}
             >
                 <Text style={styles.commonName} numberOfLines={1}>
@@ -58,8 +68,13 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
                 <Text style={styles.familyPrefix} numberOfLines={1}>
                     Family: <Text style={styles.familyName}>{data.familyName}</Text>
                 </Text>
+                {data.orderName ? (
+                    <Text style={styles.orderPrefix} numberOfLines={1}>
+                        Order: <Text style={styles.orderName}>{data.orderName}</Text>
+                    </Text>
+                ) : null}
 
-                <View style={styles.divider} />
+                <View style={styles.thinDivider} />
 
                 <View style={styles.metaRow}>
                     <View style={styles.metaLeft}>
@@ -97,9 +112,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     appIcon: {
-        width: 20 * 2.5,
-        height: 20 * 2.5,
-        borderRadius: 4 * 2.5,
+        width: 28 * 2.5,
+        height: 28 * 2.5,
+        borderRadius: 6 * 2.5,
     },
     logoText: {
         fontSize: 14 * 2.5,
@@ -153,6 +168,23 @@ const styles = StyleSheet.create({
     familyName: {
         fontWeight: '700',
         color: '#F97316',
+    },
+    orderPrefix: {
+        fontSize: 14 * 2.5,
+        fontWeight: '500',
+        color: '#999999',
+        marginBottom: 16,
+    },
+    orderName: {
+        fontWeight: '700',
+        color: '#F97316',
+    },
+    thinDivider: {
+        height: 2,
+        backgroundColor: '#F97316',
+        opacity: 0.15,
+        width: '40%',
+        marginVertical: 12,
     },
     divider: {
         height: 1.5,

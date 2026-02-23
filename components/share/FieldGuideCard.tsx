@@ -26,12 +26,21 @@ export const FieldGuideCard: React.FC<FieldGuideCardProps> = ({ data }) => {
                 {/* Left: Photo */}
                 <View style={styles.photoSide}>
                     {data.imageUrl ? (
-                        <Image
-                            source={{ uri: data.imageUrl }}
-                            style={styles.photo}
-                            contentFit="cover"
-                            cachePolicy="memory-disk"
-                        />
+                        <>
+                            <Image
+                                source={{ uri: data.imageUrl }}
+                                style={StyleSheet.absoluteFill}
+                                contentFit="cover"
+                                blurRadius={40}
+                                cachePolicy="memory-disk"
+                            />
+                            <Image
+                                source={{ uri: data.imageUrl }}
+                                style={styles.photo}
+                                contentFit="contain"
+                                cachePolicy="memory-disk"
+                            />
+                        </>
                     ) : (
                         <View style={[styles.photo, styles.photoPlaceholder]}>
                             <Text style={styles.placeholderEmoji}>🐦</Text>
@@ -55,6 +64,15 @@ export const FieldGuideCard: React.FC<FieldGuideCardProps> = ({ data }) => {
                                 {data.familyName}
                             </Text>
                         </View>
+
+                        {data.orderName ? (
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>Order</Text>
+                                <Text style={styles.detailValue} numberOfLines={1}>
+                                    {data.orderName}
+                                </Text>
+                            </View>
+                        ) : null}
 
                         {data.locationName ? (
                             <View style={styles.detailRow}>
@@ -108,9 +126,9 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     appIcon: {
-        width: 20 * 2.5,
-        height: 20 * 2.5,
-        borderRadius: 4 * 2.5,
+        width: 28 * 2.5,
+        height: 28 * 2.5,
+        borderRadius: 6 * 2.5,
     },
     headerLeft: {
         fontSize: 14 * 2.5,
