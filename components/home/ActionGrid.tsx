@@ -2,9 +2,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import {
     AudioLines,
-    Binoculars,
-    Camera,
-    MapPin,
+    Camera
 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -23,17 +21,18 @@ export const ActionGrid: React.FC = () => {
                     title={"Photo\nIdentification"}
                     icon={<Camera color={Colors.white} size={18} strokeWidth={2.5} />}
                     style={styles.gridCard}
-                    gradient={['#FF758C', '#FF7EB3']}
+                    gradient={['#F97316', '#F97316']}
                     onPress={() => router.push({ pathname: '/(tabs)/scanner', params: { mode: 'photo' } })}
                 />
                 <ActionCard
                     title={"Sound\nIdentification"}
                     icon={<AudioLines color={Colors.white} size={18} strokeWidth={2.5} />}
                     style={styles.gridCard}
-                    gradient={['#FFDA77', '#FFA45B']}
+                    gradient={['#F97316', '#F97316']}
                     onPress={() => router.push({ pathname: '/(tabs)/scanner', params: { mode: 'sound' } })}
                 />
             </View>
+            {/* 
             <View style={styles.gridRow}>
                 <ActionCard
                     title={"Bird\nFinder"}
@@ -48,6 +47,7 @@ export const ActionGrid: React.FC = () => {
                     isMap
                 />
             </View>
+            */}
         </View>
     );
 };
