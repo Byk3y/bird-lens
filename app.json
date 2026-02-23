@@ -41,6 +41,12 @@
           "photosPermission": "Allow BirdSnap to save share cards to your photo library.",
           "savePhotosPermission": "Allow BirdSnap to save share cards to your photo library."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BirdSnap uses your location to improve bird identification accuracy for your region."
+        }
       ]
     ],
     "experiments": {

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAnonKey } from '@/lib/supabase';
 import { BirdSound } from '@/types/scanner';
 
 export const SoundService = {
@@ -6,6 +6,9 @@ export const SoundService = {
         try {
             const { data, error } = await supabase.functions.invoke('fetch-bird-sounds', {
                 body: { scientific_name: scientificName },
+                headers: {
+                    Authorization: `Bearer ${supabaseAnonKey}`
+                }
             });
 
             if (error) throw error;
