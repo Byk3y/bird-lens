@@ -1,5 +1,6 @@
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { MiniAudioPlayer } from '@/components/scanner/MiniAudioPlayer';
+import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
@@ -23,7 +24,6 @@ import {
     NativeSyntheticEvent,
     Pressable,
     ScrollView,
-    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -92,6 +92,7 @@ export default function BirdDetailScreen() {
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [isEnriching, setIsEnriching] = useState((!hasSavedData || isSearchSkeleton) && !media);
+    const [shareSheetVisible, setShareSheetVisible] = useState(false);
 
     // Stabilized Hero Image logic
     const heroImageSource = React.useMemo(() => {
@@ -190,15 +191,8 @@ export default function BirdDetailScreen() {
         return () => { isMounted = false; };
     }, [bird.scientific_name]);
 
-    const handleShare = async () => {
-        try {
-            await Share.share({
-                message: `Check out this ${birdDetails.name} I spotted! It's scientific name is ${birdDetails.scientific_name}.`,
-                url: params.imageUrl as string || media?.image?.url || birdDetails.images?.[0] || '',
-            });
-        } catch (error) {
-            console.error('Error sharing:', error);
-        }
+    const handleShare = () => {
+        setShareSheetVisible(true);
     };
 
     const handlePronounce = async () => {
@@ -337,6 +331,15 @@ export default function BirdDetailScreen() {
                 images={inatPhotos}
                 initialIndex={selectedImageIndex}
                 onClose={() => setIsImageViewerVisible(false)}
+            />
+
+            {/* Share Card Bottom Sheet */}
+            <ShareCardBottomSheet
+                visible={shareSheetVisible}
+                onClose={() => setShareSheetVisible(false)}
+                bird={birdDetails}
+                imageUrl={heroImageSource || undefined}
+                locationName={birdDetails.distribution_area}
             />
         </View>
     );
