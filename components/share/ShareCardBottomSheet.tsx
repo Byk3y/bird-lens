@@ -17,8 +17,9 @@ import { MagazineCard, ShareCardData } from './MagazineCard';
 import { WildCard } from './WildCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PREVIEW_SCALE = (SCREEN_WIDTH - 80) / 1080;
+const PREVIEW_SCALE = (SCREEN_WIDTH * 0.72) / 1080;
 const PREVIEW_SIZE = 1080 * PREVIEW_SCALE;
+const PADDING = (SCREEN_WIDTH - PREVIEW_SIZE) / 2;
 
 type TemplateType = 'magazine' | 'wild' | 'fieldguide';
 
@@ -50,7 +51,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         name: bird.name,
         scientificName: bird.scientific_name,
         familyName: bird.taxonomy?.family || 'Unknown',
-        confidence: bird.confidence,
+        confidence: bird.confidence ?? 0.99,
         dateIdentified: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
@@ -102,6 +103,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.previewScroll}
                         snapToInterval={PREVIEW_SIZE + 16}
+                        snapToAlignment="center"
                         decelerationRate="fast"
                     >
                         {TEMPLATES.map((tmpl) => (
@@ -214,7 +216,7 @@ const styles = StyleSheet.create({
         letterSpacing: -0.3,
     },
     previewScroll: {
-        paddingHorizontal: 24,
+        paddingHorizontal: PADDING,
         paddingBottom: 8,
         gap: 16,
     },
@@ -234,6 +236,8 @@ const styles = StyleSheet.create({
         width: PREVIEW_SIZE,
         height: PREVIEW_SIZE,
         overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     templateLabel: {
         fontSize: 13,
