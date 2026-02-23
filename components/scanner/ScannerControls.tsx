@@ -11,6 +11,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 
 interface ScannerControlsProps {
     activeMode: ScanMode;
@@ -41,121 +43,146 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
 }) => {
     const handleZoomPress = (level: number) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Map 1x to 0 zoom and 2x to 0.2 zoom (typical for mobile camera apps)
-        onZoomChange(level === 1 ? 0 : 0.2);
+        // Map 1x to 0, 2x to 0.15, and 5x to 0.45 for a natural lens progression
+        const zoomMap: Record<number, number> = { 1: 0, 2: 0.15, 5: 0.45 };
+        onZoomChange(zoomMap[level] ?? 0);
     };
 
+    // Horizontal swipe gesture to change modes
+    const swipeGesture = Gesture.Pan()
+        .activeOffsetX([-20, 20]) // Require some movement to trigger
+        .onEnd((e) => {
+            // Swipe Left -> To Sound
+            if (e.translationX < -60 && activeMode === 'photo' && !isRecording) {
+                runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
+                runOnJS(onModeChange)('sound');
+            }
+            // Swipe Right -> To Photo
+            else if (e.translationX > 60 && activeMode === 'sound' && !isRecording) {
+                runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
+                runOnJS(onModeChange)('photo');
+            }
+        });
+
     return (
-        <View style={[styles.bottomArea, activeMode === 'sound' && styles.soundBottomArea]}>
-            {/* Zoom Selector - Floating above the white bar */}
-            {activeMode === 'photo' && (
-                <View style={styles.zoomContainer}>
-                    <View style={styles.zoomPill}>
-                        <TouchableOpacity
-                            onPress={() => handleZoomPress(1)}
-                            style={[styles.zoomButton, zoom === 0 && styles.zoomButtonActive]}
-                        >
-                            <Text style={[styles.zoomText, zoom === 0 && styles.zoomTextActive]}>1x</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleZoomPress(2)}
-                            style={[styles.zoomButton, zoom > 0 && styles.zoomButtonActive]}
-                        >
-                            <Text style={[styles.zoomText, zoom > 0 && styles.zoomTextActive]}>2x</Text>
-                        </TouchableOpacity>
+        <GestureDetector gesture={swipeGesture}>
+            <View style={[styles.bottomArea, activeMode === 'sound' && styles.soundBottomArea]}>
+                {/* Zoom Selector - Floating above the white bar */}
+                {activeMode === 'photo' && (
+                    <View style={styles.zoomContainer}>
+                        <View style={styles.zoomPill}>
+                            <TouchableOpacity
+                                onPress={() => handleZoomPress(1)}
+                                style={[styles.zoomButton, zoom === 0 && styles.zoomButtonActive]}
+                            >
+                                <Text style={[styles.zoomText, zoom === 0 && styles.zoomTextActive]}>1x</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => handleZoomPress(2)}
+                                style={[styles.zoomButton, zoom > 0 && zoom < 0.3 && styles.zoomButtonActive]}
+                            >
+                                <Text style={[styles.zoomText, zoom > 0 && zoom < 0.3 && styles.zoomTextActive]}>2x</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => handleZoomPress(5)}
+                                style={[styles.zoomButton, zoom >= 0.3 && styles.zoomButtonActive]}
+                            >
+                                <Text style={[styles.zoomText, zoom >= 0.3 && styles.zoomTextActive]}>5x</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
+                )}
+
+                {/* Mode Switcher */}
+                <View style={styles.modeSwitcher}>
+                    <TouchableOpacity onPress={() => onModeChange('photo')} disabled={isRecording}>
+                        <Text style={[
+                            styles.modeLabel,
+                            activeMode === 'photo' && styles.modeLabelActive,
+                            isRecording && { opacity: 0.5 }
+                        ]}>
+                            By Photo
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => onModeChange('sound')} disabled={isRecording}>
+                        <Text style={[
+                            styles.modeLabel,
+                            activeMode === 'sound' && styles.modeLabelActive,
+                            isRecording && { opacity: 0.5 }
+                        ]}>
+                            By Sound
+                        </Text>
+                    </TouchableOpacity>
                 </View>
-            )}
 
-            {/* Mode Switcher */}
-            <View style={styles.modeSwitcher}>
-                <TouchableOpacity onPress={() => onModeChange('photo')} disabled={isRecording}>
-                    <Text style={[
-                        styles.modeLabel,
-                        activeMode === 'photo' && styles.modeLabelActive,
-                        isRecording && { opacity: 0.5 }
-                    ]}>
-                        By Photo
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => onModeChange('sound')} disabled={isRecording}>
-                    <Text style={[
-                        styles.modeLabel,
-                        activeMode === 'sound' && styles.modeLabelActive,
-                        isRecording && { opacity: 0.5 }
-                    ]}>
-                        By Sound
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Captures / Controls */}
-            <View style={styles.shutterRow}>
-                {activeMode === 'photo' ? (
-                    <TouchableOpacity style={styles.sideControl} onPress={onGalleryPress}>
-                        <View style={styles.galleryPreview}>
-                            <ImageIcon color="#f97316" size={21} />
-                        </View>
-                        <Text style={styles.sideLabel}>Photos</Text>
-                    </TouchableOpacity>
-                ) : (
-                    <View style={styles.sideControlSpacer} />
-                )}
-
-                <TouchableOpacity
-                    onPress={onCapture}
-                    disabled={isProcessing || isInitializing}
-                    style={[styles.mainShutter, activeMode === 'sound' && styles.soundShutter]}
-                >
+                {/* Captures / Controls */}
+                <View style={styles.shutterRow}>
                     {activeMode === 'photo' ? (
-                        <View style={[
-                            styles.shutterInner,
-                            (isProcessing || isInitializing) && { opacity: 0.7 }
-                        ]}>
-                            {isInitializing ? (
-                                <View style={styles.initializingContainer}>
-                                    <ActivityIndicator color={Colors.primary} size="small" />
-                                </View>
-                            ) : (
-                                <LinearGradient
-                                    colors={['#f97316', '#D4202C']}
-                                    style={styles.shutterGradient}
-                                />
-                            )}
-                        </View>
+                        <TouchableOpacity style={styles.sideControl} onPress={onGalleryPress}>
+                            <View style={styles.galleryPreview}>
+                                <ImageIcon color="#f97316" size={21} />
+                            </View>
+                            <Text style={styles.sideLabel}>Photos</Text>
+                        </TouchableOpacity>
                     ) : (
-                        // Sound Mode Shutter
-                        <View style={[
-                            styles.soundShutterInner,
-                            isRecording && styles.soundShutterActive
-                        ]}>
-                            {isProcessing ? (
-                                <ActivityIndicator color={Colors.white} />
-                            ) : hasRecording ? (
-                                <View style={styles.uploadIconContainer}>
-                                    <UploadCloud color={Colors.white} size={24} />
-                                </View>
-                            ) : isRecording ? (
-                                <View style={styles.stopIcon} />
-                            ) : (
-                                <View style={styles.recordDot} />
-                            )}
-                        </View>
+                        <View style={styles.sideControlSpacer} />
                     )}
-                </TouchableOpacity>
 
-                {activeMode === 'photo' ? (
-                    <TouchableOpacity style={styles.sideControl} onPress={onShowTips}>
-                        <View style={styles.tipsBtn}>
-                            <HelpCircle color="#1e293b" size={21} />
-                        </View>
-                        <Text style={styles.sideLabel}>Snap Tips</Text>
+                    <TouchableOpacity
+                        onPress={onCapture}
+                        disabled={isProcessing || isInitializing}
+                        style={[styles.mainShutter, activeMode === 'sound' && styles.soundShutter]}
+                    >
+                        {activeMode === 'photo' ? (
+                            <View style={[
+                                styles.shutterInner,
+                                (isProcessing || isInitializing) && { opacity: 0.7 }
+                            ]}>
+                                {isInitializing ? (
+                                    <View style={styles.initializingContainer}>
+                                        <ActivityIndicator color={Colors.primary} size="small" />
+                                    </View>
+                                ) : (
+                                    <LinearGradient
+                                        colors={['#f97316', '#D4202C']}
+                                        style={styles.shutterGradient}
+                                    />
+                                )}
+                            </View>
+                        ) : (
+                            // Sound Mode Shutter
+                            <View style={[
+                                styles.soundShutterInner,
+                                isRecording && styles.soundShutterActive
+                            ]}>
+                                {isProcessing ? (
+                                    <ActivityIndicator color={Colors.white} />
+                                ) : hasRecording ? (
+                                    <View style={styles.uploadIconContainer}>
+                                        <UploadCloud color={Colors.white} size={24} />
+                                    </View>
+                                ) : isRecording ? (
+                                    <View style={styles.stopIcon} />
+                                ) : (
+                                    <View style={styles.recordDot} />
+                                )}
+                            </View>
+                        )}
                     </TouchableOpacity>
-                ) : (
-                    <View style={styles.sideControlSpacer} />
-                )}
+
+                    {activeMode === 'photo' ? (
+                        <TouchableOpacity style={styles.sideControl} onPress={onShowTips}>
+                            <View style={styles.tipsBtn}>
+                                <HelpCircle color="#1e293b" size={21} />
+                            </View>
+                            <Text style={styles.sideLabel}>Snap Tips</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.sideControlSpacer} />
+                    )}
+                </View>
             </View>
-        </View>
+        </GestureDetector>
     );
 };
 
