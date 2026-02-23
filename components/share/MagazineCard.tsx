@@ -22,8 +22,8 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.logoRow}>
-                    <Text style={styles.logoIcon}>🐦</Text>
-                    <Text style={styles.logoText}>BirdSnap</Text>
+                    <Image source={require('@/assets/images/icon.png')} style={styles.appIcon} />
+                    <Text style={styles.logoText}>Identified with BirdSnap</Text>
                 </View>
             </View>
 
@@ -59,16 +59,15 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
 
                 <View style={styles.metaRow}>
                     <View style={styles.metaLeft}>
+                        <Text style={styles.metaText}>
+                            {data.dateIdentified}
+                        </Text>
                         {data.locationName ? (
                             <Text style={styles.metaText} numberOfLines={1}>
                                 📍 {data.locationName}
                             </Text>
                         ) : null}
-                        <Text style={styles.metaText}>
-                            {data.dateIdentified}
-                        </Text>
                     </View>
-                    <Text style={styles.watermark}>birdsnap.app</Text>
                 </View>
             </View>
         </View>
@@ -91,8 +90,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    logoIcon: {
-        fontSize: 22,
+    appIcon: {
+        width: 20 * 2.5,
+        height: 20 * 2.5,
+        borderRadius: 4 * 2.5,
     },
     logoText: {
         fontSize: 14 * 2.5,
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
     },
     photoContainer: {
         width: 1080,
-        height: 1080 * 0.55,
+        height: 1080 * 0.58, // Increased photo height slightly
         overflow: 'hidden',
     },
     photo: {
@@ -120,9 +121,9 @@ const styles = StyleSheet.create({
     infoSection: {
         flex: 1,
         paddingHorizontal: 40,
-        paddingTop: 28,
+        paddingTop: 16, // Moved text up
         paddingBottom: 24,
-        justifyContent: 'center',
+        justifyContent: 'flex-start', // Top align
     },
     commonName: {
         fontSize: 24 * 2.5,
@@ -155,14 +156,12 @@ const styles = StyleSheet.create({
     },
     metaLeft: {
         flex: 1,
-        gap: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
     },
     metaText: {
         fontSize: 12 * 2.5,
         color: '#999999',
-    },
-    watermark: {
-        fontSize: 10 * 2.5,
-        color: '#CCCCCC',
     },
 });

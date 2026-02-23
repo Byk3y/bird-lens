@@ -14,7 +14,10 @@ export const FieldGuideCard: React.FC<FieldGuideCardProps> = ({ data }) => {
         <View style={styles.card}>
             {/* Orange Header Bar */}
             <View style={styles.headerBar}>
-                <Text style={styles.headerLeft}>🐦 BirdSnap Field Guide</Text>
+                <View style={styles.headerLogoRow}>
+                    <Image source={require('@/assets/images/icon.png')} style={styles.appIcon} />
+                    <Text style={styles.headerLeft}>Identified with BirdSnap</Text>
+                </View>
                 <Text style={styles.headerRight}>{data.dateIdentified}</Text>
             </View>
 
@@ -45,21 +48,23 @@ export const FieldGuideCard: React.FC<FieldGuideCardProps> = ({ data }) => {
                         {data.scientificName}
                     </Text>
 
-                    <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Family</Text>
-                        <Text style={styles.detailValue} numberOfLines={1}>
-                            {data.familyName}
-                        </Text>
-                    </View>
-
-                    {data.locationName ? (
+                    <View style={styles.detailList}>
                         <View style={styles.detailRow}>
-                            <Text style={styles.detailLabel}>📍 Location</Text>
-                            <Text style={styles.detailValue} numberOfLines={2}>
-                                {data.locationName}
+                            <Text style={styles.detailLabel}>Family</Text>
+                            <Text style={styles.detailValue} numberOfLines={1}>
+                                {data.familyName}
                             </Text>
                         </View>
-                    ) : null}
+
+                        {data.locationName ? (
+                            <View style={styles.detailRow}>
+                                <Text style={styles.detailLabel}>📍 Location</Text>
+                                <Text style={styles.detailValue} numberOfLines={2}>
+                                    {data.locationName}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
                 </View>
             </View>
 
@@ -78,7 +83,6 @@ export const FieldGuideCard: React.FC<FieldGuideCardProps> = ({ data }) => {
                         />
                     </View>
                 </View>
-                <Text style={styles.watermark}>birdsnap.app</Text>
             </View>
         </View>
     );
@@ -97,6 +101,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 40,
         paddingVertical: 28,
+    },
+    headerLogoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    appIcon: {
+        width: 20 * 2.5,
+        height: 20 * 2.5,
+        borderRadius: 4 * 2.5,
     },
     headerLeft: {
         fontSize: 14 * 2.5,
@@ -134,24 +148,27 @@ const styles = StyleSheet.create({
     },
     detailsSide: {
         flex: 1,
-        justifyContent: 'center',
-        gap: 8,
+        justifyContent: 'flex-start',
+        paddingTop: 8,
     },
     commonName: {
         fontSize: 16 * 2.5,
         fontWeight: '800',
         color: '#1a1a1a',
         letterSpacing: -0.3,
-        marginBottom: 4,
+        marginBottom: 8,
     },
     scientificName: {
         fontSize: 13 * 2.5,
         fontStyle: 'italic',
         color: '#666666',
-        marginBottom: 16,
+        marginBottom: 24,
+    },
+    detailList: {
+        gap: 20,
     },
     detailRow: {
-        marginBottom: 12,
+        gap: 4,
     },
     detailLabel: {
         fontSize: 11 * 2.5,
@@ -168,8 +185,9 @@ const styles = StyleSheet.create({
     },
     bottomSection: {
         paddingHorizontal: 40,
-        paddingBottom: 32,
-        paddingTop: 8,
+        paddingBottom: 40,
+        flex: 1,
+        justifyContent: 'flex-end',
     },
     confidenceContainer: {
         marginBottom: 12,
@@ -190,11 +208,5 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: '#F97316',
         borderRadius: 9,
-    },
-    watermark: {
-        fontSize: 10 * 2.5,
-        color: '#CCCCCC',
-        textAlign: 'right',
-        marginTop: 8,
     },
 });

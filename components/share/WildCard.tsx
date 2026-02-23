@@ -32,7 +32,8 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
 
             {/* Top-left branding */}
             <View style={styles.topBrand}>
-                <Text style={styles.brandText}>🐦 BirdSnap</Text>
+                <Image source={require('@/assets/images/icon.png')} style={styles.appIcon} />
+                <Text style={styles.brandText}>Identified with BirdSnap</Text>
             </View>
 
             {/* Bottom content over gradient */}
@@ -46,18 +47,16 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
 
                 <View style={styles.metaRow}>
                     <View style={styles.metaLeft}>
+                        <Text style={styles.metaText}>
+                            {data.dateIdentified}
+                        </Text>
                         {data.locationName ? (
                             <Text style={styles.metaText} numberOfLines={1}>
                                 📍 {data.locationName}
                             </Text>
                         ) : null}
-                        <Text style={styles.metaText}>
-                            {data.dateIdentified}
-                        </Text>
                     </View>
                 </View>
-
-                <Text style={styles.watermark}>birdsnap.app</Text>
             </View>
         </View>
     );
@@ -74,6 +73,14 @@ const styles = StyleSheet.create({
         top: 36,
         left: 40,
         zIndex: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    appIcon: {
+        width: 20 * 2.5,
+        height: 20 * 2.5,
+        borderRadius: 4 * 2.5,
     },
     brandText: {
         fontSize: 14 * 2.5,
@@ -109,15 +116,10 @@ const styles = StyleSheet.create({
     },
     metaLeft: {
         flex: 1,
-        gap: 4,
+        gap: 8,
     },
     metaText: {
         fontSize: 12 * 2.5,
         color: 'rgba(255,255,255,0.85)',
-    },
-    watermark: {
-        fontSize: 10 * 2.5,
-        color: 'rgba(255,255,255,0.4)',
-        textAlign: 'right',
     },
 });
