@@ -32,6 +32,7 @@ import { IdentificationSkeleton } from './profile/IdentificationSkeleton';
 import { KeyFactsSection } from './profile/KeyFactsSection';
 import { ProfileHeader } from './profile/ProfileHeader';
 import { ScientificClassification } from './profile/ScientificClassification';
+import { ResultActionBottomSheet } from './ResultActionBottomSheet';
 
 const { width } = Dimensions.get('window');
 
@@ -65,6 +66,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     const galleryRef = useRef<ScrollView>(null);
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [actionSheetVisible, setActionSheetVisible] = useState(false);
 
     // Track if any media (photos/sounds) has arrived for loading states
     const isMedialoaded = (inatPhotos && inatPhotos.length > 0) || (sounds && sounds.length > 0) || (bird.inat_photos && bird.inat_photos.length > 0);
@@ -86,7 +88,11 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     return (
         <View style={styles.container}>
             {/* Header: Title, Taxonomy, Scientific Name, Genus Description */}
-            <ProfileHeader bird={bird} onPronounce={onPlaySound} />
+            <ProfileHeader
+                bird={bird}
+                onPronounce={onPlaySound}
+                onMorePress={() => setActionSheetVisible(true)}
+            />
 
             <View style={styles.gutter} />
 
@@ -98,7 +104,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <Activity size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>Sounds</Text>
                         </View>
-                        <MoreHorizontal size={20} color="#999" />
+                        <TouchableOpacity onPress={(() => setActionSheetVisible(true))}>
+                            <MoreHorizontal size={20} color="#999" />
+                        </TouchableOpacity>
                     </View>
 
                     {groupedSounds.total > 0 ? (
@@ -191,7 +199,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <ImageIcon size={22} color="#1A1A1A" />
                             <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
                         </View>
-                        <MoreHorizontal size={20} color="#999" />
+                        <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                            <MoreHorizontal size={20} color="#999" />
+                        </TouchableOpacity>
                     </View>
                     <ScrollView
                         key={bird.name}
@@ -247,7 +257,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Notebook size={22} color="#1A1A1A" />
                         <Text style={styles.sectionTitle}>Birding Tips</Text>
                     </View>
-                    <MoreHorizontal size={20} color="#999" />
+                    <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                        <MoreHorizontal size={20} color="#999" />
+                    </TouchableOpacity>
                 </View>
 
                 <BirdingTipsGrid bird={bird} onOpenTips={onOpenTips} isEnrichmentComplete={isEnrichmentComplete} />
@@ -282,7 +294,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <Activity size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>Sounds</Text>
                         </View>
-                        <MoreHorizontal size={20} color="#999" />
+                        <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                            <MoreHorizontal size={20} color="#999" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Songs Group */}
@@ -378,7 +392,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <HelpCircle size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>How to identify it?</Text>
                         </View>
-                        <MoreHorizontal size={20} color="#999" />
+                        <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                            <MoreHorizontal size={20} color="#999" />
+                        </TouchableOpacity>
                     </View>
                     <View style={styles.clippedIdContainer}>
                         {bird.identification_tips ? (
@@ -442,8 +458,14 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             {/* Key Facts Section */}
             <KeyFactsSection bird={bird} />
 
-            {/* Scientific Classification & Fact Card */}
             <ScientificClassification bird={bird} />
+
+            {/* Bottom Sheet Context Menu */}
+            <ResultActionBottomSheet
+                visible={actionSheetVisible}
+                onClose={() => setActionSheetVisible(false)}
+                bird={bird}
+            />
 
             <View style={{ height: 40 }} />
         </View>

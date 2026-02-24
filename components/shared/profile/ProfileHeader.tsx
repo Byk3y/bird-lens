@@ -1,14 +1,15 @@
 import { BirdResult } from '@/types/scanner';
-import { Edit2, Volume2 } from 'lucide-react-native';
+import { MoreHorizontal, Volume2 } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ProfileHeaderProps {
     bird: BirdResult;
     onPronounce?: () => void;
+    onMorePress?: () => void;
 }
 
-export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce }) => {
+export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce, onMorePress }) => {
     return (
         <View style={styles.container}>
             {/* Title & Taxonomy Section */}
@@ -29,8 +30,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce 
                         </Text>
                     )}
                 </View>
-                <Pressable style={styles.editBtn}>
-                    <Edit2 size={18} color="#999" />
+                <Pressable onPress={onMorePress} style={styles.editBtn}>
+                    <MoreHorizontal size={20} color="#999" />
                 </Pressable>
             </View>
 
