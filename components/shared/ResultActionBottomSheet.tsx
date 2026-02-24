@@ -44,7 +44,8 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
     const [view, setView] = React.useState<ViewState>('menu');
     const [formType, setFormType] = React.useState<FormType>(null);
     const [feedbackText, setFeedbackText] = React.useState('');
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [submittingType, setSubmittingType] = React.useState<'like' | 'incorrect_id' | 'form' | null>(null);
+    const isSubmitting = !!submittingType;
 
     const [isAnimatingOut, setIsAnimatingOut] = React.useState(false);
 
@@ -62,7 +63,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
     }, [visible]);
 
     const handleQuickAction = async (type: 'like' | 'incorrect_id') => {
-        setIsSubmitting(true);
+        setSubmittingType(type);
         try {
             await submitFeedback({
                 user_id: user?.id,
@@ -82,7 +83,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
         } catch (error) {
             // Error handled in utility, could show local error if needed
         } finally {
-            setIsSubmitting(false);
+            setSubmittingType(null);
         }
     };
 
@@ -94,7 +95,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
     const handleSubmitForm = async () => {
         if (!feedbackText.trim() || isSubmitting) return;
 
-        setIsSubmitting(true);
+        setSubmittingType('form');
         try {
             await submitFeedback({
                 user_id: user?.id,
@@ -115,7 +116,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
         } catch (error) {
             // Error handling
         } finally {
-            setIsSubmitting(false);
+            setSubmittingType(null);
         }
     };
 
@@ -180,7 +181,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>I Like This Content</Text>
                                                 </View>
-                                                {isSubmitting && <ActivityIndicator size="small" color={Colors.textTertiary} />}
+                                                {submittingType === 'like' && <ActivityIndicator size="small" color={Colors.textTertiary} />}
                                             </TouchableOpacity>
 
                                             <TouchableOpacity
@@ -205,7 +206,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>Incorrect Identification</Text>
                                                 </View>
-                                                {isSubmitting && <ActivityIndicator size="small" color={Colors.textTertiary} />}
+                                                {submittingType === 'incorrect_id' && <ActivityIndicator size="small" color={Colors.textTertiary} />}
                                             </TouchableOpacity>
 
                                             <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('suggestion')}>
@@ -257,7 +258,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                     end={{ x: 1, y: 0 }}
                                                     style={styles.submitButton}
                                                 >
-                                                    {isSubmitting ? (
+                                                    {submittingType === 'form' ? (
                                                         <ActivityIndicator color={Colors.white} />
                                                     ) : (
                                                         <Text style={[styles.submitButtonText, !feedbackText.trim() && { color: Colors.textTertiary }]}>Submit</Text>

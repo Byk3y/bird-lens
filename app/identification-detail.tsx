@@ -1,3 +1,4 @@
+import { ResultActionBottomSheet } from '@/components/shared/ResultActionBottomSheet';
 import { IdentificationComparison } from '@/components/shared/profile/IdentificationComparison';
 import { BirdResult } from '@/types/scanner';
 import { BlurView } from 'expo-blur';
@@ -22,6 +23,8 @@ export default function IdentificationDetailScreen() {
     const bird = React.useMemo(() => JSON.parse(params.birdData as string) as BirdResult, [params.birdData]);
 
     const translateY = React.useRef(new Animated.Value(0)).current;
+    const [actionSheetVisible, setActionSheetVisible] = React.useState(false);
+    const [activeSection, setActiveSection] = React.useState<string | null>(null);
 
     const panResponder = React.useRef(
         PanResponder.create({
@@ -79,10 +82,24 @@ export default function IdentificationDetailScreen() {
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                 >
-                    <IdentificationComparison bird={bird} variant="full" />
+                    <IdentificationComparison
+                        bird={bird}
+                        variant="full"
+                        onMorePress={(section) => {
+                            setActiveSection(section);
+                            setActionSheetVisible(true);
+                        }}
+                    />
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </Animated.View>
+
+            <ResultActionBottomSheet
+                visible={actionSheetVisible}
+                onClose={() => setActionSheetVisible(false)}
+                bird={bird}
+                sectionContext={activeSection || 'Identification Detail'}
+            />
         </View>
     );
 }

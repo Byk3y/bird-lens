@@ -1,10 +1,11 @@
+import { ResultActionBottomSheet } from '@/components/shared/ResultActionBottomSheet';
 import { DIET_ASSETS, FEEDER_ASSETS } from '@/constants/bird-assets';
 import { BirdResult } from '@/types/scanner';
 import { getHabitatIcon, getNestingIcon } from '@/utils/bird-profile-helpers';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Lightbulb } from 'lucide-react-native';
+import { ChevronLeft, Lightbulb, MoreHorizontal } from 'lucide-react-native';
 import React from 'react';
 import {
     Animated,
@@ -14,6 +15,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -25,6 +27,8 @@ export default function BirdingTipsScreen() {
     const scrollViewRef = React.useRef<ScrollView>(null);
     const sectionLayouts = React.useRef<Record<string, number>>({});
     const [layoutsReady, setLayoutsReady] = React.useState(false);
+    const [actionSheetVisible, setActionSheetVisible] = React.useState(false);
+    const [activeSection, setActiveSection] = React.useState<string | null>(null);
 
     const bird = React.useMemo(() => {
         try {
@@ -101,7 +105,15 @@ export default function BirdingTipsScreen() {
 
         return (
             <View style={styles.section} onLayout={onLayout}>
-                <Text style={styles.sectionTitle}>{title}</Text>
+                <View style={styles.sectionHeaderRow}>
+                    <Text style={styles.sectionTitle}>{title}</Text>
+                    <TouchableOpacity onPress={() => {
+                        setActiveSection(`${title} Tips`);
+                        setActionSheetVisible(true);
+                    }} style={styles.moreBtn}>
+                        <MoreHorizontal size={20} color="#999" />
+                    </TouchableOpacity>
+                </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalGrid}>
                     {resolvedItems.map((item, index) => (
                         <View key={index} style={styles.gridItem}>
@@ -204,7 +216,15 @@ export default function BirdingTipsScreen() {
 
                     {/* Habitat Section */}
                     <View style={styles.section} onLayout={(e) => handleLayout('habitat', e.nativeEvent.layout.y)}>
-                        <Text style={styles.sectionTitle}>Habitat</Text>
+                        <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionTitle}>Habitat</Text>
+                            <TouchableOpacity onPress={() => {
+                                setActiveSection('Habitat Tips');
+                                setActionSheetVisible(true);
+                            }} style={styles.moreBtn}>
+                                <MoreHorizontal size={20} color="#999" />
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.habitatIconContainer}>
                             <Image source={getHabitatIcon(bird)} style={styles.habitatLargeIcon} />
                             <Text style={styles.habitatName}>{bird.habitat_tags?.[0] || bird.habitat || 'N/A'}</Text>
@@ -224,7 +244,15 @@ export default function BirdingTipsScreen() {
 
                     {/* Nesting Section */}
                     <View style={styles.section} onLayout={(e) => handleLayout('nesting', e.nativeEvent.layout.y)}>
-                        <Text style={styles.sectionTitle}>Nesting</Text>
+                        <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionTitle}>Nesting</Text>
+                            <TouchableOpacity onPress={() => {
+                                setActiveSection('Nesting Tips');
+                                setActionSheetVisible(true);
+                            }} style={styles.moreBtn}>
+                                <MoreHorizontal size={20} color="#999" />
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.habitatIconContainer}>
                             <Image source={getNestingIcon(bird)} style={styles.habitatLargeIcon} />
                             <Text style={styles.habitatName}>{bird.nesting_info?.location || bird.habitat || 'N/A'}</Text>
@@ -237,7 +265,15 @@ export default function BirdingTipsScreen() {
 
                     {/* Fun Facts Section */}
                     <View style={[styles.section, { marginBottom: 60 }]}>
-                        <Text style={styles.sectionTitle}>Fun Facts</Text>
+                        <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionTitle}>Fun Facts</Text>
+                            <TouchableOpacity onPress={() => {
+                                setActiveSection('Fun Facts');
+                                setActionSheetVisible(true);
+                            }} style={styles.moreBtn}>
+                                <MoreHorizontal size={20} color="#999" />
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.funFactCard}>
                             <View style={styles.funFactIconWrapper}>
                                 <Lightbulb size={24} color="#FF6B35" fill="#FF6B35" strokeWidth={3} />
@@ -247,6 +283,13 @@ export default function BirdingTipsScreen() {
                     </View>
                 </ScrollView>
             </Animated.View>
+
+            <ResultActionBottomSheet
+                visible={actionSheetVisible}
+                onClose={() => setActionSheetVisible(false)}
+                bird={bird}
+                sectionContext={activeSection || 'Birding Tips'}
+            />
         </View>
     );
 }
@@ -306,6 +349,17 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         paddingHorizontal: 16,
         letterSpacing: -0.5,
+        flex: 1,
+    },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4, // Reduced from standard to account for grid spacing
+    },
+    moreBtn: {
+        paddingRight: 16,
+        paddingBottom: 4,
     },
     horizontalGrid: {
         paddingHorizontal: 16,

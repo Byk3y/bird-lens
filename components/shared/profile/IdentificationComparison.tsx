@@ -1,18 +1,21 @@
 import { BirdResult } from '@/types/scanner';
 import { getIdentificationMode, getIdentificationTipsAvailability } from '@/utils/bird-profile-helpers';
 import { Image } from 'expo-image';
+import { MoreHorizontal } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface IdentificationComparisonProps {
     bird: BirdResult;
     onPress?: () => void;
+    onMorePress?: (section: string) => void;
     variant?: 'inline' | 'full';
 }
 
 export const IdentificationComparison: React.FC<IdentificationComparisonProps> = ({
     bird,
     onPress,
+    onMorePress,
     variant = 'inline'
 }) => {
     const mode = getIdentificationMode(bird);
@@ -68,7 +71,12 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
     // Full variant (detail view)
     const renderFullItem = (label: string, imageUrl: string, description?: string) => (
         <View style={styles.detailSection} key={`${label}-${imageUrl}`}>
-            <Text style={styles.sectionTitle}>{label}</Text>
+            <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>{label}</Text>
+                <TouchableOpacity onPress={() => onMorePress?.(`${label} Comparison`)}>
+                    <MoreHorizontal size={20} color="#999" />
+                </TouchableOpacity>
+            </View>
             <View style={styles.imageContainer}>
                 <Image source={{ uri: imageUrl }} style={styles.fullImage} cachePolicy="memory-disk" />
                 <View style={styles.labelBadge}>
@@ -138,11 +146,17 @@ const styles = StyleSheet.create({
     detailSection: {
         marginBottom: 32,
     },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
     sectionTitle: {
         fontSize: 20,
         fontWeight: '800',
         color: '#1A1A1A',
-        marginBottom: 12,
+        letterSpacing: -0.5,
     },
     imageContainer: {
         width: '100%',
