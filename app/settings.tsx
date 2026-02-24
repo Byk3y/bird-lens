@@ -98,6 +98,21 @@ export default function SettingsScreen() {
     const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
 
+    const handleSignOut = () => {
+        Alert.alert(
+            "Sign Out",
+            "Are you sure you want to sign out?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Sign Out",
+                    style: "destructive",
+                    onPress: signOut
+                }
+            ]
+        );
+    };
+
     const handleDeleteAccount = () => {
         Alert.alert(
             "Delete Account",
@@ -180,20 +195,6 @@ export default function SettingsScreen() {
                                     label="Manage Subscription"
                                     onPress={() => subscriptionService.showCustomerCenter()}
                                     tintColor="#fbbf24"
-                                />
-                            )}
-                            <SettingRow
-                                icon={<LogOut />}
-                                label="Sign Out"
-                                tintColor={Colors.error}
-                                onPress={signOut}
-                            />
-                            {!isGuest && (
-                                <SettingRow
-                                    icon={<Trash2 />}
-                                    label="Delete Account"
-                                    tintColor={Colors.error}
-                                    onPress={handleDeleteAccount}
                                     isLast
                                 />
                             )}
@@ -248,6 +249,31 @@ export default function SettingsScreen() {
                         isLast
                     />
                 </View>
+
+                {/* Account Actions Section */}
+                {!isGuest && (
+                    <>
+                        <Text style={styles.sectionLabel}>Account Actions</Text>
+                        <View style={styles.section}>
+                            <SettingRow
+                                icon={<LogOut />}
+                                label="Sign Out"
+                                tintColor={Colors.error}
+                                onPress={handleSignOut}
+                                isLast={isGuest}
+                            />
+                            {!isGuest && (
+                                <SettingRow
+                                    icon={<Trash2 />}
+                                    label="Delete Account"
+                                    tintColor={Colors.error}
+                                    onPress={handleDeleteAccount}
+                                    isLast
+                                />
+                            )}
+                        </View>
+                    </>
+                )}
 
                 <Text style={styles.footerText}>Made with ❤️ for bird lovers</Text>
             </ScrollView>

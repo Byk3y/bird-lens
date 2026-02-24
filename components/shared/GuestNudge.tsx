@@ -1,4 +1,4 @@
-import { Colors, Spacing, Typography } from '@/constants/theme';
+import { Colors, Typography } from '@/constants/theme';
 import { Cloud, Sparkles, X } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React from 'react';
@@ -12,31 +12,25 @@ interface GuestNudgeProps {
 export const GuestNudge = ({ onPress, onClose }: GuestNudgeProps) => {
     return (
         <MotiView
-            from={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
             style={styles.container}
         >
-            <View style={styles.iconContainer}>
-                <Cloud color="#3b82f6" size={24} />
-            </View>
-
             <View style={styles.content}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Sync Your Sightings</Text>
-                    <Sparkles color="#fbbf24" size={16} />
+                <View style={styles.mainInfo}>
+                    <Cloud color="#3b82f6" size={20} />
+                    <Text style={styles.title}>Sign up to sync your sightings</Text>
+                    <Sparkles color="#fbbf24" size={14} />
                 </View>
-                <Text style={styles.subtitle}>
-                    Link an account to sync your bird collection across all your devices.
-                </Text>
 
                 <Pressable style={styles.button} onPress={onPress}>
-                    <Text style={styles.buttonText}>Sync Now</Text>
+                    <Text style={styles.buttonText}>Sign Up</Text>
                 </Pressable>
             </View>
 
             {onClose && (
                 <Pressable style={styles.closeBtn} onPress={onClose}>
-                    <X color={Colors.textTertiary} size={18} />
+                    <X color={Colors.textTertiary} size={16} />
                 </Pressable>
             )}
         </MotiView>
@@ -46,64 +40,61 @@ export const GuestNudge = ({ onPress, onClose }: GuestNudgeProps) => {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: Colors.white,
-        borderRadius: 20,
-        padding: Spacing.md,
-        flexDirection: 'row',
-        marginBottom: Spacing.lg,
+        borderRadius: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
         borderWidth: 1,
         borderColor: Colors.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
         elevation: 2,
     },
-    iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: Spacing.md,
-    },
     content: {
-        flex: 1,
-    },
-    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        marginBottom: 4,
+        justifyContent: 'space-between',
+    },
+    mainInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
     },
     title: {
-        ...Typography.h3,
-        fontSize: 16,
-        color: Colors.text,
-    },
-    subtitle: {
         ...Typography.body,
         fontSize: 14,
-        color: Colors.textSecondary,
-        marginBottom: Spacing.sm,
-        lineHeight: 18,
+        fontWeight: '600',
+        color: Colors.text,
     },
     button: {
         backgroundColor: '#3b82f6',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 10,
-        alignSelf: 'flex-start',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
     },
     buttonText: {
         color: Colors.white,
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '700',
     },
     closeBtn: {
         position: 'absolute',
-        top: 10,
-        right: 10,
-        padding: 4,
+        top: -6,
+        right: -6,
+        backgroundColor: Colors.white,
+        borderRadius: 12,
+        width: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 1,
     },
 });

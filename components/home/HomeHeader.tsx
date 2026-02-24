@@ -7,11 +7,11 @@ import {
     View
 } from 'react-native';
 
-import { useRouter } from 'expo-router';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { TouchableOpacity } from 'react-native';
 
 export const HomeHeader: React.FC = () => {
-    const router = useRouter();
+    const router = useSafeNavigation();
 
     const getGreeting = () => {
         const hour = new Date().getHours();

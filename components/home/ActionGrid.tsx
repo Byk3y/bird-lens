@@ -1,5 +1,5 @@
 import { Colors, Spacing } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import {
     AudioLines,
     Camera
@@ -12,7 +12,7 @@ import {
 import { ActionCard } from './ActionCard';
 
 export const ActionGrid: React.FC = () => {
-    const router = useRouter();
+    const router = useSafeNavigation();
 
     return (
         <View style={styles.gridContainer}>

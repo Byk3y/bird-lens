@@ -6,6 +6,7 @@ import { Paywall } from '@/components/Paywall';
 import { GuestNudge } from '@/components/shared/GuestNudge';
 import { TellFriendsModal } from '@/components/shared/TellFriendsModal';
 import { Colors, Spacing, Typography } from '@/constants/theme';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { BirdResult } from '@/types/scanner';
@@ -14,7 +15,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import { Forward, Gem, Mic, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useCallback, useRef, useState } from 'react';
@@ -30,7 +30,7 @@ const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, audio_url, sci
 
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
-    const router = useRouter();
+    const router = useSafeNavigation();
     const { user, isPro } = useAuth();
     const [sightings, setSightings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -256,7 +256,7 @@ export default function MeScreen() {
                         contentContainerStyle={styles.flatListContent}
                         columnWrapperStyle={styles.columnWrapper}
                         ListHeaderComponent={isGuest ? (
-                            <View style={{ width: '100%', paddingHorizontal: 4, marginBottom: 16 }}>
+                            <View style={{ width: '100%', paddingHorizontal: 4, marginBottom: 8 }}>
                                 <GuestNudge onPress={() => setIsAuthModalVisible(true)} />
                             </View>
                         ) : null}
