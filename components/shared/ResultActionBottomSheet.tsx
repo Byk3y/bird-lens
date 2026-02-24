@@ -6,6 +6,7 @@ import { AnimatePresence, MotiView } from 'moti';
 import React from 'react';
 import {
     Dimensions,
+    Modal,
     StyleSheet,
     Text,
     TextInput,
@@ -34,14 +35,18 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
     const [formType, setFormType] = React.useState<FormType>(null);
     const [feedbackText, setFeedbackText] = React.useState('');
 
+    const [isAnimatingOut, setIsAnimatingOut] = React.useState(false);
+
     // Reset state when closing or opening
     React.useEffect(() => {
         if (!visible) {
+            setIsAnimatingOut(true);
             setTimeout(() => {
                 setView('menu');
                 setFormType(null);
                 setFeedbackText('');
-            }, 300); // Wait for exit animation
+                setIsAnimatingOut(false);
+            }, 350); // Wait for exit animation
         }
     }, [visible]);
 
@@ -67,135 +72,142 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
         }, 1500);
     };
     return (
-        <AnimatePresence>
-            {visible && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents="box-none">
-                    <MotiView
-                        from={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ type: 'timing', duration: 300 }}
-                        style={StyleSheet.absoluteFill}
-                    >
-                        <TouchableOpacity
-                            style={styles.backdrop}
-                            activeOpacity={1}
-                            onPress={onClose}
-                        />
-                    </MotiView>
+        <Modal
+            visible={visible || isAnimatingOut}
+            transparent
+            animationType="none"
+            onRequestClose={onClose}
+        >
+            <AnimatePresence>
+                {visible && (
+                    <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents="box-none">
+                        <MotiView
+                            from={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ type: 'timing', duration: 300 }}
+                            style={StyleSheet.absoluteFill}
+                        >
+                            <TouchableOpacity
+                                style={styles.backdrop}
+                                activeOpacity={1}
+                                onPress={onClose}
+                            />
+                        </MotiView>
 
-                    <MotiView
-                        from={{ translateY: SCREEN_HEIGHT }}
-                        animate={{ translateY: 0 }}
-                        exit={{ translateY: SCREEN_HEIGHT }}
-                        transition={{ type: 'timing', duration: 350 }}
-                        style={styles.sheetContainer}
-                    >
-                        <View style={styles.sheet}>
-                            {view === 'menu' && (
-                                <MotiView
-                                    from={{ opacity: 0, translateX: -20 }}
-                                    animate={{ opacity: 1, translateX: 0 }}
-                                    exit={{ opacity: 0, translateX: -20 }}
-                                    transition={{ type: 'timing', duration: 250 }}
-                                >
-                                    {/* Options */}
-                                    <TouchableOpacity style={styles.optionRow} onPress={() => handleQuickAction('like')}>
-                                        <Heart size={24} color={Colors.text} strokeWidth={1.5} />
-                                        <View style={styles.optionContent}>
-                                            <Text style={styles.optionTitle}>I Like This Content</Text>
-                                        </View>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('error')}>
-                                        <FileWarning size={24} color={Colors.text} strokeWidth={1.5} />
-                                        <View style={styles.optionContent}>
-                                            <Text style={styles.optionTitle}>Error in Content</Text>
-                                            <Text style={styles.optionSubtitle}>Poor content, errors, etc.</Text>
-                                        </View>
-                                        <Text style={styles.chevron}>›</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={styles.optionRow} onPress={() => handleQuickAction('incorrect')}>
-                                        <ScanEye size={24} color={Colors.text} strokeWidth={1.5} />
-                                        <View style={styles.optionContent}>
-                                            <Text style={styles.optionTitle}>Incorrect Identification</Text>
-                                        </View>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('suggestion')}>
-                                        <Edit3 size={24} color={Colors.text} strokeWidth={1.5} />
-                                        <View style={styles.optionContent}>
-                                            <Text style={styles.optionTitle}>Suggestions</Text>
-                                            <Text style={styles.optionSubtitle}>Help us make it better</Text>
-                                        </View>
-                                        <Text style={styles.chevron}>›</Text>
-                                    </TouchableOpacity>
-                                </MotiView>
-                            )}
-
-                            {view === 'form' && (
-                                <MotiView
-                                    from={{ opacity: 0, translateX: 20 }}
-                                    animate={{ opacity: 1, translateX: 0 }}
-                                    exit={{ opacity: 0, translateX: 20 }}
-                                    transition={{ type: 'timing', duration: 250 }}
-                                    style={styles.formContainer}
-                                >
-                                    <View style={styles.formHeader}>
-                                        <TouchableOpacity onPress={() => setView('menu')} style={styles.backButton}>
-                                            <ChevronLeft size={24} color={Colors.text} />
+                        <MotiView
+                            from={{ translateY: SCREEN_HEIGHT }}
+                            animate={{ translateY: 0 }}
+                            exit={{ translateY: SCREEN_HEIGHT }}
+                            transition={{ type: 'timing', duration: 350 }}
+                            style={styles.sheetContainer}
+                        >
+                            <View style={styles.sheet}>
+                                {view === 'menu' && (
+                                    <MotiView
+                                        from={{ opacity: 0, translateX: -20 }}
+                                        animate={{ opacity: 1, translateX: 0 }}
+                                        exit={{ opacity: 0, translateX: -20 }}
+                                        transition={{ type: 'timing', duration: 250 }}
+                                    >
+                                        {/* Options */}
+                                        <TouchableOpacity style={styles.optionRow} onPress={() => handleQuickAction('like')}>
+                                            <Heart size={24} color={Colors.text} strokeWidth={1.5} />
+                                            <View style={styles.optionContent}>
+                                                <Text style={styles.optionTitle}>I Like This Content</Text>
+                                            </View>
                                         </TouchableOpacity>
-                                        <Text style={styles.formTitle}>
-                                            {formType === 'error' ? 'Error in Content' : 'Suggestions'}
-                                        </Text>
-                                        <View style={{ width: 24 }} />
-                                    </View>
 
-                                    <View style={styles.inputContainer}>
-                                        <TextInput
-                                            style={styles.textInput}
-                                            placeholder="Please describe the issue..."
-                                            placeholderTextColor={Colors.textTertiary}
-                                            multiline
-                                            textAlignVertical="top"
-                                            value={feedbackText}
-                                            onChangeText={setFeedbackText}
-                                            autoFocus
-                                        />
-                                    </View>
+                                        <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('error')}>
+                                            <FileWarning size={24} color={Colors.text} strokeWidth={1.5} />
+                                            <View style={styles.optionContent}>
+                                                <Text style={styles.optionTitle}>Error in Content</Text>
+                                                <Text style={styles.optionSubtitle}>Poor content, errors, etc.</Text>
+                                            </View>
+                                            <Text style={styles.chevron}>›</Text>
+                                        </TouchableOpacity>
 
-                                    <TouchableOpacity disabled={!feedbackText.trim()} onPress={handleSubmitForm}>
-                                        <LinearGradient
-                                            colors={feedbackText.trim() ? ['#ECA392', '#F3C79B'] : ['#E2E8F0', '#E2E8F0']}
-                                            start={{ x: 0, y: 0 }}
-                                            end={{ x: 1, y: 0 }}
-                                            style={styles.submitButton}
-                                        >
-                                            <Text style={[styles.submitButtonText, !feedbackText.trim() && { color: Colors.textTertiary }]}>Submit</Text>
-                                        </LinearGradient>
-                                    </TouchableOpacity>
-                                </MotiView>
-                            )}
+                                        <TouchableOpacity style={styles.optionRow} onPress={() => handleQuickAction('incorrect')}>
+                                            <ScanEye size={24} color={Colors.text} strokeWidth={1.5} />
+                                            <View style={styles.optionContent}>
+                                                <Text style={styles.optionTitle}>Incorrect Identification</Text>
+                                            </View>
+                                        </TouchableOpacity>
 
-                            {view === 'success' && (
-                                <MotiView
-                                    from={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ type: 'timing', duration: 300 }}
-                                    style={styles.successContainer}
-                                >
-                                    <CheckCircle2 size={64} color={Colors.success} strokeWidth={1.5} />
-                                    <Text style={styles.successTitle}>Thank You!</Text>
-                                    <Text style={styles.successSubtitle}>Your feedback helps us improve Bird Lens.</Text>
-                                </MotiView>
-                            )}
+                                        <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('suggestion')}>
+                                            <Edit3 size={24} color={Colors.text} strokeWidth={1.5} />
+                                            <View style={styles.optionContent}>
+                                                <Text style={styles.optionTitle}>Suggestions</Text>
+                                                <Text style={styles.optionSubtitle}>Help us make it better</Text>
+                                            </View>
+                                            <Text style={styles.chevron}>›</Text>
+                                        </TouchableOpacity>
+                                    </MotiView>
+                                )}
 
-                        </View>
-                    </MotiView>
-                </View>
-            )}
-        </AnimatePresence>
+                                {view === 'form' && (
+                                    <MotiView
+                                        from={{ opacity: 0, translateX: 20 }}
+                                        animate={{ opacity: 1, translateX: 0 }}
+                                        exit={{ opacity: 0, translateX: 20 }}
+                                        transition={{ type: 'timing', duration: 250 }}
+                                        style={styles.formContainer}
+                                    >
+                                        <View style={styles.formHeader}>
+                                            <TouchableOpacity onPress={() => setView('menu')} style={styles.backButton}>
+                                                <ChevronLeft size={24} color={Colors.text} />
+                                            </TouchableOpacity>
+                                            <Text style={styles.formTitle}>
+                                                {formType === 'error' ? 'Error in Content' : 'Suggestions'}
+                                            </Text>
+                                            <View style={{ width: 24 }} />
+                                        </View>
+
+                                        <View style={styles.inputContainer}>
+                                            <TextInput
+                                                style={styles.textInput}
+                                                placeholder="Please describe the issue..."
+                                                placeholderTextColor={Colors.textTertiary}
+                                                multiline
+                                                textAlignVertical="top"
+                                                value={feedbackText}
+                                                onChangeText={setFeedbackText}
+                                                autoFocus
+                                            />
+                                        </View>
+
+                                        <TouchableOpacity disabled={!feedbackText.trim()} onPress={handleSubmitForm}>
+                                            <LinearGradient
+                                                colors={feedbackText.trim() ? ['#ECA392', '#F3C79B'] : ['#E2E8F0', '#E2E8F0']}
+                                                start={{ x: 0, y: 0 }}
+                                                end={{ x: 1, y: 0 }}
+                                                style={styles.submitButton}
+                                            >
+                                                <Text style={[styles.submitButtonText, !feedbackText.trim() && { color: Colors.textTertiary }]}>Submit</Text>
+                                            </LinearGradient>
+                                        </TouchableOpacity>
+                                    </MotiView>
+                                )}
+
+                                {view === 'success' && (
+                                    <MotiView
+                                        from={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ type: 'timing', duration: 300 }}
+                                        style={styles.successContainer}
+                                    >
+                                        <CheckCircle2 size={64} color={Colors.success} strokeWidth={1.5} />
+                                        <Text style={styles.successTitle}>Thank You!</Text>
+                                        <Text style={styles.successSubtitle}>Your feedback helps us improve Bird Lens.</Text>
+                                    </MotiView>
+                                )}
+
+                            </View>
+                        </MotiView>
+                    </View>
+                )}
+            </AnimatePresence>
+        </Modal>
     );
 };
 
