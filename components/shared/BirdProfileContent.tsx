@@ -458,7 +458,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             {/* Key Facts Section */}
             <KeyFactsSection bird={bird} />
 
-            <ScientificClassification bird={bird} />
+            <ScientificClassification bird={bird} onMorePress={() => setActionSheetVisible(true)} />
 
             {/* Bottom Sheet Context Menu */}
             <ResultActionBottomSheet

@@ -1,14 +1,15 @@
 import { BirdResult } from '@/types/scanner';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronDown, ChevronUp, Notebook } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, MoreHorizontal, Notebook } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ScientificClassificationProps {
     bird: BirdResult;
+    onMorePress?: () => void;
 }
 
-export const ScientificClassification: React.FC<ScientificClassificationProps> = ({ bird }) => {
+export const ScientificClassification: React.FC<ScientificClassificationProps> = ({ bird, onMorePress }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Height ~ 3 full rows + partial 4th
@@ -25,6 +26,11 @@ export const ScientificClassification: React.FC<ScientificClassificationProps> =
                         <Notebook size={22} color="#1A1A1A" />
                         <Text style={styles.sectionTitle}>Scientific Classification</Text>
                     </View>
+                    {onMorePress && (
+                        <TouchableOpacity onPress={onMorePress}>
+                            <MoreHorizontal size={20} color="#999" />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <View style={!isExpanded ? { maxHeight: collapsedMaxHeight, overflow: 'hidden' } : undefined}>
