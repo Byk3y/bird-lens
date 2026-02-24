@@ -1,7 +1,7 @@
 import { AuthModal } from '@/components/auth/AuthModal';
 import { Paywall } from '@/components/Paywall';
+import { TellFriendsModal } from '@/components/shared/TellFriendsModal';
 import { Links } from '@/constants/Links';
-import { Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { subscriptionService } from '@/services/SubscriptionService';
 import Constants from 'expo-constants';
@@ -10,12 +10,7 @@ import * as WebBrowser from 'expo-web-browser';
 import {
     ChevronLeft,
     ChevronRight,
-    Crown,
-    LogOut,
-    Trash2,
-    User
 } from 'lucide-react-native';
-import { MotiView } from 'moti';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -30,46 +25,38 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SettingRowProps {
-    icon?: React.ReactNode;
     label: string;
-    subtitle?: string;
+    subtext?: string;
     value?: string;
     hasSwitch?: boolean;
     switchValue?: boolean;
     onSwitchChange?: (value: boolean) => void;
     onPress?: () => void;
-    isLast?: boolean;
-    tintColor?: string;
+    isDestructive?: boolean;
 }
 
 const SettingRow = ({
-    icon,
     label,
-    subtitle,
+    subtext,
     value,
     hasSwitch,
     switchValue,
     onSwitchChange,
     onPress,
-    isLast,
-    tintColor = Colors.primary
+    isDestructive
 }: SettingRowProps) => (
     <Pressable
         style={({ pressed }) => [
             styles.row,
-            pressed && !hasSwitch && styles.rowPressed
+            pressed && !hasSwitch && styles.rowPressed,
+            subtext ? { height: 72 } : undefined
         ]}
         onPress={hasSwitch ? undefined : onPress}
     >
-        {icon && (
-            <View style={[styles.iconContainer, { backgroundColor: tintColor + '10' }]}>
-                {React.isValidElement(icon) && React.cloneElement(icon as React.ReactElement<any>, { color: tintColor, size: 20 })}
-            </View>
-        )}
-        <View style={[styles.rowContent, isLast && styles.noBorder]}>
-            <View style={styles.labelContainer}>
-                <Text style={styles.label}>{label}</Text>
-                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        <View style={styles.rowContent}>
+            <View style={{ flex: 1 }}>
+                <Text style={[styles.label, isDestructive && { color: '#FF3B30' }]}>{label}</Text>
+                {subtext && <Text style={styles.subtext}>{subtext}</Text>}
             </View>
             <View style={styles.rightContent}>
                 {value && <Text style={styles.value}>{value}</Text>}
@@ -77,25 +64,27 @@ const SettingRow = ({
                     <Switch
                         value={switchValue}
                         onValueChange={onSwitchChange}
-                        trackColor={{ false: '#e2e8f0', true: Colors.primary }}
-                        ios_backgroundColor="#e2e8f0"
+                        trackColor={{ false: '#f1f5f9', true: '#34C759' }}
+                        ios_backgroundColor="#E9E9EA"
                     />
                 ) : (
-                    <ChevronRight color={Colors.textTertiary} size={20} />
+                    <ChevronRight color="#C7C7CC" size={18} strokeWidth={2.5} />
                 )}
             </View>
         </View>
     </Pressable>
 );
 
+const SectionSeparator = () => <View style={styles.separator} />;
 
 export default function SettingsScreen() {
-    const { user, session, signOut, deleteAccount, isPro, refreshSubscription } = useAuth();
+    const { user, signOut, deleteAccount, isPro, refreshSubscription } = useAuth();
     const isGuest = user?.is_anonymous;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [autosave, setAutosave] = useState(false);
     const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
+    const [isTellFriendsVisible, setIsTellFriendsVisible] = useState(false);
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
 
     const handleSignOut = () => {
@@ -136,9 +125,9 @@ export default function SettingsScreen() {
     return (
         <View style={styles.container}>
             <SafeAreaView style={styles.header}>
-                <View style={styles.headerContent}>
+                <View style={[styles.headerContent, { marginTop: insets.top > 40 ? 0 : 10 }]}>
                     <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                        <ChevronLeft color={Colors.text} size={28} />
+                        <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
                     </Pressable>
                     <Text style={styles.headerTitle}>Settings</Text>
                     <View style={{ width: 44 }} />
@@ -146,99 +135,62 @@ export default function SettingsScreen() {
             </SafeAreaView>
 
             <ScrollView
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+                style={styles.scrollView}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Premium Section */}
-                <MotiView
-                    from={{ opacity: 0, translateY: 10 }}
-                    animate={{ opacity: 1, translateY: 0 }}
-                    style={styles.premiumCard}
-                >
-                    <View style={styles.premiumInfo}>
-                        <View style={styles.premiumTextContainer}>
-                            <Text style={styles.premiumTitle}>Premium Plan</Text>
-                            <Text style={styles.premiumSubtitle}>Status: {isPro ? 'Cardinal Pro' : (isGuest ? 'Free Member' : 'Free Account')}</Text>
-                        </View>
-                        <View style={styles.crownContainer}>
-                            <Crown color="#fbbf24" size={24} />
-                        </View>
-                    </View>
-                    {!isPro && (
-                        <Pressable style={styles.upgradeBtn} onPress={() => setIsPaywallVisible(true)}>
-                            <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
-                        </Pressable>
-                    )}
-                </MotiView>
+                {/* Account Settings */}
+                <View style={styles.group}>
+                    <SettingRow
+                        label="BirdSnap Pro"
+                        subtext={isPro ? "Status: Pro" : "Status: Free"}
+                        onPress={() => isPro ? subscriptionService.showCustomerCenter() : setIsPaywallVisible(true)}
+                    />
 
-                {/* Account Section */}
-                <Text style={styles.sectionLabel}>{isGuest ? 'Guest Mode' : 'Account'}</Text>
-                <View style={styles.section}>
+                    <SectionSeparator />
+
                     {isGuest ? (
                         <SettingRow
-                            icon={<User />}
                             label="Sign Up or Log In"
-                            subtitle="Save your collection to the cloud"
-                            tintColor={Colors.accent}
                             onPress={() => setIsAuthModalVisible(true)}
                         />
                     ) : (
-                        <>
-                            <SettingRow
-                                icon={<User />}
-                                label="Edit Profile"
-                                onPress={() => router.push('/edit-profile')}
-                            />
-                            {isPro && (
-                                <SettingRow
-                                    icon={<Crown />}
-                                    label="Manage Subscription"
-                                    onPress={() => subscriptionService.showCustomerCenter()}
-                                    tintColor="#fbbf24"
-                                    isLast
-                                />
-                            )}
-                        </>
+                        <SettingRow
+                            label="Edit Profile"
+                            onPress={() => router.push('/edit-profile')}
+                        />
                     )}
-                </View>
 
-                {/* Preferences Section */}
-                <Text style={styles.sectionLabel}>Preferences</Text>
-                <View style={styles.section}>
+                    {!isGuest && (
+                        <SettingRow
+                            label="Manage Account"
+                            onPress={() => router.push('/manage-account')}
+                        />
+                    )}
+
                     <SettingRow
-                        label="Autosave Photos"
+                        label="Autosave Photos to Album"
                         hasSwitch
                         switchValue={autosave}
                         onSwitchChange={setAutosave}
-                        isLast
                     />
                 </View>
 
-                {/* Support Section */}
-                <Text style={styles.sectionLabel}>Support & Feedback</Text>
-                <View style={styles.section}>
-                    <SettingRow
-                        label="Encourage Us"
-                    />
-                    <SettingRow
-                        label="FAQ & Help"
-                    />
-                    <SettingRow
-                        label="Suggestion"
-                        isLast
-                    />
-                </View>
+                <SectionSeparator />
 
-                {/* About Section */}
-                <Text style={styles.sectionLabel}>About</Text>
-                <View style={styles.section}>
-                    <SettingRow
-                        label="App Info"
-                        value={`v${Constants.expoConfig?.version || '1.0.0'}`}
-                    />
+                {/* Support & Feedback */}
+                <View style={styles.group}>
+                    <SettingRow label="App Info" value={`v${Constants.expoConfig?.version || '1.0.0'}`} onPress={() => router.push('/app-info')} />
                     <SettingRow
                         label="Tell Friends"
+                        onPress={() => setIsTellFriendsVisible(true)}
                     />
+                </View>
+
+                <SectionSeparator />
+
+                {/* Legal Section */}
+                <View style={styles.group}>
                     <SettingRow
                         label="Privacy Policy"
                         onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
@@ -246,42 +198,33 @@ export default function SettingsScreen() {
                     <SettingRow
                         label="Terms of Use"
                         onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
-                        isLast
                     />
                 </View>
 
-                {/* Account Actions Section */}
+                {/* Destructive Actions */}
                 {!isGuest && (
                     <>
-                        <Text style={styles.sectionLabel}>Account Actions</Text>
-                        <View style={styles.section}>
+                        <SectionSeparator />
+                        <View style={styles.group}>
                             <SettingRow
-                                icon={<LogOut />}
                                 label="Sign Out"
-                                tintColor={Colors.error}
+                                isDestructive
                                 onPress={handleSignOut}
-                                isLast={isGuest}
                             />
-                            {!isGuest && (
-                                <SettingRow
-                                    icon={<Trash2 />}
-                                    label="Delete Account"
-                                    tintColor={Colors.error}
-                                    onPress={handleDeleteAccount}
-                                    isLast
-                                />
-                            )}
                         </View>
                     </>
                 )}
-
-                <Text style={styles.footerText}>Made with ❤️ for bird lovers</Text>
             </ScrollView>
 
             <AuthModal
                 visible={isAuthModalVisible}
                 onClose={() => setIsAuthModalVisible(false)}
                 initialMode="signup"
+            />
+
+            <TellFriendsModal
+                visible={isTellFriendsVisible}
+                onClose={() => setIsTellFriendsVisible(false)}
             />
 
             {isPaywallVisible && (
@@ -299,156 +242,77 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#FFFFFF',
+    },
+    scrollView: {
+        flex: 1,
     },
     header: {
-        backgroundColor: Colors.white,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#E5E5E5',
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        height: 56,
+        paddingHorizontal: 8,
+        height: 50,
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: '700',
-        color: Colors.text,
+        fontFamily: 'Outfit_600SemiBold',
+        color: '#000000',
+        letterSpacing: -0.5,
     },
     backBtn: {
         width: 44,
         height: 44,
         justifyContent: 'center',
-    },
-    scrollContent: {
-        padding: 16,
-    },
-    premiumCard: {
-        backgroundColor: '#1e293b',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    premiumInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    premiumTextContainer: {
-        flex: 1,
-    },
-    premiumTitle: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: Colors.white,
-        marginBottom: 4,
-    },
-    premiumSubtitle: {
-        fontSize: 14,
-        color: '#94a3b8',
-        fontWeight: '500',
-    },
-    crownContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: 'rgba(251, 191, 36, 0.15)',
-        justifyContent: 'center',
         alignItems: 'center',
     },
-    upgradeBtn: {
-        backgroundColor: '#fbbf24',
-        height: 48,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    upgradeBtnText: {
-        color: '#1e293b',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    sectionLabel: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#94a3b8',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginLeft: 8,
-        marginBottom: 8,
-    },
-    section: {
-        backgroundColor: Colors.white,
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        marginBottom: 24,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
+    group: {
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 12,
     },
     row: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        height: 60,
+        paddingHorizontal: 24,
+        justifyContent: 'center',
     },
     rowPressed: {
-        backgroundColor: '#f8fafc',
-    },
-    iconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
+        backgroundColor: '#F2F2F7',
     },
     rowContent: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-    },
-    noBorder: {
-        borderBottomWidth: 0,
     },
     label: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: Colors.text,
-    },
-    labelContainer: {
-        flex: 1,
-    },
-    subtitle: {
-        fontSize: 13,
-        color: Colors.textTertiary,
-        marginTop: 2,
+        fontSize: 18,
+        fontFamily: 'Outfit_300Light',
+        color: '#1C1C1E',
+        letterSpacing: -0.2,
     },
     rightContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
     },
     value: {
-        fontSize: 15,
-        color: Colors.textTertiary,
-        fontWeight: '500',
+        fontSize: 17,
+        fontFamily: 'Inter_300Light',
+        color: '#8E8E93',
     },
-    footerText: {
-        textAlign: 'center',
+    subtext: {
         fontSize: 14,
-        color: '#94a3b8',
-        marginTop: 8,
-        fontWeight: '500',
+        fontFamily: 'Inter_300Light',
+        color: '#8E8E93',
+        marginTop: 2,
+    },
+    separator: {
+        height: 1,
+        backgroundColor: '#F2F2F7',
+        width: '100%',
     },
 });
