@@ -240,13 +240,6 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                 >
                                     Privacy Policy
                                 </Text>.
-                                {' • '}
-                                <Text
-                                    style={styles.legalLink}
-                                    onPress={handleRestore}
-                                >
-                                    Restore Purchases
-                                </Text>
                             </Text>
                         </View>
                     </View>

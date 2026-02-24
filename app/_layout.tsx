@@ -1,3 +1,5 @@
+import { Inter_300Light, Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { Outfit_300Light, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold } from '@expo-google-fonts/outfit';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -30,6 +32,14 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     PoppinsBold: require('../assets/fonts/Poppins-Bold.ttf'),
+    Inter_300Light,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Outfit_300Light,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
     ...FontAwesome.font,
   });
 
@@ -125,6 +135,9 @@ function RootLayoutNav() {
               <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
               <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
               <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
+              <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
+              <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
+              <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
               <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             </Stack>
           </ThemeProvider>

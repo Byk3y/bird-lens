@@ -1,4 +1,4 @@
-import { Colors, Typography } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
@@ -182,11 +182,11 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
     title: {
-        ...Typography.h3,
         textAlign: 'center',
         marginBottom: 24,
         color: Colors.text,
-        fontSize: 18,
+        fontSize: 21,
+        fontFamily: 'Outfit_600SemiBold',
     },
     optionsGrid: {
         flexDirection: 'row',
@@ -206,9 +206,9 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     optionLabel: {
-        fontSize: 12,
+        fontSize: 14,
         color: Colors.textSecondary,
-        fontWeight: '500',
+        fontFamily: 'Outfit_400Regular',
     },
     closeBtnContainer: {
         marginTop: 24,

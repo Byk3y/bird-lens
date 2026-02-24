@@ -545,8 +545,8 @@ const styles = StyleSheet.create({
         marginBottom: height * 0.04,
     },
     brandTitle: {
-        fontSize: 28,
-        fontFamily: 'PoppinsBold',
+        fontSize: 34,
+        fontFamily: 'Outfit_600SemiBold',
         color: Colors.primary,
         letterSpacing: -1,
     },
@@ -608,9 +608,9 @@ const styles = StyleSheet.create({
     },
     lineInput: {
         flex: 1,
-        fontSize: 18,
+        fontSize: 19,
         color: Colors.text,
-        fontWeight: '400',
+        fontFamily: 'Inter_400Regular',
     },
     passwordContainer: {
         flexDirection: 'row',
@@ -639,8 +639,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     submitBtnText: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 19,
+        fontFamily: 'Outfit_600SemiBold',
         color: Colors.white,
     },
     switchModeContainer: {
