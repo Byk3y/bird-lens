@@ -96,6 +96,7 @@ export class IdentificationService {
             } else {
                 // Stream broke before we got any candidates — this is a real error
                 onChunk({ type: 'error', message: 'Stream interrupted unexpectedly' });
+                throw error; // Re-throw to allow catch block in hook to handle retry
             }
         } finally {
             try {

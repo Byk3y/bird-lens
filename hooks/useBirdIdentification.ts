@@ -57,165 +57,204 @@ export const useBirdIdentification = () => {
             // Light feedback for identification start
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-            // We use the project's Anon Key specifically for identification requests to ensure
-            // maximum reliability and avoid gateway 401 issues with user session tokens.
-            const token = SUPABASE_ANON_KEY;
+            let attempts = 0;
+            const maxAttempts = 3;
+            let receivedCandidates = false;
 
-            console.log('Identification request initiated...');
+            while (attempts < maxAttempts) {
+                attempts++;
+                // Create a fresh controller for each attempt to avoid stale abort signals
+                const currentController = new AbortController();
+                setAbortController(currentController);
+                setError(null);
 
-            // --- STREAMING FETCH ---
-            const url = `${SUPABASE_URL}/functions/v1/identify-bird`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'apikey': SUPABASE_ANON_KEY,
-                    'x-client-info': 'supabase-js-expo',
-                },
-                signal: controller.signal,
-                body: JSON.stringify({
-                    image: imageB64,
-                    audio: audioB64,
-                    location: locationData?.locationName || null
-                }),
-            });
+                try {
+                    console.log(`Identification attempt ${attempts} initiating...`);
 
-            if (!response.ok) {
-                const { message, status } = await IdentificationService.parseError(response);
-                throw Object.assign(new Error(message), { status });
-            }
+                    // We use the project's Anon Key specifically for identification requests to ensure
+                    // maximum reliability and avoid gateway 401 issues with user session tokens.
+                    const token = SUPABASE_ANON_KEY;
+                    const url = `${SUPABASE_URL}/functions/v1/identify-bird`;
 
-            // Read the NDJSON stream line-by-line
-            const reader = response.body?.getReader();
-            if (!reader) throw new Error('No response body to read');
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'apikey': SUPABASE_ANON_KEY,
+                            'x-client-info': 'supabase-js-expo',
+                        },
+                        signal: currentController.signal,
+                        body: JSON.stringify({
+                            image: imageB64,
+                            audio: audioB64,
+                            location: locationData?.locationName || null
+                        }),
+                    });
 
-            let rawCandidates: any[] = [];
-            let finalBirds: BirdResult[] = [];
-            let rawAiResponse: string | null = null;
-
-            await IdentificationService.processStream(reader, (chunk) => {
-                switch (chunk.type) {
-                    case 'progress':
-                        console.log(`[Stream Progress] ${chunk.message}`);
-                        setProgressMessage(chunk.message);
-                        break;
-
-                    case 'candidates': {
-                        rawCandidates = chunk.data;
-                        rawAiResponse = chunk.raw_content || null;
-                        const initialBirds = rawCandidates.map((bird: any) =>
-                            IdentificationService.toBirdResult(bird)
-                        );
-                        finalBirds = initialBirds;
-                        setResult(initialBirds[0] || null);
-                        setCandidates(initialBirds);
-                        setEnrichedCandidates(initialBirds);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        console.log(`Received ${initialBirds.length} candidates`);
-                        break;
+                    if (!response.ok) {
+                        const { message, status } = await IdentificationService.parseError(response);
+                        throw Object.assign(new Error(message), { status });
                     }
 
-                    case 'media': {
-                        const { index, data: media } = chunk;
-                        setEnrichedCandidates(prev => {
-                            const next = [...prev];
-                            if (next[index]) {
-                                next[index] = IdentificationService.toBirdResult(next[index], media);
+                    // Read the NDJSON stream line-by-line
+                    const reader = response.body?.getReader();
+                    if (!reader) throw new Error('No response body to read');
+
+                    let rawCandidates: any[] = [];
+                    let finalBirds: BirdResult[] = [];
+                    let rawAiResponse: string | null = null;
+
+                    await IdentificationService.processStream(reader, (chunk) => {
+                        switch (chunk.type) {
+                            case 'progress':
+                                console.log(`[Stream Progress] ${chunk.message}`);
+                                setProgressMessage(chunk.message);
+                                break;
+
+                            case 'candidates': {
+                                receivedCandidates = true; // Transition Guard: once candidates arrive, we never retry
+                                rawCandidates = chunk.data;
+                                rawAiResponse = chunk.raw_content || null;
+                                const initialBirds = rawCandidates.map((bird: any) =>
+                                    IdentificationService.toBirdResult(bird)
+                                );
+                                finalBirds = initialBirds;
+                                setResult(initialBirds[0] || null);
+                                setCandidates(initialBirds);
+                                setEnrichedCandidates(initialBirds);
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                console.log(`Received ${initialBirds.length} candidates`);
+                                break;
                             }
-                            return next;
-                        });
 
-                        // Choose the best image for the hero section
-                        const heroUrl = media.inat_photos?.[0]?.url ||
-                            media.male_image_url ||
-                            media.wikipedia_image;
+                            case 'media': {
+                                const { index, data: media } = chunk;
+                                setEnrichedCandidates(prev => {
+                                    const next = [...prev];
+                                    if (next[index]) {
+                                        next[index] = IdentificationService.toBirdResult(next[index], media);
+                                    }
+                                    return next;
+                                });
 
-                        if (heroUrl && rawCandidates[index]) {
-                            setHeroImages(prev => ({
-                                ...prev,
-                                [rawCandidates[index].scientific_name]: heroUrl,
-                            }));
-                        }
+                                // Choose the best image for the hero section
+                                const heroUrl = media.inat_photos?.[0]?.url ||
+                                    media.male_image_url ||
+                                    media.wikipedia_image;
 
-                        if (index === 0) {
-                            setResult(prev => prev ? IdentificationService.toBirdResult(prev, media) : null);
-                        }
-                        console.log(`Received media for candidate ${index}: ${media.inat_photos?.length || 0} photos, fallback used: ${!media.inat_photos?.length && !!heroUrl}`);
-                        break;
-                    }
+                                if (heroUrl && rawCandidates[index]) {
+                                    setHeroImages(prev => ({
+                                        ...prev,
+                                        [rawCandidates[index].scientific_name]: heroUrl,
+                                    }));
+                                }
 
-                    case 'metadata': {
-                        const { index, data: metadata } = chunk;
-                        setEnrichedCandidates(prev => {
-                            const next = [...prev];
-                            if (next[index]) {
-                                next[index] = { ...next[index], ...metadata };
+                                if (index === 0) {
+                                    setResult(prev => prev ? IdentificationService.toBirdResult(prev, media) : null);
+                                }
+                                console.log(`Received media for candidate ${index}`);
+                                break;
                             }
-                            return next;
-                        });
 
-                        if (index === 0) {
-                            setResult(prev => prev ? { ...prev, ...metadata } : null);
+                            case 'metadata': {
+                                const { index, data: metadata } = chunk;
+                                setEnrichedCandidates(prev => {
+                                    const next = [...prev];
+                                    if (next[index]) {
+                                        next[index] = { ...next[index], ...metadata };
+                                    }
+                                    return next;
+                                });
+
+                                if (index === 0) {
+                                    setResult(prev => prev ? { ...prev, ...metadata } : null);
+                                }
+                                console.log(`Received metadata enrichment for candidate ${index}`);
+                                break;
+                            }
+
+                            case 'done':
+                                console.log(`Stream complete in ${chunk.duration}ms`);
+                                break;
+
+                            case 'error':
+                                console.error('Stream error from server:', chunk.message);
+                                setError(chunk.message || 'Identification failed. Please try again.');
+                                break;
                         }
-                        console.log(`Received metadata enrichment for candidate ${index}`);
-                        break;
+
+                        if (finalBirds.length > 0 && rawAiResponse) {
+                            finalBirds[0].metadata = {
+                                ...finalBirds[0].metadata,
+                                raw_ai_response: rawAiResponse
+                            };
+                        }
+                    }, currentController.signal);
+
+                    return finalBirds[0] || null;
+
+                } catch (error: any) {
+                    const errorMsg = error.message || '';
+                    const isManualAbort =
+                        error.name === 'AbortError' ||
+                        errorMsg.includes('canceled') ||
+                        errorMsg.includes('Canceled') ||
+                        errorMsg.includes('aborted') ||
+                        currentController.signal.aborted;
+
+                    if (isManualAbort) {
+                        console.log('Identification request cancelled by user');
+                        return undefined;
                     }
 
-                    case 'done':
-                        console.log(`Stream complete in ${chunk.duration}ms`);
-                        break;
+                    // Log the error for tracking
+                    console.warn(`Identification attempt ${attempts} failed:`, errorMsg);
 
-                    case 'error':
-                        console.error('Stream error from server:', chunk.message);
-                        setError(chunk.message || 'Identification failed. Please try again.');
-                        break;
+                    const status = error.status || error.context?.status || error.statusCode;
+                    const message = error.message || 'Identification failed';
+
+                    const isQuotaError = status === 429 ||
+                        message.includes('Quota') ||
+                        message.includes('RESOURCE_EXHAUSTED');
+
+                    const isTransient =
+                        !status || // Network errors often have no status
+                        status >= 500 || // Server errors
+                        errorMsg.includes('Network request failed') ||
+                        errorMsg.includes('connection was lost') ||
+                        errorMsg.includes('Stream interrupted');
+
+                    // RETRY DECISION
+                    // We only retry if:
+                    // 1. It's a transient error
+                    // 2. We haven't received candidates yet (Transition Guard)
+                    // 3. We haven't exhausted attempts
+                    // 4. It's NOT a quota error (429 is handled specifically)
+                    const shouldRetry = isTransient && !receivedCandidates && attempts < maxAttempts && !isQuotaError;
+
+                    if (shouldRetry) {
+                        const backoffTime = Math.pow(2, attempts - 1) * 1000;
+                        console.log(`Retriable error encountered. Silent retry ${attempts}/${maxAttempts} in ${backoffTime}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, backoffTime));
+                        continue; // Proceed to next attempt
+                    }
+
+                    // FINAL ERROR HANDLING (If not retrying)
+                    if (isQuotaError) {
+                        showAlert({
+                            title: 'AI is taking a nap 😴',
+                            message: "We've hit the Google Gemini free tier limit. Please wait about 30-60 seconds and try your capture again."
+                        });
+                    } else if (!receivedCandidates) {
+                        // Only set the error state if we haven't jumped to the results screen
+                        setError(message);
+                    } else {
+                        console.warn('Silent error after candidates received; ignoring to protect stream state.');
+                    }
+                    return null;
                 }
-
-                // If we have candidates and a raw response, attach it to the first bird
-                // This will be used in saveSighting
-                if (finalBirds.length > 0 && rawAiResponse) {
-                    finalBirds[0].metadata = {
-                        ...finalBirds[0].metadata,
-                        raw_ai_response: rawAiResponse
-                    };
-                }
-            }, controller.signal);
-
-
-            return finalBirds[0] || null;
-        } catch (error: any) {
-            const errorMsg = error.message || '';
-            const isManualAbort =
-                error.name === 'AbortError' ||
-                errorMsg.includes('canceled') ||
-                errorMsg.includes('Canceled') ||
-                errorMsg.includes('aborted') ||
-                controller.signal.aborted;
-
-            if (isManualAbort) {
-                console.log('Identification request cancelled by user');
-                return undefined;
             }
-
-            console.warn('Identification attempt status:', error.message || error);
-
-            const status = error.status || error.context?.status || error.statusCode;
-            const message = error.message || 'Identification failed';
-
-            const isQuotaError = status === 429 ||
-                message.includes('Quota') ||
-                message.includes('RESOURCE_EXHAUSTED');
-
-            if (isQuotaError) {
-                showAlert({
-                    title: 'AI is taking a nap 😴',
-                    message: "We've hit the Google Gemini free tier limit. Please wait about 30-60 seconds and try your capture again."
-                });
-            } else {
-                setError(message);
-            }
-            return null;
         } finally {
             setIsProcessing(false);
             setProgressMessage(null);

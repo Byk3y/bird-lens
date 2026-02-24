@@ -94,3 +94,46 @@ Deno.test("IdentificationService.parseError - handles JSON error", async () => {
     assertEquals(error.status, 429);
     assertEquals(error.message, "Too many requests");
 });
+
+Deno.test("IdentificationService.processStream - throws error if interrupted before candidates", async () => {
+    const callback = () => { };
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+        start(controller) {
+            controller.enqueue(encoder.encode('{"type":"progress","message":"Starting"}\n'));
+            // Throwing an error mid-stream
+            controller.error(new Error("Stream connection lost"));
+        }
+    });
+
+    const reader = stream.getReader();
+
+    try {
+        await IdentificationService.processStream(reader, callback);
+        throw new Error("Should have thrown a stream interruption error");
+    } catch (error: any) {
+        assertEquals(error.message, "Stream connection lost");
+    }
+});
+
+Deno.test("IdentificationService.processStream - does NOT throw if interrupted after candidates", async () => {
+    let errorCalled = false;
+    const callback = (chunk: any) => {
+        if (chunk.type === 'error') errorCalled = true;
+    };
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+        start(controller) {
+            controller.enqueue(encoder.encode('{"type":"candidates","data":[{"name":"Bird 1"}]}\n'));
+            controller.error(new Error("Network glitch after results"));
+        }
+    });
+
+    const reader = stream.getReader();
+
+    // This should NOT throw because results were already received
+    await IdentificationService.processStream(reader, callback);
+    assertEquals(errorCalled, false);
+});
