@@ -11,17 +11,20 @@ import {
 } from 'react-native';
 import {
     Gesture,
-    GestureDetector,
+    GestureDetector
 } from 'react-native-gesture-handler';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
-    withSpring,
+    withSpring
 } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
+import { useRouter } from 'expo-router';
+
 export const AIEnhancerCard: React.FC = () => {
+    const router = useRouter();
     const containerWidth = width * 0.38;
     const sliderPos = useSharedValue(0.6); // Start at 60% across (showing 60% blur, 40% sharp)
 
@@ -48,8 +51,12 @@ export const AIEnhancerCard: React.FC = () => {
         left: `${sliderPos.value * 100}%`,
     }));
 
+    const handleStartPress = () => {
+        router.push('/tutorial/from-blurry-to-brilliant');
+    };
+
     return (
-        <Pressable style={styles.enhancerCard}>
+        <Pressable style={styles.enhancerCard} onPress={handleStartPress}>
             <GestureDetector gesture={panGesture}>
                 <View style={styles.enhancerImageContainer}>
                     {/* Blurred Background (Before) */}
@@ -82,7 +89,7 @@ export const AIEnhancerCard: React.FC = () => {
             <View style={styles.enhancerContent}>
                 <Text style={styles.enhancerTitle}>Turn your phone into a pro camera</Text>
                 <View style={styles.startButton}>
-                    <Text style={styles.startText}>Start</Text>
+                    <Text style={styles.startText}>Learn More</Text>
                     <ChevronRight color={Colors.primary} size={16} />
                 </View>
             </View>

@@ -1,48 +1,71 @@
 import { Colors, Spacing } from '@/constants/theme';
+import { useTutorials } from '@/hooks/useTutorials';
+import { queryClient } from '@/lib/queryClient';
+import { supabase } from '@/lib/supabase';
+import { Tutorial } from '@/types/tutorial';
+import { useRouter } from 'expo-router';
 import { Compass } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Image,
+    ActivityIndicator,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     View,
 } from 'react-native';
+import { TutorialCard } from './TutorialCard';
 
-const EXPLORE_TAGS = ['Poultry', 'Attracting Birds', 'Hummingbirds', 'Annual C...'];
-
-const EXPLORE_ITEMS = [
-    {
-        id: '1',
-        title: 'How to Identify Different Breeds of Chickens',
-        tag: 'Poultry',
-        image: require('@/assets/images/explore_bird.jpg'),
-    },
-    {
-        id: '2',
-        title: 'The Secret Life of Golden Pheasants',
-        tag: 'Attracting Birds',
-        image: require('@/assets/images/golden_pheasant.webp'),
-    },
-    {
-        id: '3',
-        title: 'Perfect Shots: Bird Photography Tips',
-        tag: 'Hummingbirds',
-        image: require('@/assets/images/tip_good.jpg'),
-    },
-    {
-        id: '4',
-        title: 'Essential Gear for Bird Watching',
-        tag: 'Annual C...',
-        image: require('@/assets/images/tip_far.jpg'),
-    }
-];
+const EXPLORE_TAGS = ['Basics', 'Backyard', 'Feeding', 'Photography', 'Sounds', 'Seasonal'];
 
 export const ExploreSection: React.FC = () => {
-    const [selectedTag, setSelectedTag] = useState('Poultry');
+    const router = useRouter();
+    const [selectedTag, setSelectedTag] = useState('Basics');
 
-    const filteredItems = EXPLORE_ITEMS.filter(item => item.tag === selectedTag);
+    // Using TanStack Query for the list
+    const { data: tutorials = [], isLoading: loading } = useTutorials();
+
+    // Prefetching logic: Pre-warm the cache for tutorials as they become relevant
+    useEffect(() => {
+        if (tutorials.length > 0) {
+            // Prefetch the top 3 latest tutorials immediately for "Instant Open"
+            tutorials.slice(0, 3).forEach(tutorial => {
+                queryClient.prefetchQuery({
+                    queryKey: ['tutorial', tutorial.slug],
+                    queryFn: async () => {
+                        const { data, error } = await supabase
+                            .from('tutorials')
+                            .select('*')
+                            .eq('slug', tutorial.slug)
+                            .single();
+                        if (error) throw error;
+                        return data as Tutorial;
+                    },
+                    staleTime: 1000 * 60 * 10, // 10 minutes
+                });
+            });
+        }
+    }, [tutorials]);
+
+    const filteredItems = tutorials.filter(item => item.category === selectedTag);
+
+    const handleTutorialPress = (tutorial: Tutorial) => {
+        // Optional: Ensure it's prefetched on tap too in case it wasn't in top 3
+        queryClient.prefetchQuery({
+            queryKey: ['tutorial', tutorial.slug],
+            queryFn: async () => {
+                const { data, error } = await supabase
+                    .from('tutorials')
+                    .select('*')
+                    .eq('slug', tutorial.slug)
+                    .single();
+                if (error) throw error;
+                return data as Tutorial;
+            },
+        });
+
+        router.push(`/tutorial/${tutorial.slug}`);
+    };
 
     return (
         <View style={styles.section}>
@@ -75,18 +98,23 @@ export const ExploreSection: React.FC = () => {
             </ScrollView>
 
             <View style={styles.cardsContainer}>
-                {filteredItems.map((item) => (
-                    <Pressable key={item.id} style={styles.exploreCard}>
-                        <Image
-                            source={item.image}
-                            style={styles.exploreImage}
-                            resizeMode="cover"
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator color={Colors.primary} />
+                    </View>
+                ) : filteredItems.length > 0 ? (
+                    filteredItems.map((item) => (
+                        <TutorialCard
+                            key={item.id}
+                            tutorial={item}
+                            onPress={handleTutorialPress}
                         />
-                        <View style={styles.exploreContent}>
-                            <Text style={styles.exploreTitle} numberOfLines={1}>{item.title}</Text>
-                        </View>
-                    </Pressable>
-                ))}
+                    ))
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>No tutorials found in this category yet.</Text>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -140,32 +168,24 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontWeight: '600',
     },
-    exploreCard: {
-        width: '100%',
-        borderRadius: 12,
-        overflow: 'hidden',
-        backgroundColor: Colors.white,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 12,
-        elevation: 2,
+    loadingContainer: {
+        paddingVertical: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyContainer: {
+        paddingVertical: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f8fafc',
+        borderRadius: 16,
+        borderStyle: 'dashed',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
+        borderColor: '#e2e8f0',
     },
-    exploreImage: {
-        width: '100%',
-        height: 205,
-    },
-    exploreContent: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    exploreTitle: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: '#334155',
-        letterSpacing: -0.3,
-        lineHeight: 22,
+    emptyText: {
+        color: '#64748b',
+        fontSize: 15,
+        fontWeight: '500',
     },
 });

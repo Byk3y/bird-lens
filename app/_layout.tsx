@@ -14,6 +14,8 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { initAudioConfig } from '@/lib/audioConfig';
 import { AuthProvider } from '@/lib/auth';
 import { onboardingState } from '@/lib/onboardingState';
+import { asyncStoragePersister, queryClient } from '@/lib/queryClient';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -120,29 +122,35 @@ function RootLayoutNav() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <AlertProvider>
-          <ThemeProvider value={DefaultTheme}>
-            <Stack>
-              <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-              <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
-              <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
-              <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
-              <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-              <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-              <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
-              <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
-              <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
-              <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            </Stack>
-          </ThemeProvider>
-        </AlertProvider>
-      </AuthProvider>
-    </GestureHandlerRootView>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: asyncStoragePersister }}
+    >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AuthProvider>
+          <AlertProvider>
+            <ThemeProvider value={DefaultTheme}>
+              <Stack>
+                <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              </Stack>
+            </ThemeProvider>
+          </AlertProvider>
+        </AuthProvider>
+      </GestureHandlerRootView>
+    </PersistQueryClientProvider>
   );
 }
