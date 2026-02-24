@@ -224,15 +224,11 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.4)',
     },
     keyboardAvoidingView: {
-        ...StyleSheet.absoluteFillObject,
+        flex: 1,
         justifyContent: 'flex-end',
     },
     sheetContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        justifyContent: 'flex-end',
+        width: '100%',
     },
     sheet: {
         backgroundColor: '#FFFFFF',
