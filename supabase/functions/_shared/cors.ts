@@ -1,5 +1,5 @@
 export const corsHeaders = {
-    'Access-Control-Allow-Origin': 'https://zupcpodceganwtzztclr.supabase.co',
+    'Access-Control-Allow-Origin': Deno.env.get("SUPABASE_URL") || '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',

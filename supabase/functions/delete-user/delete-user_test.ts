@@ -22,5 +22,8 @@ Deno.test("delete-user: OPTIONS request should return CORS headers", async () =>
     });
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Access-Control-Allow-Origin"), "https://zupcpodceganwtzztclr.supabase.co");
+    // In local testing, SUPABASE_URL might not be set in Deno.env if not using supabase start
+    // or it might point to localhost. We check if it matches the env or falls back to wildcard if provided.
+    const expectedOrigin = Deno.env.get("SUPABASE_URL") || "*";
+    assertEquals(res.headers.get("Access-Control-Allow-Origin"), expectedOrigin);
 });

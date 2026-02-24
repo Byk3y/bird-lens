@@ -1,6 +1,15 @@
+import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 
-const SUPABASE_URL = 'https://zupcpodceganwtzztclr.supabase.co';
+// Load environment variables from .env file
+dotenv.config();
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+if (!SUPABASE_URL) {
+    console.error('Error: SUPABASE_URL not found in environment variables.');
+    process.exit(1);
+}
+
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/identify-bird`;
 const TEST_IMAGE_URL = 'https://inaturalist-open-data.s3.amazonaws.com/photos/95545/medium.jpg';
 
