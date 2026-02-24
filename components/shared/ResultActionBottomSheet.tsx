@@ -120,7 +120,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
     };
 
     const getPlaceholder = () => {
-        if (formType === 'suggestion') return 'Help us make Bird Lens better...';
+        if (formType === 'suggestion') return 'Help us make BirdSnap better...';
         if (sectionContext) {
             return `What is wrong with the ${sectionContext.toLowerCase()} section?`;
         }
@@ -252,7 +252,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
 
                                             <TouchableOpacity disabled={!feedbackText.trim() || isSubmitting} onPress={handleSubmitForm}>
                                                 <LinearGradient
-                                                    colors={(feedbackText.trim() && !isSubmitting) ? ['#ECA392', '#F3C79B'] : ['#E2E8F0', '#E2E8F0']}
+                                                    colors={(feedbackText.trim() && !isSubmitting) ? [Colors.primary, Colors.accent] : ['#E2E8F0', '#E2E8F0']}
                                                     start={{ x: 0, y: 0 }}
                                                     end={{ x: 1, y: 0 }}
                                                     style={styles.submitButton}
@@ -276,7 +276,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                         >
                                             <CheckCircle2 size={64} color={Colors.success} strokeWidth={1.5} />
                                             <Text style={styles.successTitle}>Thank You!</Text>
-                                            <Text style={styles.successSubtitle}>Your feedback helps us improve Bird Lens.</Text>
+                                            <Text style={styles.successSubtitle}>Your feedback helps us improve BirdSnap.</Text>
                                         </MotiView>
                                     )}
 
