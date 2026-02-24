@@ -6,6 +6,7 @@ import {
     Activity,
     ChevronDown,
     ChevronUp,
+    FileText,
     HelpCircle,
     Image as ImageIcon,
     Lightbulb,
@@ -67,6 +68,8 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
     const [actionSheetVisible, setActionSheetVisible] = useState(false);
+    const [activeSection, setActiveSection] = useState<string | null>(null);
+    const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
 
     // Track if any media (photos/sounds) has arrived for loading states
     const isMedialoaded = (inatPhotos && inatPhotos.length > 0) || (sounds && sounds.length > 0) || (bird.inat_photos && bird.inat_photos.length > 0);
@@ -91,7 +94,11 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             <ProfileHeader
                 bird={bird}
                 onPronounce={onPlaySound}
-                onMorePress={() => setActionSheetVisible(true)}
+                onMorePress={() => {
+                    setActiveSection('Header');
+                    setActiveMediaUrl(null);
+                    setActionSheetVisible(true);
+                }}
             />
 
             <View style={styles.gutter} />
@@ -104,7 +111,13 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <Activity size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>Sounds</Text>
                         </View>
-                        <TouchableOpacity onPress={(() => setActionSheetVisible(true))}>
+                        <TouchableOpacity onPress={(() => {
+                            setActiveSection('Sounds');
+                            // If a sound is active, use its URL
+                            const activeSound = activeSoundId ? (sounds.find(s => s.id === activeSoundId) || bird.sounds?.find(s => s.id === activeSoundId)) : null;
+                            setActiveMediaUrl(activeSound?.url || null);
+                            setActionSheetVisible(true);
+                        })}>
                             <MoreHorizontal size={20} color="#999" />
                         </TouchableOpacity>
                     </View>
@@ -199,7 +212,14 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <ImageIcon size={22} color="#1A1A1A" />
                             <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
                         </View>
-                        <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                        <TouchableOpacity onPress={() => {
+                            setActiveSection('Images');
+                            // Use first display photo as context
+                            const firstPhoto = displayPhotos[0];
+                            const photoUrl = typeof firstPhoto === 'string' ? firstPhoto : (firstPhoto as INaturalistPhoto)?.url;
+                            setActiveMediaUrl(photoUrl || null);
+                            setActionSheetVisible(true);
+                        }}>
                             <MoreHorizontal size={20} color="#999" />
                         </TouchableOpacity>
                     </View>
@@ -257,7 +277,11 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Notebook size={22} color="#1A1A1A" />
                         <Text style={styles.sectionTitle}>Birding Tips</Text>
                     </View>
-                    <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                    <TouchableOpacity onPress={() => {
+                        setActiveSection('Tips');
+                        setActiveMediaUrl(null);
+                        setActionSheetVisible(true);
+                    }}>
                         <MoreHorizontal size={20} color="#999" />
                     </TouchableOpacity>
                 </View>
@@ -294,7 +318,12 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <Activity size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>Sounds</Text>
                         </View>
-                        <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                        <TouchableOpacity onPress={() => {
+                            setActiveSection('Sounds');
+                            const activeSound = activeSoundId ? (sounds.find(s => s.id === activeSoundId) || bird.sounds?.find(s => s.id === activeSoundId)) : null;
+                            setActiveMediaUrl(activeSound?.url || null);
+                            setActionSheetVisible(true);
+                        }}>
                             <MoreHorizontal size={20} color="#999" />
                         </TouchableOpacity>
                     </View>
@@ -392,7 +421,11 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <HelpCircle size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>How to identify it?</Text>
                         </View>
-                        <TouchableOpacity onPress={() => setActionSheetVisible(true)}>
+                        <TouchableOpacity onPress={() => {
+                            setActiveSection('Identification');
+                            setActiveMediaUrl(null);
+                            setActionSheetVisible(true);
+                        }}>
                             <MoreHorizontal size={20} color="#999" />
                         </TouchableOpacity>
                     </View>
@@ -424,6 +457,19 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             <View style={styles.section}>
                 {bird.description ? (
                     <>
+                        <View style={[styles.sectionHeaderRow, { marginBottom: 8 }]}>
+                            <View style={styles.sectionTitleLeft}>
+                                <FileText size={22} color="#1A1A1A" />
+                                <Text style={styles.sectionTitle}>Description</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => {
+                                setActiveSection('Description');
+                                setActiveMediaUrl(null);
+                                setActionSheetVisible(true);
+                            }}>
+                                <MoreHorizontal size={20} color="#999" />
+                            </TouchableOpacity>
+                        </View>
                         <Text
                             style={styles.descriptionText}
                             numberOfLines={isExpanded ? 0 : 5}
@@ -456,19 +502,35 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             </View>
 
             {/* Key Facts Section */}
-            <KeyFactsSection bird={bird} />
+            <KeyFactsSection
+                bird={bird}
+                onMorePress={() => {
+                    setActiveSection('Key Facts');
+                    setActiveMediaUrl(null);
+                    setActionSheetVisible(true);
+                }}
+            />
 
-            <ScientificClassification bird={bird} onMorePress={() => setActionSheetVisible(true)} />
+            <ScientificClassification
+                bird={bird}
+                onMorePress={() => {
+                    setActiveSection('Classification');
+                    setActiveMediaUrl(null);
+                    setActionSheetVisible(true);
+                }}
+            />
 
             {/* Bottom Sheet Context Menu */}
             <ResultActionBottomSheet
                 visible={actionSheetVisible}
                 onClose={() => setActionSheetVisible(false)}
                 bird={bird}
+                sectionContext={activeSection}
+                activeMediaUrl={activeMediaUrl}
             />
 
             <View style={{ height: 40 }} />
-        </View>
+        </View >
     );
 };
 

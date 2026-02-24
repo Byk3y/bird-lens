@@ -1,3 +1,5 @@
+import { useAuth } from '@/lib/auth';
+import { submitFeedback } from '@/lib/feedback';
 import { BirdResult } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -5,6 +7,7 @@ import { CheckCircle2, ChevronLeft, Edit3, FileWarning, Heart, ScanEye } from 'l
 import { AnimatePresence, MotiView } from 'moti';
 import React from 'react';
 import {
+    ActivityIndicator,
     Dimensions,
     KeyboardAvoidingView,
     Modal,
@@ -26,16 +29,22 @@ interface ResultActionBottomSheetProps {
     visible: boolean;
     onClose: () => void;
     bird: BirdResult;
+    sectionContext?: string | null;
+    activeMediaUrl?: string | null;
 }
 
 export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = ({
     visible,
     onClose,
     bird,
+    sectionContext,
+    activeMediaUrl,
 }) => {
+    const { user } = useAuth();
     const [view, setView] = React.useState<ViewState>('menu');
     const [formType, setFormType] = React.useState<FormType>(null);
     const [feedbackText, setFeedbackText] = React.useState('');
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const [isAnimatingOut, setIsAnimatingOut] = React.useState(false);
 
@@ -52,12 +61,29 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
         }
     }, [visible]);
 
-    const handleQuickAction = (type: 'like' | 'incorrect') => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setView('success');
-        setTimeout(() => {
-            onClose();
-        }, 1500); // Close after 1.5s
+    const handleQuickAction = async (type: 'like' | 'incorrect_id') => {
+        setIsSubmitting(true);
+        try {
+            await submitFeedback({
+                user_id: user?.id,
+                scientific_name: bird.scientific_name,
+                feedback_type: type,
+                section_context: sectionContext,
+                media_url: activeMediaUrl,
+                app_metadata: {
+                    confidence: bird.confidence,
+                }
+            });
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setView('success');
+            setTimeout(() => {
+                onClose();
+            }, 1500);
+        } catch (error) {
+            // Error handled in utility, could show local error if needed
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleOpenForm = (type: FormType) => {
@@ -65,13 +91,40 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
         setView('form');
     };
 
-    const handleSubmitForm = () => {
-        if (!feedbackText.trim()) return;
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setView('success');
-        setTimeout(() => {
-            onClose();
-        }, 1500);
+    const handleSubmitForm = async () => {
+        if (!feedbackText.trim() || isSubmitting) return;
+
+        setIsSubmitting(true);
+        try {
+            await submitFeedback({
+                user_id: user?.id,
+                scientific_name: bird.scientific_name,
+                feedback_type: formType === 'error' ? 'content_error' : 'suggestion',
+                section_context: sectionContext,
+                user_message: feedbackText.trim(),
+                media_url: activeMediaUrl,
+                app_metadata: {
+                    confidence: bird.confidence,
+                }
+            });
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setView('success');
+            setTimeout(() => {
+                onClose();
+            }, 1500);
+        } catch (error) {
+            // Error handling
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const getPlaceholder = () => {
+        if (formType === 'suggestion') return 'Help us make Bird Lens better...';
+        if (sectionContext) {
+            return `What is wrong with the ${sectionContext.toLowerCase()} section?`;
+        }
+        return 'Please describe the issue...';
     };
     return (
         <Modal
@@ -118,14 +171,23 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                             transition={{ type: 'timing', duration: 250 }}
                                         >
                                             {/* Options */}
-                                            <TouchableOpacity style={styles.optionRow} onPress={() => handleQuickAction('like')}>
+                                            <TouchableOpacity
+                                                style={styles.optionRow}
+                                                onPress={() => handleQuickAction('like')}
+                                                disabled={isSubmitting}
+                                            >
                                                 <Heart size={24} color={Colors.text} strokeWidth={1.5} />
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>I Like This Content</Text>
                                                 </View>
+                                                {isSubmitting && <ActivityIndicator size="small" color={Colors.textTertiary} />}
                                             </TouchableOpacity>
 
-                                            <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('error')}>
+                                            <TouchableOpacity
+                                                style={styles.optionRow}
+                                                onPress={() => handleOpenForm('error')}
+                                                disabled={isSubmitting}
+                                            >
                                                 <FileWarning size={24} color={Colors.text} strokeWidth={1.5} />
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>Error in Content</Text>
@@ -134,11 +196,16 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 <Text style={styles.chevron}>›</Text>
                                             </TouchableOpacity>
 
-                                            <TouchableOpacity style={styles.optionRow} onPress={() => handleQuickAction('incorrect')}>
+                                            <TouchableOpacity
+                                                style={styles.optionRow}
+                                                onPress={() => handleQuickAction('incorrect_id')}
+                                                disabled={isSubmitting}
+                                            >
                                                 <ScanEye size={24} color={Colors.text} strokeWidth={1.5} />
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>Incorrect Identification</Text>
                                                 </View>
+                                                {isSubmitting && <ActivityIndicator size="small" color={Colors.textTertiary} />}
                                             </TouchableOpacity>
 
                                             <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('suggestion')}>
@@ -173,23 +240,28 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                             <View style={styles.inputContainer}>
                                                 <TextInput
                                                     style={styles.textInput}
-                                                    placeholder="Please describe the issue..."
+                                                    placeholder={getPlaceholder()}
                                                     placeholderTextColor={Colors.textTertiary}
                                                     multiline
                                                     textAlignVertical="top"
                                                     value={feedbackText}
                                                     onChangeText={setFeedbackText}
+                                                    editable={!isSubmitting}
                                                 />
                                             </View>
 
-                                            <TouchableOpacity disabled={!feedbackText.trim()} onPress={handleSubmitForm}>
+                                            <TouchableOpacity disabled={!feedbackText.trim() || isSubmitting} onPress={handleSubmitForm}>
                                                 <LinearGradient
-                                                    colors={feedbackText.trim() ? ['#ECA392', '#F3C79B'] : ['#E2E8F0', '#E2E8F0']}
+                                                    colors={(feedbackText.trim() && !isSubmitting) ? ['#ECA392', '#F3C79B'] : ['#E2E8F0', '#E2E8F0']}
                                                     start={{ x: 0, y: 0 }}
                                                     end={{ x: 1, y: 0 }}
                                                     style={styles.submitButton}
                                                 >
-                                                    <Text style={[styles.submitButtonText, !feedbackText.trim() && { color: Colors.textTertiary }]}>Submit</Text>
+                                                    {isSubmitting ? (
+                                                        <ActivityIndicator color={Colors.white} />
+                                                    ) : (
+                                                        <Text style={[styles.submitButtonText, !feedbackText.trim() && { color: Colors.textTertiary }]}>Submit</Text>
+                                                    )}
                                                 </LinearGradient>
                                             </TouchableOpacity>
                                         </MotiView>

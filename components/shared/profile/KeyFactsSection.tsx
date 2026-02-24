@@ -6,6 +6,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface KeyFactsSectionProps {
     bird: BirdResult;
+    onMorePress?: () => void;
 }
 
 const BIRD_COLOR_MAP: Record<string, string> = {
@@ -30,7 +31,7 @@ const getBirdColor = (color: string) => {
     return BIRD_COLOR_MAP[color] || '#E2E8F0';
 };
 
-export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird }) => {
+export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird, onMorePress }) => {
     const [isFactsExpanded, setIsFactsExpanded] = useState(false);
 
     if (!bird.key_facts) return null;
@@ -64,7 +65,11 @@ export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird }) => {
                     <FileText size={22} color="#1A1A1A" />
                     <Text style={styles.sectionTitle}>Key Facts</Text>
                 </View>
-                <MoreHorizontal size={20} color="#999" />
+                {onMorePress && (
+                    <TouchableOpacity onPress={onMorePress}>
+                        <MoreHorizontal size={20} color="#999" />
+                    </TouchableOpacity>
+                )}
             </View>
 
             <View style={(!isFactsExpanded && showLearnMore) ? { maxHeight: collapsedMaxHeight, overflow: 'hidden' } : undefined}>
