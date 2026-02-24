@@ -2,15 +2,18 @@ import { useAlert } from '@/components/common/AlertProvider';
 import { Links } from '@/constants/Links';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { calculatePasswordStrength, debounce } from '@/lib/utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import {
+    AlertCircle,
     ArrowLeft,
+    CircleCheck as Check,
     Eye,
     EyeOff
 } from 'lucide-react-native';
-import { AnimatePresence, MotiView } from 'moti';
-import React, { useRef, useState } from 'react';
+import { AnimatePresence, MotiText, MotiView } from 'moti';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -79,12 +82,23 @@ const validateEmail = (email: string): boolean => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
-const validatePassword = (pwd: string): string | null => {
-    if (pwd.length < 8) return 'Password must be at least 8 characters.';
-    if (!/[A-Z]/.test(pwd)) return 'Password must include an uppercase letter.';
-    if (!/[0-9]/.test(pwd)) return 'Password must include a number.';
-    return null;
-};
+const PasswordRequirementItem = ({ label, met, show }: { label: string; met: boolean; show: boolean }) => (
+    <MotiView
+        animate={{
+            opacity: show ? 1 : 0,
+            height: show ? 'auto' : 0,
+            marginBottom: show ? 4 : 0
+        }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+    >
+        {met ? (
+            <Check size={14} color={Colors.success || '#34C759'} />
+        ) : (
+            <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: Colors.textTertiary }} />
+        )}
+        <Text style={{ fontSize: 12, color: met ? Colors.text : Colors.textTertiary }}>{label}</Text>
+    </MotiView>
+);
 
 export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModalProps) => {
     const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
@@ -93,15 +107,67 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    // Validation states
+    const [emailError, setEmailError] = useState<string | null>(null);
+    const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+    const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState<ReturnType<typeof calculatePasswordStrength> | null>(null);
+
     // Rate Limiting States
     const [failedAttempts, setFailedAttempts] = useState(0);
     const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
-    const { signIn, signUp, resetPassword } = useAuth();
+    const { signIn, signUp, resetPassword, checkEmailAvailability } = useAuth();
     const { showAlert } = useAlert();
 
     const emailRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
+
+    // Debounced email availability check
+    const checkEmail = useCallback(
+        debounce(async (emailVal: string) => {
+            if (!validateEmail(emailVal) || mode === 'login') {
+                setEmailAvailable(null);
+                setIsCheckingEmail(false);
+                return;
+            }
+
+            const { exists, error } = await checkEmailAvailability(emailVal);
+            if (!error) {
+                setEmailAvailable(!exists);
+                if (exists) {
+                    setEmailError('This email is already registered.');
+                } else {
+                    setEmailError(null);
+                }
+            }
+            setIsCheckingEmail(false);
+        }, 500),
+        [mode, checkEmailAvailability]
+    );
+
+    useEffect(() => {
+        if (mode === 'signup' && email) {
+            if (validateEmail(email)) {
+                setIsCheckingEmail(true);
+                checkEmail(email);
+            } else {
+                setEmailError('Please enter a valid email.');
+                setEmailAvailable(null);
+            }
+        } else {
+            setEmailError(null);
+            setEmailAvailable(null);
+        }
+    }, [email, mode, checkEmail]);
+
+    useEffect(() => {
+        if (mode === 'signup') {
+            setPasswordStrength(calculatePasswordStrength(password));
+        } else {
+            setPasswordStrength(null);
+        }
+    }, [password, mode]);
 
     const handleSubmit = async () => {
         if (lockoutUntil && Date.now() < lockoutUntil) {
@@ -133,14 +199,8 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
         }
 
         if (mode === 'signup') {
-            const pwdError = validatePassword(trimmedPassword);
-            if (pwdError) {
-                showAlert({
-                    title: 'Weak Password',
-                    message: pwdError
-                });
-                return;
-            }
+            if (emailError || emailAvailable === false) return;
+            if (passwordStrength && passwordStrength.score < 3) return;
         }
 
         setIsLoading(true);
@@ -267,49 +327,107 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                             <View style={styles.mainContent}>
                                                 {/* Branding */}
                                                 <View style={styles.branding}>
-                                                    <Text style={styles.brandTitle}>Birdsnap</Text>
+                                                    <Text style={styles.brandTitle}>BirdSnap</Text>
                                                 </View>
 
                                                 {/* Form */}
                                                 <View style={styles.form}>
-                                                    <Pressable
-                                                        style={styles.inputWrapper}
-                                                        onPress={() => emailRef.current?.focus()}
-                                                    >
-                                                        <TextInput
-                                                            ref={emailRef}
-                                                            placeholder="Email Address"
-                                                            placeholderTextColor={Colors.textTertiary}
-                                                            style={styles.lineInput}
-                                                            value={email}
-                                                            onChangeText={setEmail}
-                                                            autoCapitalize="none"
-                                                            keyboardType="email-address"
-                                                        />
-                                                    </Pressable>
-
-                                                    <Pressable
-                                                        style={styles.inputWrapper}
-                                                        onPress={() => passwordRef.current?.focus()}
-                                                    >
-                                                        <View style={styles.passwordContainer}>
-                                                            <TextInput
-                                                                ref={passwordRef}
-                                                                placeholder="Password"
-                                                                placeholderTextColor={Colors.textTertiary}
-                                                                style={[styles.lineInput, { flex: 1 }]}
-                                                                secureTextEntry={!showPassword}
-                                                                value={password}
-                                                                onChangeText={setPassword}
-                                                            />
-                                                            <Pressable
-                                                                onPress={() => setShowPassword(!showPassword)}
-                                                                style={styles.eyeIcon}
+                                                    <View>
+                                                        <Pressable
+                                                            style={[
+                                                                styles.inputWrapper,
+                                                                emailError ? styles.inputWrapperError : (emailAvailable ? styles.inputWrapperSuccess : null)
+                                                            ]}
+                                                            onPress={() => emailRef.current?.focus()}
+                                                        >
+                                                            <View style={styles.inputRow}>
+                                                                <TextInput
+                                                                    ref={emailRef}
+                                                                    placeholder="Email Address"
+                                                                    placeholderTextColor={Colors.textTertiary}
+                                                                    style={styles.lineInput}
+                                                                    value={email}
+                                                                    onChangeText={setEmail}
+                                                                    autoCapitalize="none"
+                                                                    keyboardType="email-address"
+                                                                />
+                                                                {isCheckingEmail && <ActivityIndicator size="small" color={Colors.primary} />}
+                                                                {!isCheckingEmail && emailAvailable && <Check size={18} color={Colors.success || '#34C759'} />}
+                                                                {!isCheckingEmail && emailError && <AlertCircle size={18} color="#FF3B30" />}
+                                                            </View>
+                                                        </Pressable>
+                                                        {emailError && (
+                                                            <MotiText
+                                                                from={{ opacity: 0, translateY: -5 }}
+                                                                animate={{ opacity: 1, translateY: 0 }}
+                                                                style={styles.errorText}
                                                             >
-                                                                {showPassword ? <EyeOff color={Colors.textTertiary} size={18} /> : <Eye color={Colors.textTertiary} size={18} />}
-                                                            </Pressable>
-                                                        </View>
-                                                    </Pressable>
+                                                                {emailError}
+                                                            </MotiText>
+                                                        )}
+                                                    </View>
+
+                                                    <View>
+                                                        <Pressable
+                                                            style={[
+                                                                styles.inputWrapper,
+                                                                mode === 'signup' && passwordStrength && passwordStrength.score < 2 && password.length > 0 ? styles.inputWrapperError : null
+                                                            ]}
+                                                            onPress={() => passwordRef.current?.focus()}
+                                                        >
+                                                            <View style={styles.passwordContainer}>
+                                                                <TextInput
+                                                                    ref={passwordRef}
+                                                                    placeholder="Password"
+                                                                    placeholderTextColor={Colors.textTertiary}
+                                                                    style={[styles.lineInput, { flex: 1 }]}
+                                                                    secureTextEntry={!showPassword}
+                                                                    value={password}
+                                                                    onChangeText={setPassword}
+                                                                />
+                                                                <Pressable
+                                                                    onPress={() => setShowPassword(!showPassword)}
+                                                                    style={styles.eyeIcon}
+                                                                >
+                                                                    {showPassword ? <EyeOff color={Colors.textTertiary} size={18} /> : <Eye color={Colors.textTertiary} size={18} />}
+                                                                </Pressable>
+                                                            </View>
+                                                        </Pressable>
+
+                                                        {mode === 'signup' && password.length > 0 && (
+                                                            <MotiView
+                                                                from={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                style={styles.strengthContainer}
+                                                            >
+                                                                <View style={styles.strengthBarRow}>
+                                                                    <View style={styles.strengthBarBg}>
+                                                                        <MotiView
+                                                                            animate={{
+                                                                                width: `${(passwordStrength?.score ?? 0) * 25}%`,
+                                                                                backgroundColor: passwordStrength?.color
+                                                                            }}
+                                                                            style={styles.strengthBarFill}
+                                                                        />
+                                                                    </View>
+                                                                    <Text style={[styles.strengthLabel, { color: passwordStrength?.color }]}>
+                                                                        {passwordStrength?.label}
+                                                                    </Text>
+                                                                </View>
+
+                                                                <View style={styles.requirementsGrid}>
+                                                                    {passwordStrength?.requirements.map((req) => (
+                                                                        <PasswordRequirementItem
+                                                                            key={req.id}
+                                                                            label={req.label}
+                                                                            met={req.met}
+                                                                            show={true}
+                                                                        />
+                                                                    ))}
+                                                                </View>
+                                                            </MotiView>
+                                                        )}
+                                                    </View>
 
                                                     {mode === 'login' && (
                                                         <Pressable style={styles.forgotBtn} onPress={handleForgotPassword}>
@@ -319,10 +437,11 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
 
                                                     <Pressable
                                                         onPress={handleSubmit}
-                                                        disabled={isLoading}
+                                                        disabled={isLoading || (mode === 'signup' && (!!emailError || !email || !password || (passwordStrength?.score ?? 0) < 3))}
                                                         style={({ pressed }) => [
                                                             styles.submitBtnContainer,
-                                                            pressed && { opacity: 0.9 }
+                                                            (pressed || isLoading) && { opacity: 0.8 },
+                                                            (mode === 'signup' && (!!emailError || !email || !password || (passwordStrength?.score ?? 0) < 3)) && { opacity: 0.5 }
                                                         ]}
                                                     >
                                                         <LinearGradient
@@ -356,25 +475,26 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                             </View>
                                         </Pressable>
 
-                                        {/* Footer Legal */}
-                                        <View style={styles.legalFooter}>
-                                            <Text style={styles.legalText}>
-                                                By joining Birdsnap, you acknowledge that you have read and agree to our{' '}
-                                                <Text
-                                                    style={styles.legalLink}
-                                                    onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
-                                                >
-                                                    Terms of Use
-                                                </Text> and{' '}
-                                                <Text
-                                                    style={styles.legalLink}
-                                                    onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
-                                                >
-                                                    Privacy Policy
-                                                </Text>
-                                            </Text>
-                                        </View>
                                     </KeyboardAvoidingView>
+
+                                    {/* Footer Legal */}
+                                    <View style={styles.legalFooter}>
+                                        <Text style={styles.legalText}>
+                                            By joining BirdSnap, you acknowledge that you have read and agree to our{' '}
+                                            <Text
+                                                style={styles.legalLink}
+                                                onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
+                                            >
+                                                Terms of Use
+                                            </Text> and{' '}
+                                            <Text
+                                                style={styles.legalLink}
+                                                onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
+                                            >
+                                                Privacy Policy
+                                            </Text>
+                                        </Text>
+                                    </View>
                                 </SafeAreaView>
                             </SwipeToClose>
                         </MotiView>
@@ -418,15 +538,15 @@ const styles = StyleSheet.create({
     },
     mainContent: {
         flex: 1,
-        paddingTop: height * 0.05,
+        paddingTop: height * 0.02,
     },
     branding: {
         alignItems: 'center',
-        marginBottom: height * 0.08,
+        marginBottom: height * 0.04,
     },
     brandTitle: {
-        fontSize: 32,
-        fontWeight: '800',
+        fontSize: 28,
+        fontFamily: 'PoppinsBold',
         color: Colors.primary,
         letterSpacing: -1,
     },
@@ -439,7 +559,55 @@ const styles = StyleSheet.create({
         height: 50,
         justifyContent: 'center',
     },
+    inputWrapperError: {
+        borderBottomColor: '#FF3B30',
+    },
+    inputWrapperSuccess: {
+        borderBottomColor: '#34C759',
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    errorText: {
+        color: '#FF3B30',
+        fontSize: 12,
+        marginTop: 4,
+        fontWeight: '500',
+    },
+    strengthContainer: {
+        marginTop: 8,
+    },
+    strengthBarRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 8,
+    },
+    strengthBarBg: {
+        flex: 1,
+        height: 4,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    strengthBarFill: {
+        height: '100%',
+        borderRadius: 2,
+    },
+    strengthLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        width: 50,
+    },
+    requirementsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
     lineInput: {
+        flex: 1,
         fontSize: 18,
         color: Colors.text,
         fontWeight: '400',

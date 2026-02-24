@@ -16,6 +16,7 @@ interface AuthContextType {
     signOut: () => Promise<void>;
     deleteAccount: () => Promise<{ error: any }>;
     resetPassword: (email: string) => Promise<{ error: any }>;
+    checkEmailAvailability: (email: string) => Promise<{ exists: boolean; error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType>({
     signOut: async () => { },
     deleteAccount: async () => ({ error: null }),
     resetPassword: async () => ({ error: null }),
+    checkEmailAvailability: async () => ({ exists: false, error: null }),
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -149,6 +151,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error };
     };
 
+    const checkEmailAvailability = async (email: string) => {
+        try {
+            const { data, error } = await supabase.rpc('check_email_exists', {
+                email_to_check: email.toLowerCase().trim()
+            });
+            return { exists: !!data, error };
+        } catch (error) {
+            return { exists: false, error };
+        }
+    };
+
     const deleteAccount = async () => {
         try {
             const { data, error } = await supabase.functions.invoke('delete-user');
@@ -181,7 +194,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             signIn,
             signOut,
             deleteAccount,
-            resetPassword
+            resetPassword,
+            checkEmailAvailability
         }}>
             {children}
         </AuthContext.Provider>
