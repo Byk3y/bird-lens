@@ -1,7 +1,9 @@
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { MiniAudioPlayer } from '@/components/scanner/MiniAudioPlayer';
 import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
+import { BirdingTipsBottomSheet } from '@/components/shared/BirdingTipsBottomSheet';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
+import { IdentificationDetailBottomSheet } from '@/components/shared/IdentificationDetailBottomSheet';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
 import { BirdMedia, MediaService } from '@/services/MediaService';
@@ -93,6 +95,9 @@ export default function BirdDetailScreen() {
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [isEnriching, setIsEnriching] = useState((!hasSavedData || isSearchSkeleton) && !media);
     const [shareSheetVisible, setShareSheetVisible] = useState(false);
+    const [tipsVisible, setTipsVisible] = useState(false);
+    const [tipsSection, setTipsSection] = useState<string | undefined>(undefined);
+    const [identificationVisible, setIdentificationVisible] = useState(false);
 
     // Stabilized Hero Image logic
     const heroImageSource = React.useMemo(() => {
@@ -216,20 +221,12 @@ export default function BirdDetailScreen() {
     };
 
     const handleOpenTips = (section?: string) => {
-        router.push({
-            pathname: '/birding-tips',
-            params: {
-                birdData: JSON.stringify(birdDetails),
-                initialSection: section
-            }
-        });
+        setTipsSection(section);
+        setTipsVisible(true);
     };
 
     const handleOpenIdentification = () => {
-        router.push({
-            pathname: '/identification-detail',
-            params: { birdData: JSON.stringify(birdDetails) }
-        });
+        setIdentificationVisible(true);
     };
 
     if (initialLoading) {
@@ -340,6 +337,21 @@ export default function BirdDetailScreen() {
                 bird={birdDetails}
                 imageUrl={heroImageSource || undefined}
                 locationName={birdDetails.distribution_area}
+            />
+
+            {/* Birding Tips Bottom Sheet */}
+            <BirdingTipsBottomSheet
+                visible={tipsVisible}
+                onClose={() => setTipsVisible(false)}
+                bird={birdDetails}
+                initialSection={tipsSection}
+            />
+
+            {/* Identification Detail Bottom Sheet */}
+            <IdentificationDetailBottomSheet
+                visible={identificationVisible}
+                onClose={() => setIdentificationVisible(false)}
+                bird={birdDetails}
             />
         </View>
     );

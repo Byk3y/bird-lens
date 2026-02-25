@@ -1,5 +1,7 @@
 import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
+import { BirdingTipsBottomSheet } from '@/components/shared/BirdingTipsBottomSheet';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
+import { IdentificationDetailBottomSheet } from '@/components/shared/IdentificationDetailBottomSheet';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
 import { BirdResult } from '@/types/scanner';
@@ -120,14 +122,13 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
         }
     );
 
+    const [tipsVisible, setTipsVisible] = React.useState(false);
+    const [tipsSection, setTipsSection] = React.useState<string | undefined>(undefined);
+    const [identificationVisible, setIdentificationVisible] = React.useState(false);
+
     const handleOpenTips = (bird: BirdResult, section?: string) => {
-        router.push({
-            pathname: '/birding-tips',
-            params: {
-                birdData: JSON.stringify(bird),
-                initialSection: section
-            }
-        });
+        setTipsSection(section);
+        setTipsVisible(true);
     };
 
     const [isImageViewerVisible, setIsImageViewerVisible] = React.useState(false);
@@ -228,10 +229,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             }}
                             isEnrichmentComplete={!isProcessing}
                             onOpenIdentification={() => {
-                                router.push({
-                                    pathname: '/identification-detail',
-                                    params: { birdData: JSON.stringify(activeBird) }
-                                });
+                                setIdentificationVisible(true);
                             }}
                             sourceMode={sourceMode}
                         />
@@ -302,6 +300,25 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     bird={activeBird}
                     imageUrl={heroImages[activeBird.scientific_name]}
                     locationName={activeBird.distribution_area}
+                />
+            )}
+
+            {/* Birding Tips Bottom Sheet */}
+            {activeBird && (
+                <BirdingTipsBottomSheet
+                    visible={tipsVisible}
+                    onClose={() => setTipsVisible(false)}
+                    bird={activeBird}
+                    initialSection={tipsSection}
+                />
+            )}
+
+            {/* Identification Detail Bottom Sheet */}
+            {activeBird && (
+                <IdentificationDetailBottomSheet
+                    visible={identificationVisible}
+                    onClose={() => setIdentificationVisible(false)}
+                    bird={activeBird}
                 />
             )}
         </View>
