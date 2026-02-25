@@ -18,9 +18,11 @@ import { GestureDetector } from 'react-native-gesture-handler';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { useBirdIdentification } from '@/hooks/useBirdIdentification';
 import { useScannerGestures } from '@/hooks/useScannerGestures';
+import { useSubscriptionGating } from '@/hooks/useSubscriptionGating';
 import { useAuth } from '@/lib/auth';
 
 // Components
+import { Paywall } from '@/components/Paywall';
 import { IdentificationResult } from '@/components/scanner/IdentificationResult';
 import { PhotoFramingView } from '@/components/scanner/PhotoFramingView';
 import { ScannerControls } from '@/components/scanner/ScannerControls';
@@ -48,6 +50,8 @@ export default function ScannerScreen() {
   const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const { isLoading: isAuthLoading } = useAuth();
+  const { isGated, remainingCredits, incrementCount } = useSubscriptionGating();
+  const [isPaywallVisible, setIsPaywallVisible] = useState(false);
   const { showAlert } = useAlert();
 
   const cameraRef = useRef<CameraView>(null);
@@ -99,17 +103,20 @@ export default function ScannerScreen() {
     if (params.enhancedImageUri && !result && !isProcessing) {
       console.log('[ScannerScreen] Automatically identifying enhanced image');
 
+      if (isGated) {
+        setIsPaywallVisible(true);
+        return;
+      }
+
       (async () => {
         try {
-          // Whether it is a local file URI or a remote URL, read it as base64
-          // Note: readAsStringAsync might not work for remote URLs directly on some platforms, 
-          // but camera.tsx now ensures it's a local file.
           const base64 = await FileSystem.readAsStringAsync(params.enhancedImageUri!, {
             encoding: FileSystem.EncodingType.Base64,
           });
 
           setCapturedImage(base64);
-          identifyBird(base64);
+          const bird = await identifyBird(base64);
+          if (bird) incrementCount();
         } catch (e) {
           console.error('[ScannerScreen] Error processing enhanced image:', e);
           // If we can't read it as base64, try passing it as is as a last resort
@@ -172,6 +179,7 @@ export default function ScannerScreen() {
 
   const confirmFraming = async (cropData: { originX: number; originY: number; width: number; height: number; scale: number; baseImageWidth: number; baseImageHeight: number }) => {
     if (!pickedImage) return;
+    if (isGated) { setIsPaywallVisible(true); return; }
 
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -195,7 +203,8 @@ export default function ScannerScreen() {
 
       if (manipResult.base64) {
         setCapturedImage(manipResult.base64);
-        await identifyBird(manipResult.base64);
+        const bird = await identifyBird(manipResult.base64);
+        if (bird) incrementCount();
         setPickedImage(null);
       }
     } catch (error: any) {
@@ -209,6 +218,11 @@ export default function ScannerScreen() {
 
 
   const handleCapture = async () => {
+    if (isGated) {
+      setIsPaywallVisible(true);
+      return;
+    }
+
     if (activeMode === 'photo') {
       if (!cameraRef.current || isProcessing) return;
 
@@ -235,7 +249,8 @@ export default function ScannerScreen() {
           if (manipResult.uri) {
             // We still setCapturedImage(base64) for instant local UI preview
             setCapturedImage(manipResult.base64 || null);
-            await identifyBird(manipResult.base64);
+            const bird = await identifyBird(manipResult.base64);
+            if (bird) incrementCount();
           }
         }
       } catch (error) {
@@ -256,7 +271,8 @@ export default function ScannerScreen() {
           const base64 = await FileSystem.readAsStringAsync(recordingUri, {
             encoding: 'base64',
           });
-          await identifyBird(undefined, base64);
+          const bird = await identifyBird(undefined, base64);
+          if (bird) incrementCount();
         } catch (error) {
           console.error('Audio processing error:', error);
         }
@@ -277,6 +293,7 @@ export default function ScannerScreen() {
             encoding: 'base64',
           });
           const identifiedBird = await identifyBird(undefined, base64);
+          if (identifiedBird) incrementCount();
 
           // Only show "No Match" if it's NOT aborted (identifiedBird === null)
           // identifiedBird is undefined when aborted
@@ -394,15 +411,7 @@ export default function ScannerScreen() {
               </GestureDetector>
             ) : (
               <SoundScanner
-                onBack={() => {
-                  if (recordingUri || isRecording) {
-                    stopAndCleanup();
-                    clearRecording();
-                    resetResult();
-                  } else {
-                    setActiveMode('photo');
-                  }
-                }}
+                onBack={handleBack}
                 isRecording={isRecording}
                 formattedTime={formattedTime}
                 hasRecording={!!recordingUri}
@@ -471,6 +480,12 @@ export default function ScannerScreen() {
           visible={showSnapTips}
           onClose={() => setShowSnapTips(false)}
         />
+
+        {isPaywallVisible && (
+          <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+            <Paywall onClose={() => setIsPaywallVisible(false)} />
+          </View>
+        )}
       </View>
     </>
   );
