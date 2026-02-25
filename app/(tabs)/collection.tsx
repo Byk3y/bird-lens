@@ -15,10 +15,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Forward, Gem, Mic, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
+import { Diamond, Forward, Gem, Mic, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useCallback, useRef, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlatList, ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -215,7 +215,7 @@ export default function MeScreen() {
                     </View>
 
 
-                    {!isPro && (
+                    {!isPro ? (
                         <Pressable onPress={() => setIsPaywallVisible(true)}>
                             <MotiView
                                 from={{ opacity: 0, scale: 0.9, translateY: 10 }}
@@ -227,6 +227,16 @@ export default function MeScreen() {
                                 <Text style={styles.subscribeText}>Subscribe Now</Text>
                             </MotiView>
                         </Pressable>
+                    ) : (
+                        <MotiView
+                            from={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 600 }}
+                            style={styles.proBadge}
+                        >
+                            <Diamond color="#fcd34d" size={14} fill="#fcd34d" />
+                            <Text style={styles.proText}>Pro Member • {sightings.length} Birds Found</Text>
+                        </MotiView>
                     )}
                 </View>
             </LinearGradient>
@@ -357,13 +367,11 @@ export default function MeScreen() {
                 onClose={() => setIsTellFriendsVisible(false)}
             />
 
-            {isPaywallVisible && (
-                <View style={StyleSheet.absoluteFill}>
-                    <Paywall
-                        onClose={() => setIsPaywallVisible(false)}
-                    />
-                </View>
-            )}
+            <Modal visible={isPaywallVisible} animationType="slide" transparent={false}>
+                <Paywall
+                    onClose={() => setIsPaywallVisible(false)}
+                />
+            </Modal>
         </View>
     );
 }
@@ -414,6 +422,25 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 16,
         fontWeight: '700',
+    },
+    proBadge: {
+        backgroundColor: 'rgba(0,0,0,0.25)',
+        marginTop: Spacing.md,
+        marginHorizontal: Spacing.xl,
+        height: 44,
+        borderRadius: 22,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+    },
+    proText: {
+        color: Colors.white,
+        fontSize: 14,
+        fontWeight: '600',
+        letterSpacing: 0.3,
     },
     content: {
         flex: 1,

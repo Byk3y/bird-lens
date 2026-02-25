@@ -54,7 +54,8 @@
         {
           "locationWhenInUsePermission": "BirdSnap uses your location to improve bird identification accuracy for your region."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
