@@ -1,5 +1,6 @@
 import { useAlert } from '@/components/common/AlertProvider';
 import { Links } from '@/constants/Links';
+import { useAuth } from '@/lib/auth';
 import { subscriptionService } from '@/services/SubscriptionService';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
@@ -28,6 +29,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
     const { showAlert } = useAlert();
+    const { refreshSubscription } = useAuth();
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
@@ -51,6 +53,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         try {
             const { success, error } = await subscriptionService.purchasePackage(pkg);
             if (success) {
+                await refreshSubscription();
                 showAlert({
                     title: 'Welcome to BirdSnap Pro!',
                     message: 'Your purchase was successful.',
@@ -74,6 +77,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         try {
             const customerInfo = await subscriptionService.restorePurchases();
             if (customerInfo?.entitlements.active['Birdsnap Pro']) {
+                await refreshSubscription();
                 showAlert({
                     title: 'Success',
                     message: 'Purchases restored!',

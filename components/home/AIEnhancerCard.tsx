@@ -1,6 +1,8 @@
+import { Paywall } from '@/components/Paywall';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
 import { ChevronRight } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Dimensions,
     Image,
@@ -25,6 +27,8 @@ import { useRouter } from 'expo-router';
 
 export const AIEnhancerCard: React.FC = () => {
     const router = useRouter();
+    const { isPro } = useAuth();
+    const [isPaywallVisible, setIsPaywallVisible] = useState(false);
     const containerWidth = width * 0.38;
     const sliderPos = useSharedValue(0.6); // Start at 60% across (showing 60% blur, 40% sharp)
 
@@ -53,6 +57,10 @@ export const AIEnhancerCard: React.FC = () => {
     }));
 
     const handleStartPress = () => {
+        if (!isPro) {
+            setIsPaywallVisible(true);
+            return;
+        }
         router.push('/(enhancer)/camera');
     };
 
@@ -100,6 +108,19 @@ export const AIEnhancerCard: React.FC = () => {
                     <ChevronRight color={Colors.primary} size={16} />
                 </View>
             </TouchableOpacity>
+
+            {/* PRO Badge */}
+            {!isPro && (
+                <View style={styles.proBadge}>
+                    <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+            )}
+
+            {isPaywallVisible && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+                    <Paywall onClose={() => setIsPaywallVisible(false)} />
+                </View>
+            )}
         </View>
     );
 };
@@ -193,5 +214,20 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontWeight: '800',
         fontSize: 14,
+    },
+    proBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: Colors.primary,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    proBadgeText: {
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 0.5,
     },
 });

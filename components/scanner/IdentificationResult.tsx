@@ -4,6 +4,8 @@ import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { IdentificationDetailBottomSheet } from '@/components/shared/IdentificationDetailBottomSheet';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
+import { useSubscriptionGating } from '@/hooks/useSubscriptionGating';
+import { useAuth } from '@/lib/auth';
 import { BirdResult } from '@/types/scanner';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -79,6 +81,8 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     recordingUri,
 }) => {
     const router = useRouter();
+    const { isPro } = useAuth();
+    const { identificationsUsed } = useSubscriptionGating();
     const sourceMode = recordingUri ? 'sound' : 'photo';
 
     // With streaming, candidate data arrives fast (~4s) but media arrives later.
@@ -156,6 +160,26 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                 <TouchableOpacity onPress={onReset} style={styles.navButton}>
                     <ChevronLeft color={Colors.white} size={28} />
                 </TouchableOpacity>
+
+                {/* Credits Badge — only for free users */}
+                {!isPro && (
+                    <View style={{
+                        backgroundColor: 'rgba(0,0,0,0.45)',
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                    }}>
+                        <Text style={{
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: '700',
+                            letterSpacing: 0.3,
+                        }}>
+                            ID {identificationsUsed} of 7
+                        </Text>
+                    </View>
+                )}
+
                 <TouchableOpacity style={styles.navButton} onPress={onReset}>
                     <Camera color={Colors.white} size={24} />
                 </TouchableOpacity>

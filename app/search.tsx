@@ -1,4 +1,6 @@
+import { Paywall } from '@/components/Paywall';
 import { Colors, Spacing } from '@/constants/theme';
+import { useSubscriptionGating } from '@/hooks/useSubscriptionGating';
 import { SearchService } from '@/services/SearchService';
 import { BirdResult } from '@/types/scanner';
 import { BirdSuggestion, SearchHistoryItem } from '@/types/search';
@@ -33,6 +35,8 @@ export default function SearchScreen() {
     const [results, setResults] = useState<BirdSuggestion[]>([]);
     const [history, setHistory] = useState<SearchHistoryItem[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isPaywallVisible, setIsPaywallVisible] = useState(false);
+    const { isGated } = useSubscriptionGating();
     const searchInputRef = useRef<TextInput>(null);
     const debounceTimer = useRef<any>(null);
 
@@ -66,6 +70,11 @@ export default function SearchScreen() {
     };
 
     const handleSelectBird = async (bird: BirdSuggestion) => {
+        if (isGated) {
+            setIsPaywallVisible(true);
+            return;
+        }
+
         const skeletonBird: BirdResult = {
             name: bird.preferred_common_name || bird.name,
             scientific_name: bird.name,
@@ -239,6 +248,12 @@ export default function SearchScreen() {
                             }
                         />
                     )}
+                </View>
+            )}
+
+            {isPaywallVisible && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+                    <Paywall onClose={() => setIsPaywallVisible(false)} />
                 </View>
             )}
         </View>
