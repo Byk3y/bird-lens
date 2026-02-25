@@ -2,7 +2,6 @@ import { ResultActionBottomSheet } from '@/components/shared/ResultActionBottomS
 import { DIET_ASSETS, FEEDER_ASSETS } from '@/constants/bird-assets';
 import { BirdResult } from '@/types/scanner';
 import { getHabitatIcon, getNestingIcon } from '@/utils/bird-profile-helpers';
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Lightbulb, MoreHorizontal } from 'lucide-react-native';
@@ -18,11 +17,14 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
+const CARD_TOP = Math.max(height * 0.12, 80);
 
 export default function BirdingTipsScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const params = useLocalSearchParams<{ birdData: string; initialSection?: string }>();
     const scrollViewRef = React.useRef<ScrollView>(null);
     const sectionLayouts = React.useRef<Record<string, number>>({});
@@ -39,43 +41,38 @@ export default function BirdingTipsScreen() {
         }
     }, [params.birdData]);
 
+    const dismissScreen = React.useCallback(() => {
+        router.back();
+    }, []);
+
+    // Animated drag-to-dismiss
+    const dragY = React.useRef(new Animated.Value(0)).current;
+    const panResponder = React.useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (_, g) => g.dy > 5,
+            onPanResponderMove: (_, g) => {
+                if (g.dy > 0) dragY.setValue(g.dy);
+            },
+            onPanResponderRelease: (_, g) => {
+                if (g.dy > 120) {
+                    Animated.timing(dragY, { toValue: height, duration: 200, useNativeDriver: true }).start(() => {
+                        router.back();
+                    });
+                } else {
+                    Animated.spring(dragY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
+                }
+            },
+        })
+    ).current;
+
     if (!bird) {
         return (
-            <View style={[styles.screenWrapper, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={styles.screenWrapper}>
                 <Text>Bird data not found</Text>
             </View>
         );
     }
-
-    const translateY = React.useRef(new Animated.Value(0)).current;
-
-    const panResponder = React.useMemo(() => PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (evt, gestureState) => {
-            const isHeaderTouch = evt.nativeEvent.pageY < 150;
-            return isHeaderTouch && gestureState.dy > 5;
-        },
-        onPanResponderMove: (_, gestureState) => {
-            if (gestureState.dy > 0) {
-                translateY.setValue(gestureState.dy);
-            }
-        },
-        onPanResponderRelease: (_, gestureState) => {
-            if (gestureState.dy > 100 || gestureState.vy > 0.5) {
-                Animated.timing(translateY, {
-                    toValue: height,
-                    duration: 250,
-                    useNativeDriver: true,
-                }).start(() => router.back());
-            } else {
-                Animated.spring(translateY, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                    bounciness: 4,
-                }).start();
-            }
-        },
-    }), [height, router, translateY]);
 
     const renderAssetGrid = (title: string, tags: string[], assetMap: Record<string, any>, onLayout?: (event: any) => void) => {
         if (!tags || tags.length === 0) return null;
@@ -119,9 +116,9 @@ export default function BirdingTipsScreen() {
                         <View key={index} style={styles.gridItem}>
                             <View style={styles.assetWrapper}>
                                 {item.asset ? (
-                                    <Image source={item.asset} style={styles.assetImage} />
+                                    <Image source={item.asset} style={styles.assetImage} contentFit="cover" />
                                 ) : (
-                                    <View style={[styles.assetImage, styles.placeholderAsset]}>
+                                    <View style={[styles.assetImagePlaceholder, styles.placeholderAsset]}>
                                         <Text style={styles.placeholderText}>{item.tag.substring(0, 1).toUpperCase()}</Text>
                                     </View>
                                 )}
@@ -140,7 +137,6 @@ export default function BirdingTipsScreen() {
             const yOffset = sectionLayouts.current[section];
 
             if (yOffset !== undefined) {
-                // Small delay to ensure modal is fully rendered
                 setTimeout(() => {
                     scrollViewRef.current?.scrollTo({ y: yOffset, animated: true });
                 }, 300);
@@ -151,7 +147,6 @@ export default function BirdingTipsScreen() {
     const handleLayout = (section: string, y: number) => {
         sectionLayouts.current[section.toLowerCase()] = y;
 
-        // We consider layouts ready if we have the target one, or just wait a bit
         if (Object.keys(sectionLayouts.current).length >= 4 || (params.initialSection && sectionLayouts.current[params.initialSection.toLowerCase()] !== undefined)) {
             setLayoutsReady(true);
         }
@@ -159,32 +154,34 @@ export default function BirdingTipsScreen() {
 
     return (
         <View style={styles.screenWrapper}>
-            <BlurView
-                intensity={30}
-                tint="dark"
-                style={StyleSheet.absoluteFill}
-            />
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => router.back()} />
-            <Animated.View
-                style={[
-                    styles.container,
-                    { transform: [{ translateY }] }
-                ]}
-                {...panResponder.panHandlers}
-            >
+            {/* Dark backdrop area — tap to dismiss */}
+            <Pressable style={styles.backdrop} onPress={dismissScreen} />
+
+            {/* Bottom sheet card — animated for drag dismiss */}
+            <Animated.View style={[styles.card, { transform: [{ translateY: dragY }] }]}>
+                {/* Drag handle — swipe down to close */}
+                <View {...panResponder.panHandlers} style={styles.handleBarTouchArea}>
+                    <View style={styles.handleBar} />
+                </View>
+
                 {/* Header */}
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                    <Pressable onPress={dismissScreen} style={styles.backBtn} hitSlop={12}>
                         <ChevronLeft color="#333" size={24} strokeWidth={2.5} />
                     </Pressable>
                     <Text style={styles.headerTitle}>Birding Tips</Text>
                     <View style={{ width: 44 }} />
                 </View>
+                <View style={styles.headerDivider} />
 
+                {/* Main scrollable content */}
                 <ScrollView
                     ref={scrollViewRef}
                     style={styles.scrollView}
+                    contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
+                    scrollEventThrottle={16}
+                    bounces={true}
                 >
                     {/* Diet Section */}
                     {(() => {
@@ -226,7 +223,7 @@ export default function BirdingTipsScreen() {
                             </TouchableOpacity>
                         </View>
                         <View style={styles.habitatIconContainer}>
-                            <Image source={getHabitatIcon(bird)} style={styles.habitatLargeIcon} />
+                            <Image source={getHabitatIcon(bird)} style={styles.habitatLargeIcon} contentFit="contain" />
                             <Text style={styles.habitatName}>{bird.habitat_tags?.[0] || bird.habitat || 'N/A'}</Text>
                         </View>
                         <Text style={styles.habitatDescription}>
@@ -254,14 +251,13 @@ export default function BirdingTipsScreen() {
                             </TouchableOpacity>
                         </View>
                         <View style={styles.habitatIconContainer}>
-                            <Image source={getNestingIcon(bird)} style={styles.habitatLargeIcon} />
+                            <Image source={getNestingIcon(bird)} style={styles.habitatLargeIcon} contentFit="contain" />
                             <Text style={styles.habitatName}>{bird.nesting_info?.location || bird.habitat || 'N/A'}</Text>
                         </View>
                         <Text style={styles.habitatDescription}>
                             {bird.nesting_info?.description || `${bird.name}'s nests are often located in protected locations, surrounded by dense foliage. Common trees and shrubs are used to provide shelter and security.`}
                         </Text>
                     </View>
-
 
                     {/* Fun Facts Section */}
                     <View style={[styles.section, { marginBottom: 60 }]}>
@@ -290,38 +286,47 @@ export default function BirdingTipsScreen() {
                 bird={bird}
                 sectionContext={activeSection || 'Birding Tips'}
             />
-        </View>
+        </View >
     );
 }
 
 const styles = StyleSheet.create({
     screenWrapper: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'transparent',
     },
-    container: {
+    backdrop: {
+        height: CARD_TOP,
+    },
+    card: {
         flex: 1,
         backgroundColor: '#fff',
-        marginTop: 100,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -12 },
-        shadowOpacity: 0.12,
-        shadowRadius: 24,
-        elevation: 25,
+    },
+    handleBar: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#DCDCDC',
+    },
+    handleBarTouchArea: {
+        alignSelf: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 40,
+        marginTop: 2,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 8,
-        paddingTop: 4,
-        paddingBottom: 4,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F8F8F8',
+        paddingBottom: 8,
+    },
+    headerDivider: {
+        height: 1,
+        backgroundColor: '#F0F0F0',
     },
     backBtn: {
         width: 44,
@@ -337,6 +342,9 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 80,
     },
     section: {
         marginTop: 24,
@@ -355,7 +363,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 4, // Reduced from standard to account for grid spacing
+        marginBottom: 4,
     },
     moreBtn: {
         paddingRight: 16,
@@ -383,7 +391,10 @@ const styles = StyleSheet.create({
     assetImage: {
         width: '100%',
         height: '100%',
-        resizeMode: 'cover',
+    },
+    assetImagePlaceholder: {
+        width: '100%',
+        height: '100%',
     },
     placeholderAsset: {
         backgroundColor: '#edf2f7',
@@ -434,7 +445,6 @@ const styles = StyleSheet.create({
     habitatLargeIcon: {
         width: 100,
         height: 100,
-        resizeMode: 'contain',
         marginBottom: 8,
     },
     habitatName: {
@@ -475,11 +485,5 @@ const styles = StyleSheet.create({
         fontSize: 17.5,
         color: '#333',
         lineHeight: 25,
-    },
-    funFactFullText: {
-        fontSize: 16,
-        lineHeight: 24,
-        color: '#4A4A4A',
-        paddingHorizontal: 16,
     },
 });

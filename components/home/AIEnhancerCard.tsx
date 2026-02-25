@@ -4,9 +4,9 @@ import React from 'react';
 import {
     Dimensions,
     Image,
-    Pressable,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from 'react-native';
 import {
@@ -41,7 +41,8 @@ export const AIEnhancerCard: React.FC = () => {
             if (newPos > 0.95) newPos = 0.95;
             sliderPos.value = newPos;
         })
-        .activeOffsetX([-10, 10]);
+        .activeOffsetX([-10, 10])
+        .failOffsetY([-15, 15]); // Fail if user scrolls vertically — let parent ScrollView handle it
 
     const sharpOverlayStyle = useAnimatedStyle(() => ({
         width: `${(1 - sliderPos.value) * 100}%`,
@@ -56,7 +57,8 @@ export const AIEnhancerCard: React.FC = () => {
     };
 
     return (
-        <Pressable style={styles.enhancerCard} onPress={handleStartPress}>
+        <View style={styles.enhancerCard}>
+            {/* Gesture area is limited to the image container only */}
             <GestureDetector gesture={panGesture}>
                 <View style={styles.enhancerImageContainer}>
                     {/* Blurred Background (Before) */}
@@ -86,14 +88,19 @@ export const AIEnhancerCard: React.FC = () => {
                 </View>
             </GestureDetector>
 
-            <View style={styles.enhancerContent}>
+            {/* Text + button area — uses TouchableOpacity for reliable press in production */}
+            <TouchableOpacity
+                style={styles.enhancerContent}
+                onPress={handleStartPress}
+                activeOpacity={0.7}
+            >
                 <Text style={styles.enhancerTitle}>Turn your phone into a pro camera</Text>
                 <View style={styles.startButton}>
                     <Text style={styles.startText}>Learn More</Text>
                     <ChevronRight color={Colors.primary} size={16} />
                 </View>
-            </View>
-        </Pressable>
+            </TouchableOpacity>
+        </View>
     );
 };
 
