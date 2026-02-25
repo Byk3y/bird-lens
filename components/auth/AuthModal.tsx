@@ -44,6 +44,8 @@ const SwipeToClose = ({ children, onDismiss }: { children: React.ReactNode; onDi
 
     const gesture = Gesture.Pan()
         .activeOffsetX([0, 20]) // Only trigger for rightward swipe
+        .failOffsetY([-15, 15]) // Fail on vertical movement — let buttons/inputs work
+        .failOffsetX([-20, 0]) // Fail on leftward swipe
         .onUpdate((event) => {
             if (event.translationX > 0) {
                 translateX.value = event.translationX;

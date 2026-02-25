@@ -139,8 +139,8 @@ function RootLayoutNav() {
                 <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-                <Stack.Screen name="identification-detail" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="birding-tips" options={{ presentation: 'transparentModal', headerShown: false, animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="identification-detail" options={{ presentation: 'card', headerShown: false, animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
