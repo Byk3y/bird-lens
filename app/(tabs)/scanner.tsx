@@ -53,8 +53,6 @@ export default function ScannerScreen() {
   const cameraRef = useRef<CameraView>(null);
   const processedAudioUris = useRef<Set<string>>(new Set());
   const router = useRouter();
-  const params = useLocalSearchParams<{ mode: ScanMode }>();
-
   const {
     isProcessing,
     isSaving,
@@ -90,16 +88,36 @@ export default function ScannerScreen() {
     durationMillis,
   } = useAudioRecording();
 
-  // Auto-request permission on mount if needed
-  useEffect(() => {
-    if (permission && !permission.granted && permission.canAskAgain) {
-      requestPermission();
-    }
-  }, [permission]);
+  const params = useLocalSearchParams<{ mode: ScanMode, enhancedImageUri?: string }>();
 
   useEffect(() => {
     setActiveMode(params.mode || 'photo');
   }, [params.mode]);
+
+  // Handle enhanced images passed from the Enhancer
+  useEffect(() => {
+    if (params.enhancedImageUri && !result && !isProcessing) {
+      console.log('[ScannerScreen] Automatically identifying enhanced image');
+
+      (async () => {
+        try {
+          // Whether it is a local file URI or a remote URL, read it as base64
+          // Note: readAsStringAsync might not work for remote URLs directly on some platforms, 
+          // but camera.tsx now ensures it's a local file.
+          const base64 = await FileSystem.readAsStringAsync(params.enhancedImageUri!, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          setCapturedImage(base64);
+          identifyBird(base64);
+        } catch (e) {
+          console.error('[ScannerScreen] Error processing enhanced image:', e);
+          // If we can't read it as base64, try passing it as is as a last resort
+          identifyBird(params.enhancedImageUri!);
+        }
+      })();
+    }
+  }, [params.enhancedImageUri]);
 
   // Provide a way to clear the captured image when result is reset
   useEffect(() => {

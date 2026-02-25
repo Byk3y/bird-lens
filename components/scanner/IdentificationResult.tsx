@@ -165,6 +165,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                bounces={false}
             >
                 {/* Image & Pagination Section */}
                 <View style={styles.heroSection}>

@@ -53,7 +53,7 @@ export const AIEnhancerCard: React.FC = () => {
     }));
 
     const handleStartPress = () => {
-        router.push('/tutorial/from-blurry-to-brilliant');
+        router.push('/(enhancer)/camera');
     };
 
     return (

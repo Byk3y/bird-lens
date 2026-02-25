@@ -23,6 +23,15 @@ const LOCAL_IMAGE_MAP: Record<string, any> = {
     'lighting_comparison': require('@/assets/images/birding-tips/lighting_comparison.webp'),
     'ai_enhancer_hero': require('@/assets/images/birding-tips/ai_enhancer_hero.webp'),
     'detail_zoom': require('@/assets/images/birding-tips/detail_zoom.webp'),
+    'backyard_sanctuary_hero': require('@/assets/images/birding-tips/backyard_sanctuary_hero.jpg'),
+    'backyard_wild_vs_sterile': require('@/assets/images/birding-tips/backyard_wild_vs_sterile.jpg'),
+    'backyard_birdbath': require('@/assets/images/birding-tips/backyard_birdbath.jpg'),
+    'feeding_buffet_hero': require('@/assets/images/birding-tips/feeding_buffet_hero.jpg'),
+    'feeding_seeds_comparison': require('@/assets/images/birding-tips/feeding_seeds_comparison.jpg'),
+    'sounds_hero_sparrow': require('@/assets/images/birding-tips/sounds_hero_sparrow.jpg'),
+    'sounds_vocal_chart': require('@/assets/images/birding-tips/sounds_vocal_chart.jpg'),
+    'seasonal_hero_goldfinch': require('@/assets/images/birding-tips/seasonal_hero_goldfinch.jpg'),
+    'seasonal_migration_map': require('@/assets/images/birding-tips/seasonal_migration_map.jpg'),
 };
 
 const resolveAsset = (url: string | undefined) => {
@@ -83,7 +92,7 @@ export default function TutorialDetailScreen() {
 
     return (
         <View style={styles.container}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {/* Hero Section */}
                 <View style={styles.heroContainer}>
                     <ExpoImage

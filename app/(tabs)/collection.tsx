@@ -238,7 +238,7 @@ export default function MeScreen() {
                     <ScrollView
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.grid}
-                        bounces={true}
+                        bounces={false}
                     >
                         {isGuest && (
                             <View style={{ width: '100%', paddingHorizontal: 4 }}>

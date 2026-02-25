@@ -1,13 +1,14 @@
 import { Colors, Typography } from '@/constants/theme';
 import { Check, HelpCircle, Image as ImageIcon, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PhotoFramingViewProps {
     imageUri: string;
+    isProcessing?: boolean;
     onCancel: () => void;
     onConfirm: (cropResult: { originX: number; originY: number; width: number; height: number; scale: number; baseImageWidth: number; baseImageHeight: number }) => void;
     onRepick: () => void;
@@ -18,8 +19,34 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HANDLE_SIZE = 30;
 const MIN_CROP_SIZE = 100;
 
+/**
+ * Scanning animation component for the enhancing phase
+ */
+function ScannerAnimation() {
+    const translateY = useSharedValue(0);
+
+    useEffect(() => {
+        translateY.value = withRepeat(
+            withTiming(SCREEN_WIDTH - 48, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: translateY.value }],
+    }));
+
+    return (
+        <View style={styles.scannerLineWrapper}>
+            <Animated.View style={[styles.scannerLine, animatedStyle]} />
+        </View>
+    );
+}
+
 export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
     imageUri,
+    isProcessing = false,
     onCancel,
     onConfirm,
     onRepick,
@@ -449,9 +476,23 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
                 <TouchableOpacity
                     style={[styles.closeBtn, { top: Math.max(insets.top, 20) + 10, left: 24 }]}
                     onPress={onCancel}
+                    disabled={isProcessing}
                 >
                     <X color="#fff" size={34} strokeWidth={3} />
                 </TouchableOpacity>
+
+                {/* Loading Overlay */}
+                {isProcessing && (
+                    <View style={styles.loadingOverlay}>
+                        <View style={styles.scannerContainer}>
+                            <ScannerAnimation />
+                        </View>
+                        <View style={styles.loadingInfo}>
+                            <ActivityIndicator size="small" color="#fff" />
+                            <Text style={styles.loadingText}>AI Enhancing...</Text>
+                        </View>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -592,5 +633,49 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 40,
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 100,
+    },
+    scannerContainer: {
+        width: SCREEN_WIDTH - 48,
+        height: SCREEN_WIDTH - 48,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.3)',
+        borderRadius: 24,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    scannerLineWrapper: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    scannerLine: {
+        height: 4,
+        width: '100%',
+        backgroundColor: Colors.primary,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    loadingInfo: {
+        marginTop: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 20,
+    },
+    loadingText: {
+        ...Typography.body,
+        color: '#fff',
+        fontWeight: '700',
     },
 });

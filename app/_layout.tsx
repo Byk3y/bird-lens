@@ -143,6 +143,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="(enhancer)" options={{ headerShown: false, animation: 'none' }} />
                 <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
               </Stack>
             </ThemeProvider>

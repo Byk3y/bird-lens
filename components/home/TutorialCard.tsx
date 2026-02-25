@@ -16,6 +16,11 @@ const { width } = Dimensions.get('window');
 const LOCAL_IMAGE_MAP: Record<string, any> = {
     'mastering_lens_hero': require('@/assets/images/birding-tips/mastering_lens_hero.webp'),
     'ai_enhancer_hero': require('@/assets/images/birding-tips/ai_enhancer_hero.webp'),
+    'backyard_sanctuary_hero': require('@/assets/images/birding-tips/backyard_sanctuary_hero.jpg'),
+    'backyard_birdbath': require('@/assets/images/birding-tips/backyard_birdbath.jpg'),
+    'feeding_buffet_hero': require('@/assets/images/birding-tips/feeding_buffet_hero.jpg'),
+    'sounds_hero_sparrow': require('@/assets/images/birding-tips/sounds_hero_sparrow.jpg'),
+    'seasonal_hero_goldfinch': require('@/assets/images/birding-tips/seasonal_hero_goldfinch.jpg'),
 };
 
 interface TutorialCardProps {
