@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 
-console.log("LOG: Function loading... Flux 2.0 version");
+console.log("LOG: Function loading... Flux Klein version");
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -43,7 +43,7 @@ serve(async (req: Request) => {
         // Default enhancement prompt if none provided
         const enhancementPrompt = userPrompt || "Enhance this bird photograph. Maintain the exact species and colors but make it ultra-high resolution, sharp, and detailed. Professional wildlife photography style, natural lighting, crystal-clear feather textures, and bokeh background if applicable.";
 
-        console.log("LOG: Calling OpenRouter with model black-forest-labs/flux.2-pro");
+        console.log("LOG: Calling OpenRouter with model black-forest-labs/flux.2-klein-4b");
 
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -54,7 +54,7 @@ serve(async (req: Request) => {
                 "X-Title": "Bird Lens Enhancer",
             },
             body: JSON.stringify({
-                model: "black-forest-labs/flux.2-pro",
+                model: "black-forest-labs/flux.2-klein-4b",
                 messages: [
                     {
                         role: "user",
@@ -72,7 +72,10 @@ serve(async (req: Request) => {
                         ]
                     }
                 ],
-                modalities: ["image"]
+                modalities: ["image"],
+                image_config: {
+                    aspect_ratio: "1:1"
+                }
             }),
         });
 
@@ -91,7 +94,7 @@ serve(async (req: Request) => {
         const responseData = await response.json();
         console.log("LOG: Received successful response from OpenRouter");
 
-        // OpenRouter Flux 2.0 response format - usually returns in message.images or content
+        // Response handling for Flux series
         const enhancedImage = responseData.choices?.[0]?.message?.images?.[0]?.image_url?.url ||
             responseData.choices?.[0]?.message?.content;
 
