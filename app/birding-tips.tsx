@@ -297,6 +297,7 @@ const styles = StyleSheet.create({
     },
     backdrop: {
         height: CARD_TOP,
+        backgroundColor: 'transparent',
     },
     card: {
         flex: 1,
