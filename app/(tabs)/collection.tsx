@@ -150,6 +150,27 @@ export default function MeScreen() {
         setIsActionSheetVisible(true);
     };
 
+    // DEV-ONLY: Preview the IdentificationResult screen with real sighting data
+    const handleDebugPreview = (sighting: any) => {
+        const birdData: BirdResult = {
+            name: sighting.species_name,
+            scientific_name: sighting.scientific_name,
+            rarity: sighting.rarity,
+            confidence: sighting.confidence,
+            audio_url: sighting.audio_url,
+            ...sighting.metadata
+        };
+
+        router.push({
+            pathname: '/debug-result',
+            params: {
+                birdData: JSON.stringify(birdData),
+                imageUrl: sighting.image_url || '',
+                audioUrl: sighting.audio_url || '',
+            }
+        });
+    };
+
     const handleDeleteConfirm = (id: string) => {
         setSightingToDelete(id);
         showAlert({
@@ -331,6 +352,10 @@ export default function MeScreen() {
                 visible={isActionSheetVisible}
                 onClose={() => setIsActionSheetVisible(false)}
                 options={[
+                    ...(__DEV__ ? [{
+                        label: '🛠 Preview Result Screen',
+                        onPress: () => selectedSighting && handleDebugPreview(selectedSighting),
+                    }] : []),
                     {
                         label: 'Correct the result',
                         onPress: () => selectedSighting && handleBirdPress(selectedSighting),

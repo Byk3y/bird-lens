@@ -1,4 +1,6 @@
 import { Colors, Spacing, Typography } from '@/constants/theme';
+import { useSubscriptionGating } from '@/hooks/useSubscriptionGating';
+import { useAuth } from '@/lib/auth';
 import { Diamond, X, Zap, ZapOff } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -25,6 +27,8 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
     const insets = useSafeAreaInsets();
     const iconColor = isDark ? Colors.text : Colors.white;
     const buttonBg = isDark ? Colors.surfaceLight : 'rgba(0,0,0,0.3)';
+    const { isPro } = useAuth();
+    const { remainingCredits } = useSubscriptionGating();
 
     return (
         <View style={[styles.cameraHeader, { paddingTop: Math.max(insets.top, 16) }]}>
@@ -37,10 +41,16 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
                     <X color={iconColor} size={30} strokeWidth={3} />
                 </TouchableOpacity>
                 {!isDark && (
-                    <View style={styles.premiumBadge}>
-                        <Diamond color="#fcd34d" size={12} fill="#fcd34d" />
-                        <Text style={styles.premiumText}>Unlimited IDs</Text>
-                    </View>
+                    isPro ? (
+                        <View style={styles.premiumBadge}>
+                            <Diamond color="#fcd34d" size={12} fill="#fcd34d" />
+                            <Text style={styles.premiumText}>Unlimited IDs</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.creditBadge}>
+                            <Text style={styles.creditText}>{remainingCredits} of 7 left</Text>
+                        </View>
+                    )
                 )}
             </View>
 
@@ -97,5 +107,20 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 10,
         fontWeight: '700',
+    },
+    creditBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginTop: 8,
+    },
+    creditText: {
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.3,
     },
 });

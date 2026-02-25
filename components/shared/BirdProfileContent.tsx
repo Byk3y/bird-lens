@@ -67,6 +67,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
     const galleryRef = useRef<ScrollView>(null);
     const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isTruncated, setIsTruncated] = useState(false);
     const [actionSheetVisible, setActionSheetVisible] = useState(false);
     const [activeSection, setActiveSection] = useState<string | null>(null);
     const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
@@ -472,11 +473,17 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         </View>
                         <Text
                             style={styles.descriptionText}
-                            numberOfLines={isExpanded ? 0 : 5}
+                            numberOfLines={isExpanded ? undefined : 5}
+                            onTextLayout={(e) => {
+                                // Only measure on the first render (collapsed state)
+                                if (!isExpanded && e.nativeEvent.lines.length > 5) {
+                                    setIsTruncated(true);
+                                }
+                            }}
                         >
                             {bird.description}
                         </Text>
-                        {bird.description.length > 200 && (
+                        {isTruncated && (
                             <TouchableOpacity
                                 style={styles.expandButton}
                                 onPress={() => setIsExpanded(!isExpanded)}
@@ -500,6 +507,8 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     </View>
                 )}
             </View>
+
+            <View style={styles.gutter} />
 
             {/* Key Facts Section */}
             <KeyFactsSection

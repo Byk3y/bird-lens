@@ -48,40 +48,93 @@ export const IdentificationDetailBottomSheet: React.FC<IdentificationDetailBotto
         }
     }, [visible]);
 
-    // Drag-to-dismiss
+    // Drag-to-dismiss — responsive, real-time tracking on header area
     const dragY = React.useRef(new Animated.Value(0)).current;
 
     React.useEffect(() => {
         if (visible) {
+            dragY.stopAnimation();
             dragY.setValue(0);
         }
     }, [visible]);
 
-    const panResponder = React.useRef(
+    // Backdrop opacity fades as user drags down
+    const backdropOpacity = dragY.interpolate({
+        inputRange: [0, SCREEN_HEIGHT * 0.4],
+        outputRange: [1, 0.2],
+        extrapolate: 'clamp',
+    });
+
+    // Header drag zone — captures gestures immediately with very low threshold
+    const headerPanResponder = React.useRef(
         PanResponder.create({
-            onStartShouldSetPanResponder: () => false,
-            onMoveShouldSetPanResponder: (_, g) => isAtTop.current && g.dy > 8,
-            onMoveShouldSetPanResponderCapture: (_, g) => isAtTop.current && g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
+            onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
+            onPanResponderGrant: () => { },
             onPanResponderMove: (_, g) => {
-                if (g.dy > 0) dragY.setValue(g.dy);
+                if (g.dy > 0) {
+                    dragY.setValue(g.dy);
+                }
             },
             onPanResponderRelease: (_, g) => {
-                if (g.dy > 80) {
-                    Animated.timing(dragY, {
-                        toValue: SCREEN_HEIGHT,
-                        duration: 200,
-                        useNativeDriver: true,
-                    }).start(() => {
-                        onClose();
-                    });
+                const shouldDismiss = g.dy > 80 || (g.dy > 20 && g.vy > 0.5);
+                if (shouldDismiss) {
+                    // Let MotiView exit animation handle the slide-down
+                    onClose();
                 } else {
                     Animated.spring(dragY, {
                         toValue: 0,
                         useNativeDriver: true,
-                        tension: 80,
+                        tension: 120,
                         friction: 10,
                     }).start();
                 }
+            },
+            onPanResponderTerminate: () => {
+                Animated.spring(dragY, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    tension: 120,
+                    friction: 10,
+                }).start();
+            },
+        })
+    ).current;
+
+    // ScrollView overscroll dismiss (for content area)
+    const scrollPanResponder = React.useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, g) => isAtTop.current && g.dy > 10 && Math.abs(g.dy) > Math.abs(g.dx),
+            onMoveShouldSetPanResponderCapture: (_, g) => isAtTop.current && g.dy > 10 && Math.abs(g.dy) > Math.abs(g.dx),
+            onPanResponderGrant: () => { },
+            onPanResponderMove: (_, g) => {
+                if (g.dy > 0) {
+                    dragY.setValue(g.dy);
+                }
+            },
+            onPanResponderRelease: (_, g) => {
+                const shouldDismiss = g.dy > 80 || (g.dy > 20 && g.vy > 0.5);
+                if (shouldDismiss) {
+                    // Let MotiView exit animation handle the slide-down
+                    onClose();
+                } else {
+                    Animated.spring(dragY, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                        tension: 120,
+                        friction: 10,
+                    }).start();
+                }
+            },
+            onPanResponderTerminate: () => {
+                Animated.spring(dragY, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    tension: 120,
+                    friction: 10,
+                }).start();
             },
         })
     ).current;
@@ -108,7 +161,7 @@ export const IdentificationDetailBottomSheet: React.FC<IdentificationDetailBotto
             <AnimatePresence>
                 {visible && (
                     <View style={StyleSheet.absoluteFill}>
-                        {/* Dark overlay backdrop */}
+                        {/* Dark overlay backdrop — fades as you drag */}
                         <MotiView
                             from={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -116,7 +169,9 @@ export const IdentificationDetailBottomSheet: React.FC<IdentificationDetailBotto
                             transition={{ type: 'timing', duration: 300 }}
                             style={StyleSheet.absoluteFill}
                         >
-                            <Pressable style={styles.backdrop} onPress={onClose} />
+                            <Animated.View style={[StyleSheet.absoluteFill, { opacity: backdropOpacity }]}>
+                                <Pressable style={styles.backdrop} onPress={onClose} />
+                            </Animated.View>
                         </MotiView>
 
                         {/* Bottom sheet card */}
@@ -129,50 +184,52 @@ export const IdentificationDetailBottomSheet: React.FC<IdentificationDetailBotto
                             pointerEvents="box-none"
                         >
                             <Animated.View
-                                {...panResponder.panHandlers}
                                 style={[styles.card, { transform: [{ translateY: dragY }] }]}
                             >
-                                {/* Drag handle */}
-                                <View
-                                    style={styles.handleBarTouchArea}
-                                >
-                                    <View style={styles.handleBar} />
+                                {/* Draggable header zone — entire area responds to drag */}
+                                <View {...headerPanResponder.panHandlers}>
+                                    {/* Drag handle */}
+                                    <View style={styles.handleBarTouchArea}>
+                                        <View style={styles.handleBar} />
+                                    </View>
+
+                                    {/* Header */}
+                                    <View style={styles.header}>
+                                        <View style={{ width: 44 }} />
+                                        <Text style={styles.headerTitle}>How to identify it?</Text>
+                                        <Pressable
+                                            onPress={onClose}
+                                            style={styles.closeBtn}
+                                            hitSlop={12}
+                                        >
+                                            <Text style={styles.closeBtnText}>Done</Text>
+                                        </Pressable>
+                                    </View>
+                                    <View style={styles.headerDivider} />
                                 </View>
 
-                                {/* Header */}
-                                <View style={styles.header}>
-                                    <View style={{ width: 44 }} />
-                                    <Text style={styles.headerTitle}>How to identify it?</Text>
-                                    <Pressable
-                                        onPress={onClose}
-                                        style={styles.closeBtn}
-                                        hitSlop={12}
+                                {/* Scrollable content — also supports drag-dismiss when at top */}
+                                <View style={{ flex: 1 }} {...scrollPanResponder.panHandlers}>
+                                    <ScrollView
+                                        showsVerticalScrollIndicator={false}
+                                        style={styles.scrollView}
+                                        contentContainerStyle={styles.scrollContent}
+                                        bounces={false}
+                                        scrollEventThrottle={16}
+                                        onScrollEndDrag={handleScrollEndDrag}
+                                        onScroll={handleScroll}
                                     >
-                                        <Text style={styles.closeBtnText}>Done</Text>
-                                    </Pressable>
+                                        <IdentificationComparison
+                                            bird={bird}
+                                            variant="full"
+                                            onMorePress={(section) => {
+                                                setActiveSection(section);
+                                                setActionSheetVisible(true);
+                                            }}
+                                        />
+                                        <View style={{ height: 40 }} />
+                                    </ScrollView>
                                 </View>
-                                <View style={styles.headerDivider} />
-
-                                {/* Scrollable content */}
-                                <ScrollView
-                                    showsVerticalScrollIndicator={false}
-                                    style={styles.scrollView}
-                                    contentContainerStyle={styles.scrollContent}
-                                    bounces={false}
-                                    scrollEventThrottle={16}
-                                    onScrollEndDrag={handleScrollEndDrag}
-                                    onScroll={handleScroll}
-                                >
-                                    <IdentificationComparison
-                                        bird={bird}
-                                        variant="full"
-                                        onMorePress={(section) => {
-                                            setActiveSection(section);
-                                            setActionSheetVisible(true);
-                                        }}
-                                    />
-                                    <View style={{ height: 40 }} />
-                                </ScrollView>
                             </Animated.View>
                         </MotiView>
 

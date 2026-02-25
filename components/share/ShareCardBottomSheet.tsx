@@ -4,7 +4,10 @@ import { AnimatePresence, MotiView } from 'moti';
 import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
+    PanResponder,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -67,6 +70,60 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         imageUrl: imageUrl,
     };
 
+    // Drag-to-dismiss — responsive, real-time tracking on header area
+    const dragY = useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+        if (visible) {
+            dragY.stopAnimation();
+            dragY.setValue(0);
+        }
+    }, [visible]);
+
+    // Backdrop opacity fades as user drags down
+    const backdropOpacity = dragY.interpolate({
+        inputRange: [0, SCREEN_HEIGHT * 0.4],
+        outputRange: [1, 0.2],
+        extrapolate: 'clamp',
+    });
+
+    // Header drag zone — captures gestures immediately
+    const headerPanResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
+            onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
+            onPanResponderGrant: () => { },
+            onPanResponderMove: (_, g) => {
+                if (g.dy > 0) {
+                    dragY.setValue(g.dy);
+                }
+            },
+            onPanResponderRelease: (_, g) => {
+                const shouldDismiss = g.dy > 80 || (g.dy > 20 && g.vy > 0.5);
+                if (shouldDismiss) {
+                    // Let MotiView exit animation handle the slide-down
+                    onClose();
+                } else {
+                    Animated.spring(dragY, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                        tension: 120,
+                        friction: 10,
+                    }).start();
+                }
+            },
+            onPanResponderTerminate: () => {
+                Animated.spring(dragY, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    tension: 120,
+                    friction: 10,
+                }).start();
+            },
+        })
+    ).current;
+
     const renderCardTemplate = (template: TemplateType, scale: number = 1) => {
         const containerStyle = scale < 1
             ? { transform: [{ scale }], width: 1080, height: 1080 }
@@ -86,6 +143,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         <AnimatePresence>
             {visible && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents="box-none">
+                    {/* Backdrop — fades as you drag */}
                     <MotiView
                         from={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -93,11 +151,12 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                         transition={{ type: 'timing', duration: 300 }}
                         style={StyleSheet.absoluteFill}
                     >
-                        <TouchableOpacity
-                            style={styles.backdrop}
-                            activeOpacity={1}
-                            onPress={onClose}
-                        />
+                        <Animated.View style={[StyleSheet.absoluteFill, { opacity: backdropOpacity }]}>
+                            <Pressable
+                                style={styles.backdrop}
+                                onPress={onClose}
+                            />
+                        </Animated.View>
                     </MotiView>
 
                     <MotiView
@@ -107,14 +166,14 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                         transition={{ type: 'timing', duration: 350 }}
                         style={styles.sheetContainer}
                     >
-                        <View style={styles.sheet}>
-                            {/* Handle */}
-                            <View style={styles.handleRow}>
-                                <View style={styles.handle} />
+                        <Animated.View style={[styles.sheet, { transform: [{ translateY: dragY }] }]}>
+                            {/* Draggable header zone — handle + title */}
+                            <View {...headerPanResponder.panHandlers}>
+                                <View style={styles.handleRow}>
+                                    <View style={styles.handle} />
+                                </View>
+                                <Text style={styles.title}>Share your sighting</Text>
                             </View>
-
-                            {/* Title */}
-                            <Text style={styles.title}>Share your sighting</Text>
 
                             {/* Template Previews */}
                             <ScrollView
@@ -199,7 +258,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                                     )}
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                        </Animated.View>
                     </MotiView>
 
                     {/* Off-screen full-size card for capture */}

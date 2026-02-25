@@ -138,6 +138,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+                <Stack.Screen name="debug-result" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
                 <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />

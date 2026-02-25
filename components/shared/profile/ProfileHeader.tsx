@@ -65,9 +65,22 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce,
                             <Text style={styles.genusLineText}>
                                 <Text style={styles.metaLabel}>Genus: </Text>
                                 <Text style={styles.genusName}>{bird.taxonomy.genus}</Text>
-                                {bird.taxonomy.genus_description ? (
-                                    <Text style={styles.genusDescription}>, {bird.taxonomy.genus_description}</Text>
-                                ) : null}
+                                {bird.taxonomy.genus_description ? (() => {
+                                    // Parse "Commonly called X" to separate label from common name
+                                    const desc = bird.taxonomy.genus_description;
+                                    const match = desc.match(/^(commonly\s+called\s+)/i);
+                                    if (match) {
+                                        const label = match[1];
+                                        const commonName = desc.slice(label.length);
+                                        return (
+                                            <>
+                                                <Text style={styles.genusDescription}>{`, ${label}`}</Text>
+                                                <Text style={styles.genusCommonName}>{commonName}</Text>
+                                            </>
+                                        );
+                                    }
+                                    return <Text style={styles.genusDescription}>, {desc}</Text>;
+                                })() : null}
                             </Text>
                         </View>
                     )}
@@ -179,6 +192,13 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '400',
         color: '#999',
+    },
+    genusCommonName: {
+        fontSize: 18,
+        fontWeight: '600',
+        fontStyle: 'italic',
+        color: '#2C2C2C',
+        letterSpacing: -0.3,
     },
     soundIconContainer: {
         width: 24,
