@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingBottom: Spacing.xxl,
-        height: 280,
+        height: 220,
     },
     headerContent: {
         flex: 1,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        marginTop: -60,
+        marginTop: -40,
         backgroundColor: Colors.background,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
