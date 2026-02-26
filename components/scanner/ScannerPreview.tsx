@@ -104,13 +104,15 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
     return (
         <View style={styles.container}>
             {/* Header / Close Button */}
-            <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
                 <TouchableOpacity
                     onPress={onReset}
                     style={styles.closeButton}
                     hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
-                    <X size={26} color={Colors.text} strokeWidth={2.5} />
+                    <View pointerEvents="none">
+                        <X size={26} color={Colors.text} strokeWidth={2.5} />
+                    </View>
                 </TouchableOpacity>
             </View>
 
@@ -208,7 +210,7 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
                     )}
                 </View>
             </View>
-        </View>
+        </View >
     );
 };
 
@@ -218,7 +220,8 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.background,
         zIndex: 100,
         justifyContent: 'space-between',
-        paddingVertical: 60,
+        paddingTop: 0,
+        paddingBottom: 60,
     },
     header: {
         paddingHorizontal: Spacing.lg,
@@ -236,6 +239,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        marginTop: -30,
     },
     frameContainer: {
         width: width * 0.75,

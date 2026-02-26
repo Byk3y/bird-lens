@@ -101,9 +101,13 @@ export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ uri }) => {
                 {loading ? (
                     <ActivityIndicator size="small" color={Colors.primary} />
                 ) : status?.isPlaying ? (
-                    <Pause size={10} color={Colors.primary} fill={Colors.primary} />
+                    <View pointerEvents="none">
+                        <Pause size={10} color={Colors.primary} fill={Colors.primary} />
+                    </View>
                 ) : (
-                    <Play size={10} color={Colors.primary} fill={Colors.primary} style={{ marginLeft: 1 }} />
+                    <View pointerEvents="none">
+                        <Play size={10} color={Colors.primary} fill={Colors.primary} style={{ marginLeft: 1 }} />
+                    </View>
                 )}
             </TouchableOpacity>
         </BlurView>

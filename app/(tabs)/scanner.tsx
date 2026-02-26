@@ -342,7 +342,9 @@ export default function ScannerScreen() {
     return (
       <View style={styles.permissionContainer}>
         <View style={styles.iconCircle}>
-          <ShieldAlert color={Colors.primary} size={48} />
+          <View pointerEvents="none">
+            <ShieldAlert color={Colors.primary} size={48} />
+          </View>
         </View>
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>

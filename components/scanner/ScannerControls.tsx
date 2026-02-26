@@ -119,7 +119,9 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                     {activeMode === 'photo' ? (
                         <TouchableOpacity style={styles.sideControl} onPress={onGalleryPress}>
                             <View style={styles.galleryPreview}>
-                                <ImageIcon color="#f97316" size={21} />
+                                <View pointerEvents="none">
+                                    <ImageIcon color="#f97316" size={21} />
+                                </View>
                             </View>
                             <Text style={styles.sideLabel}>Photos</Text>
                         </TouchableOpacity>
@@ -158,7 +160,9 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                                     <ActivityIndicator color={Colors.white} />
                                 ) : hasRecording ? (
                                     <View style={styles.uploadIconContainer}>
-                                        <UploadCloud color={Colors.white} size={24} />
+                                        <View pointerEvents="none">
+                                            <UploadCloud color={Colors.white} size={24} />
+                                        </View>
                                     </View>
                                 ) : isRecording ? (
                                     <View style={styles.stopIcon} />
@@ -172,7 +176,9 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                     {activeMode === 'photo' ? (
                         <TouchableOpacity style={styles.sideControl} onPress={onShowTips}>
                             <View style={styles.tipsBtn}>
-                                <HelpCircle color="#1e293b" size={21} />
+                                <View pointerEvents="none">
+                                    <HelpCircle color="#1e293b" size={21} />
+                                </View>
                             </View>
                             <Text style={styles.sideLabel}>Snap Tips</Text>
                         </TouchableOpacity>

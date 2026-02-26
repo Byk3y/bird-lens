@@ -38,7 +38,9 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
                     onPress={onBack}
                     hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
-                    <X color={iconColor} size={30} strokeWidth={3} />
+                    <View pointerEvents="none">
+                        <X color={iconColor} size={30} strokeWidth={3} />
+                    </View>
                 </TouchableOpacity>
                 {!isDark && (
                     isPro ? (
@@ -54,16 +56,20 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
                 )}
             </View>
 
-            {!isDark && (
-                <TouchableOpacity style={[styles.iconBtn, { backgroundColor: buttonBg }]} onPress={onFlashToggle}>
-                    {flash === 'on' ? (
-                        <Zap color="#fcd34d" size={22} fill="#fcd34d" />
-                    ) : (
-                        <ZapOff color={Colors.white} size={22} />
-                    )}
-                </TouchableOpacity>
-            )}
-        </View>
+            {
+                !isDark && (
+                    <TouchableOpacity style={[styles.iconBtn, { backgroundColor: buttonBg }]} onPress={onFlashToggle}>
+                        <View pointerEvents="none">
+                            {flash === 'on' ? (
+                                <Zap color="#fcd34d" size={22} fill="#fcd34d" />
+                            ) : (
+                                <ZapOff color={Colors.white} size={22} />
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                )
+            }
+        </View >
     );
 };
 

@@ -454,18 +454,20 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
                 {/* Bottom Controls */}
                 <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 20 }]}>
                     <TouchableOpacity style={styles.bottomBtn} onPress={onRepick}>
-                        <View style={styles.iconCircleSec}>
+                        <View style={styles.iconCircleSec} pointerEvents="none">
                             <ImageIcon size={24} color={Colors.primary} />
                         </View>
                         <Text style={styles.btnText}>Photos</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.captureBtn} onPress={handleConfirm}>
-                        <Check size={32} color={Colors.primary} strokeWidth={3} />
+                        <View pointerEvents="none">
+                            <Check size={32} color={Colors.primary} strokeWidth={3} />
+                        </View>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.bottomBtn} onPress={onShowTips}>
-                        <View style={styles.iconCircleSec}>
+                        <View style={styles.iconCircleSec} pointerEvents="none">
                             <HelpCircle size={24} color={Colors.text} />
                         </View>
                         <Text style={styles.btnText}>Snap Tips</Text>
@@ -478,7 +480,9 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
                     onPress={onCancel}
                     disabled={isProcessing}
                 >
-                    <X color="#fff" size={34} strokeWidth={3} />
+                    <View pointerEvents="none">
+                        <X color="#fff" size={34} strokeWidth={3} />
+                    </View>
                 </TouchableOpacity>
 
                 {/* Loading Overlay */}
@@ -492,9 +496,10 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
                             <Text style={styles.loadingText}>AI Enhancing...</Text>
                         </View>
                     </View>
-                )}
-            </View>
-        </View>
+                )
+                }
+            </View >
+        </View >
     );
 };
 
