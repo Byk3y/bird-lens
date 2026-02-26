@@ -19,7 +19,6 @@ import {
     Dimensions,
     Keyboard,
     KeyboardAvoidingView,
-    Modal,
     Platform,
     Pressable,
     SafeAreaView,
@@ -43,21 +42,20 @@ const SwipeToClose = ({ children, onDismiss }: { children: React.ReactNode; onDi
     const translateX = useSharedValue(0);
 
     const gesture = Gesture.Pan()
-        .activeOffsetX([0, 20]) // Only trigger for rightward swipe
-        .failOffsetY([-15, 15]) // Fail on vertical movement — let buttons/inputs work
-        .failOffsetX([-20, 0]) // Fail on leftward swipe
+        .activeOffsetX([0, 10]) // Start tracking after 10 pixels of rightward movement
+        .failOffsetY([-30, 30]) // More relaxed vertical failure threshold
         .onUpdate((event) => {
             if (event.translationX > 0) {
                 translateX.value = event.translationX;
             }
         })
         .onEnd((event) => {
-            if (event.translationX > width * 0.3 || event.velocityX > 800) {
+            if (event.translationX > width * 0.2 || event.velocityX > 600) {
                 translateX.value = withTiming(width, { duration: 250 }, () => {
                     runOnJS(onDismiss)();
                 });
             } else {
-                translateX.value = withSpring(0);
+                translateX.value = withSpring(0, { damping: 20, stiffness: 90 });
             }
         });
 
@@ -150,6 +148,22 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
         [mode, checkEmailAvailability]
     );
 
+    // Reset state when modal becomes invisible
+    useEffect(() => {
+        if (!visible) {
+            setEmail('');
+            setPassword('');
+            setEmailError(null);
+            setEmailAvailable(null);
+            setIsCheckingEmail(false);
+            setPasswordStrength(null);
+            setShowPassword(false);
+            setMode(initialMode);
+            setFailedAttempts(0);
+            setLockoutUntil(null);
+        }
+    }, [visible, initialMode]);
+
     useEffect(() => {
         if (mode === 'signup' && email) {
             if (validateEmail(email)) {
@@ -172,6 +186,23 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
             setPasswordStrength(null);
         }
     }, [password, mode]);
+
+    // Clear all states when modal is closed
+    useEffect(() => {
+        if (!visible) {
+            setEmail('');
+            setPassword('');
+            setEmailError(null);
+            setEmailAvailable(null);
+            setIsCheckingEmail(false);
+            setPasswordStrength(null);
+            setShowPassword(false);
+            setFailedAttempts(0);
+            setLockoutUntil(null);
+            // Optionally keep the mode as it was or reset to initialMode
+            setMode(initialMode);
+        }
+    }, [visible, initialMode]);
 
     const handleSubmit = async () => {
         if (lockoutUntil && Date.now() < lockoutUntil) {
@@ -289,240 +320,232 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
     };
 
     return (
-        <Modal
-            visible={visible}
-            animationType="none"
-            transparent
-            onRequestClose={onClose}
-        >
-            <AnimatePresence>
-                {visible && (
-                    <View style={{ flex: 1 }}>
-                        <MotiView
-                            from={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ type: 'timing', duration: 400 }}
-                            style={styles.container}
-                        >
-                            <SwipeToClose onDismiss={onClose}>
-                                <SafeAreaView style={styles.safeArea}>
-                                    <KeyboardAvoidingView
-                                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                                        style={styles.keyboardView}
+        <AnimatePresence>
+            {visible && (
+                <MotiView
+                    from={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: 'timing', duration: 400 }}
+                    style={styles.container}
+                >
+                    <SwipeToClose onDismiss={onClose}>
+                        <SafeAreaView style={styles.safeArea}>
+                            <KeyboardAvoidingView
+                                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                                style={styles.keyboardView}
+                            >
+                                {/* Header Navigation */}
+                                <View style={styles.topNav}>
+                                    <Pressable
+                                        onPress={onClose}
+                                        style={styles.backBtn}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     >
-                                        {/* Header Navigation */}
-                                        <View style={styles.topNav}>
-                                            <Pressable
-                                                onPress={onClose}
-                                                style={styles.backBtn}
-                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                            >
-                                                <View style={styles.backIconCircle} pointerEvents="none">
-                                                    <ArrowLeft color={Colors.text} size={24} strokeWidth={2.5} />
-                                                </View>
-                                            </Pressable>
+                                        <View style={styles.backIconCircle} pointerEvents="none">
+                                            <ArrowLeft color={Colors.text} size={24} strokeWidth={2.5} />
+                                        </View>
+                                    </Pressable>
+                                </View>
+
+                                <Pressable
+                                    style={{ flex: 1 }}
+                                    onPress={Keyboard.dismiss}
+                                >
+                                    <View style={styles.mainContent}>
+                                        {/* Branding */}
+                                        <View style={styles.branding}>
+                                            <Text style={styles.brandTitle}>BirdSnap</Text>
                                         </View>
 
-                                        <Pressable
-                                            style={{ flex: 1 }}
-                                            onPress={Keyboard.dismiss}
-                                        >
-                                            <View style={styles.mainContent}>
-                                                {/* Branding */}
-                                                <View style={styles.branding}>
-                                                    <Text style={styles.brandTitle}>BirdSnap</Text>
-                                                </View>
-
-                                                {/* Form */}
-                                                <View style={styles.form}>
-                                                    <View>
-                                                        <Pressable
-                                                            style={[
-                                                                styles.inputWrapper,
-                                                                emailError ? styles.inputWrapperError : (emailAvailable ? styles.inputWrapperSuccess : null)
-                                                            ]}
-                                                            onPress={() => emailRef.current?.focus()}
-                                                        >
-                                                            <View style={styles.inputRow}>
-                                                                <TextInput
-                                                                    ref={emailRef}
-                                                                    placeholder="Email Address"
-                                                                    placeholderTextColor={Colors.textTertiary}
-                                                                    style={styles.lineInput}
-                                                                    value={email}
-                                                                    onChangeText={setEmail}
-                                                                    autoCapitalize="none"
-                                                                    keyboardType="email-address"
-                                                                />
-                                                                {isCheckingEmail && <ActivityIndicator size="small" color={Colors.primary} />}
-                                                                {!isCheckingEmail && emailAvailable && (
-                                                                    <View pointerEvents="none">
-                                                                        <Check size={18} color={Colors.success || '#34C759'} />
-                                                                    </View>
-                                                                )}
-                                                                {!isCheckingEmail && emailError && (
-                                                                    <View pointerEvents="none">
-                                                                        <AlertCircle size={18} color="#FF3B30" />
-                                                                    </View>
-                                                                )}
+                                        {/* Form */}
+                                        <View style={styles.form}>
+                                            <View>
+                                                <Pressable
+                                                    style={[
+                                                        styles.inputWrapper,
+                                                        emailError ? styles.inputWrapperError : (emailAvailable ? styles.inputWrapperSuccess : null)
+                                                    ]}
+                                                    onPress={() => emailRef.current?.focus()}
+                                                >
+                                                    <View style={styles.inputRow}>
+                                                        <TextInput
+                                                            ref={emailRef}
+                                                            placeholder="Email Address"
+                                                            placeholderTextColor={Colors.textTertiary}
+                                                            style={styles.lineInput}
+                                                            value={email}
+                                                            onChangeText={setEmail}
+                                                            autoCapitalize="none"
+                                                            keyboardType="email-address"
+                                                        />
+                                                        {isCheckingEmail && <ActivityIndicator size="small" color={Colors.primary} />}
+                                                        {!isCheckingEmail && emailAvailable && (
+                                                            <View pointerEvents="none">
+                                                                <Check size={18} color={Colors.success || '#34C759'} />
                                                             </View>
-                                                        </Pressable>
-                                                        {emailError && (
-                                                            <MotiText
-                                                                from={{ opacity: 0, translateY: -5 }}
-                                                                animate={{ opacity: 1, translateY: 0 }}
-                                                                style={styles.errorText}
-                                                            >
-                                                                {emailError}
-                                                            </MotiText>
+                                                        )}
+                                                        {!isCheckingEmail && emailError && (
+                                                            <View pointerEvents="none">
+                                                                <AlertCircle size={18} color="#FF3B30" />
+                                                            </View>
                                                         )}
                                                     </View>
-
-                                                    <View>
-                                                        <Pressable
-                                                            style={[
-                                                                styles.inputWrapper,
-                                                                mode === 'signup' && passwordStrength && passwordStrength.score < 2 && password.length > 0 ? styles.inputWrapperError : null
-                                                            ]}
-                                                            onPress={() => passwordRef.current?.focus()}
-                                                        >
-                                                            <View style={styles.passwordContainer}>
-                                                                <TextInput
-                                                                    ref={passwordRef}
-                                                                    placeholder="Password"
-                                                                    placeholderTextColor={Colors.textTertiary}
-                                                                    style={[styles.lineInput, { flex: 1 }]}
-                                                                    secureTextEntry={!showPassword}
-                                                                    value={password}
-                                                                    onChangeText={setPassword}
-                                                                />
-                                                                <Pressable
-                                                                    onPress={() => setShowPassword(!showPassword)}
-                                                                    style={styles.eyeIcon}
-                                                                >
-                                                                    <View pointerEvents="none">
-                                                                        {showPassword ? <EyeOff color={Colors.textTertiary} size={18} /> : <Eye color={Colors.textTertiary} size={18} />}
-                                                                    </View>
-                                                                </Pressable>
-                                                            </View>
-                                                        </Pressable>
-
-                                                        {mode === 'signup' && password.length > 0 && (
-                                                            <MotiView
-                                                                from={{ opacity: 0, height: 0 }}
-                                                                animate={{ opacity: 1, height: 'auto' }}
-                                                                style={styles.strengthContainer}
-                                                            >
-                                                                <View style={styles.strengthBarRow}>
-                                                                    <View style={styles.strengthBarBg}>
-                                                                        <MotiView
-                                                                            animate={{
-                                                                                width: `${(passwordStrength?.score ?? 0) * 25}%`,
-                                                                                backgroundColor: passwordStrength?.color
-                                                                            }}
-                                                                            style={styles.strengthBarFill}
-                                                                        />
-                                                                    </View>
-                                                                    <Text style={[styles.strengthLabel, { color: passwordStrength?.color }]}>
-                                                                        {passwordStrength?.label}
-                                                                    </Text>
-                                                                </View>
-
-                                                                <View style={styles.requirementsGrid}>
-                                                                    {passwordStrength?.requirements.map((req) => (
-                                                                        <PasswordRequirementItem
-                                                                            key={req.id}
-                                                                            label={req.label}
-                                                                            met={req.met}
-                                                                            show={true}
-                                                                        />
-                                                                    ))}
-                                                                </View>
-                                                            </MotiView>
-                                                        )}
-                                                    </View>
-
-                                                    {mode === 'login' && (
-                                                        <Pressable style={styles.forgotBtn} onPress={handleForgotPassword}>
-                                                            <Text style={styles.forgotText}>Forgot your password?</Text>
-                                                        </Pressable>
-                                                    )}
-
-                                                    <Pressable
-                                                        onPress={handleSubmit}
-                                                        disabled={isLoading || (mode === 'signup' && (!!emailError || !email || !password || (passwordStrength?.score ?? 0) < 3))}
-                                                        style={({ pressed }) => [
-                                                            styles.submitBtnContainer,
-                                                            (pressed || isLoading) && { opacity: 0.8 },
-                                                            (mode === 'signup' && (!!emailError || !email || !password || (passwordStrength?.score ?? 0) < 3)) && { opacity: 0.5 }
-                                                        ]}
+                                                </Pressable>
+                                                {emailError && (
+                                                    <MotiText
+                                                        from={{ opacity: 0, translateY: -5 }}
+                                                        animate={{ opacity: 1, translateY: 0 }}
+                                                        style={styles.errorText}
                                                     >
-                                                        <LinearGradient
-                                                            colors={[Colors.primary, '#FF6B6B']}
-                                                            start={{ x: 0, y: 0 }}
-                                                            end={{ x: 1, y: 0 }}
-                                                            style={styles.gradientBtn}
-                                                        >
-                                                            {isLoading ? (
-                                                                <ActivityIndicator color={Colors.white} />
-                                                            ) : (
-                                                                <Text style={styles.submitBtnText}>
-                                                                    {mode === 'login' ? 'Sign in' : 'Sign up'}
-                                                                </Text>
-                                                            )}
-                                                        </LinearGradient>
-                                                    </Pressable>
+                                                        {emailError}
+                                                    </MotiText>
+                                                )}
+                                            </View>
 
-                                                    <View style={styles.switchModeContainer}>
-                                                        <Text style={styles.switchModeText}>
-                                                            {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
-                                                        </Text>
-                                                        <Pressable onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
-                                                            <Text style={styles.switchModeLink}>
-                                                                {mode === 'login' ? 'Sign up' : 'Sign in'}
-                                                            </Text>
+                                            <View>
+                                                <Pressable
+                                                    style={[
+                                                        styles.inputWrapper,
+                                                        mode === 'signup' && passwordStrength && passwordStrength.score < 2 && password.length > 0 ? styles.inputWrapperError : null
+                                                    ]}
+                                                    onPress={() => passwordRef.current?.focus()}
+                                                >
+                                                    <View style={styles.passwordContainer}>
+                                                        <TextInput
+                                                            ref={passwordRef}
+                                                            placeholder="Password"
+                                                            placeholderTextColor={Colors.textTertiary}
+                                                            style={[styles.lineInput, { flex: 1 }]}
+                                                            secureTextEntry={!showPassword}
+                                                            value={password}
+                                                            onChangeText={setPassword}
+                                                        />
+                                                        <Pressable
+                                                            onPress={() => setShowPassword(!showPassword)}
+                                                            style={styles.eyeIcon}
+                                                        >
+                                                            <View pointerEvents="none">
+                                                                {showPassword ? <EyeOff color={Colors.textTertiary} size={18} /> : <Eye color={Colors.textTertiary} size={18} />}
+                                                            </View>
                                                         </Pressable>
                                                     </View>
+                                                </Pressable>
 
-                                                </View>
+                                                {mode === 'signup' && password.length > 0 && (
+                                                    <MotiView
+                                                        from={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        style={styles.strengthContainer}
+                                                    >
+                                                        <View style={styles.strengthBarRow}>
+                                                            <View style={styles.strengthBarBg}>
+                                                                <MotiView
+                                                                    animate={{
+                                                                        width: `${(passwordStrength?.score ?? 0) * 25}%`,
+                                                                        backgroundColor: passwordStrength?.color
+                                                                    }}
+                                                                    style={styles.strengthBarFill}
+                                                                />
+                                                            </View>
+                                                            <Text style={[styles.strengthLabel, { color: passwordStrength?.color }]}>
+                                                                {passwordStrength?.label}
+                                                            </Text>
+                                                        </View>
+
+                                                        <View style={styles.requirementsGrid}>
+                                                            {passwordStrength?.requirements.map((req) => (
+                                                                <PasswordRequirementItem
+                                                                    key={req.id}
+                                                                    label={req.label}
+                                                                    met={req.met}
+                                                                    show={true}
+                                                                />
+                                                            ))}
+                                                        </View>
+                                                    </MotiView>
+                                                )}
                                             </View>
-                                        </Pressable>
 
-                                    </KeyboardAvoidingView>
+                                            {mode === 'login' && (
+                                                <Pressable style={styles.forgotBtn} onPress={handleForgotPassword}>
+                                                    <Text style={styles.forgotText}>Forgot your password?</Text>
+                                                </Pressable>
+                                            )}
 
-                                    {/* Footer Legal */}
-                                    <View style={styles.legalFooter}>
-                                        <Text style={styles.legalText}>
-                                            By joining BirdSnap, you acknowledge that you have read and agree to our{' '}
-                                            <Text
-                                                style={styles.legalLink}
-                                                onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
+                                            <Pressable
+                                                onPress={handleSubmit}
+                                                disabled={isLoading || (mode === 'signup' && (!!emailError || !email || !password || (passwordStrength?.score ?? 0) < 3))}
+                                                style={({ pressed }) => [
+                                                    styles.submitBtnContainer,
+                                                    (pressed || isLoading) && { opacity: 0.8 },
+                                                    (mode === 'signup' && (!!emailError || !email || !password || (passwordStrength?.score ?? 0) < 3)) && { opacity: 0.5 }
+                                                ]}
                                             >
-                                                Terms of Use
-                                            </Text> and{' '}
-                                            <Text
-                                                style={styles.legalLink}
-                                                onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
-                                            >
-                                                Privacy Policy
-                                            </Text>
-                                        </Text>
+                                                <LinearGradient
+                                                    colors={[Colors.primary, '#FF6B6B']}
+                                                    start={{ x: 0, y: 0 }}
+                                                    end={{ x: 1, y: 0 }}
+                                                    style={styles.gradientBtn}
+                                                >
+                                                    {isLoading ? (
+                                                        <ActivityIndicator color={Colors.white} />
+                                                    ) : (
+                                                        <Text style={styles.submitBtnText}>
+                                                            {mode === 'login' ? 'Sign in' : 'Sign up'}
+                                                        </Text>
+                                                    )}
+                                                </LinearGradient>
+                                            </Pressable>
+
+                                            <View style={styles.switchModeContainer}>
+                                                <Text style={styles.switchModeText}>
+                                                    {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+                                                </Text>
+                                                <Pressable onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+                                                    <Text style={styles.switchModeLink}>
+                                                        {mode === 'login' ? 'Sign up' : 'Sign in'}
+                                                    </Text>
+                                                </Pressable>
+                                            </View>
+
+                                        </View>
                                     </View>
-                                </SafeAreaView>
-                            </SwipeToClose>
-                        </MotiView>
-                    </View>
-                )}
-            </AnimatePresence>
-        </Modal>
+                                </Pressable>
+
+                            </KeyboardAvoidingView>
+
+                            {/* Footer Legal */}
+                            <View style={styles.legalFooter}>
+                                <Text style={styles.legalText}>
+                                    By joining BirdSnap, you acknowledge that you have read and agree to our{' '}
+                                    <Text
+                                        style={styles.legalLink}
+                                        onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
+                                    >
+                                        Terms of Use
+                                    </Text> and{' '}
+                                    <Text
+                                        style={styles.legalLink}
+                                        onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
+                                    >
+                                        Privacy Policy
+                                    </Text>
+                                </Text>
+                            </View>
+                        </SafeAreaView>
+                    </SwipeToClose>
+                </MotiView>
+            )}
+        </AnimatePresence>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: Colors.white,
+        zIndex: 100,
     },
     safeArea: {
         flex: 1,
