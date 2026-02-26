@@ -14,14 +14,15 @@ import {
 import React, { useState } from 'react';
 import {
     Alert,
+    Modal,
     Pressable,
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
     View
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SettingRowProps {
@@ -68,7 +69,9 @@ const SettingRow = ({
                         ios_backgroundColor="#E9E9EA"
                     />
                 ) : (
-                    <ChevronRight color="#C7C7CC" size={18} strokeWidth={2.5} />
+                    <View pointerEvents="none">
+                        <ChevronRight color="#C7C7CC" size={18} strokeWidth={2.5} />
+                    </View>
                 )}
             </View>
         </View>
@@ -127,7 +130,9 @@ export default function SettingsScreen() {
             <SafeAreaView style={styles.header}>
                 <View style={[styles.headerContent, { marginTop: insets.top > 40 ? 0 : 10 }]}>
                     <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                        <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                        <View pointerEvents="none">
+                            <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                        </View>
                     </Pressable>
                     <Text style={styles.headerTitle}>Settings</Text>
                     <View style={{ width: 44 }} />
@@ -227,14 +232,12 @@ export default function SettingsScreen() {
                 onClose={() => setIsTellFriendsVisible(false)}
             />
 
-            {isPaywallVisible && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
-                    <Paywall onClose={() => {
-                        setIsPaywallVisible(false);
-                        refreshSubscription();
-                    }} />
-                </View>
-            )}
+            <Modal visible={isPaywallVisible} animationType="slide" transparent={false}>
+                <Paywall onClose={() => {
+                    setIsPaywallVisible(false);
+                    refreshSubscription();
+                }} />
+            </Modal>
         </View>
     );
 }

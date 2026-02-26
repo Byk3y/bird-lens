@@ -13,14 +13,8 @@ import * as Speech from 'expo-speech';
 import { Camera, Check, ChevronLeft, Save, Share2 } from 'lucide-react-native';
 import { Skeleton } from 'moti/skeleton';
 import React, { useEffect } from 'react';
-import {
-    ActivityIndicator,
-    Animated,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeroBackdrop } from './HeroBackdrop';
 import { ITEM_WIDTH, styles } from './IdentificationResult.styles';
 import { MiniAudioPlayer } from './MiniAudioPlayer';
@@ -81,6 +75,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     recordingUri,
 }) => {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const { isPro } = useAuth();
     const { identificationsUsed } = useSubscriptionGating();
     const sourceMode = recordingUri ? 'sound' : 'photo';
@@ -115,7 +110,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     const onScroll = Animated.event(
         [{ nativeEvent: { contentOffset: { x: scrollX } } }],
         {
-            useNativeDriver: false,
+            useNativeDriver: true,
             listener: (event: any) => {
                 const index = event.nativeEvent.contentOffset.x / ITEM_WIDTH;
                 const roundIndex = Math.round(index);
@@ -276,7 +271,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
 
             {/* Bottom Action Bar */}
             {!isComparisonTab && activeBird && (
-                <View style={styles.bottomBar}>
+                <View style={[styles.bottomBar, { height: 65 + Math.max(insets.bottom, 16), paddingBottom: Math.max(insets.bottom, 16), backgroundColor: Colors.white }]}>
                     <TouchableOpacity
                         style={styles.actionItem}
                         onPress={() => onSave(activeBird, capturedImage, recordingUri)}

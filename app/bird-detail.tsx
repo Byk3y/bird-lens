@@ -31,11 +31,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
 export default function BirdDetailScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const params = useLocalSearchParams<{
         birdData: string;
         sightingDate?: string;
@@ -238,7 +240,9 @@ export default function BirdDetailScreen() {
             {/* Header / Navigation */}
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.headerBtn}>
-                    <ChevronLeft color={Colors.white} size={28} strokeWidth={2.5} />
+                    <View pointerEvents="none">
+                        <ChevronLeft color={Colors.white} size={28} strokeWidth={2.5} />
+                    </View>
                 </Pressable>
             </View>
 
@@ -307,17 +311,21 @@ export default function BirdDetailScreen() {
             </ScrollView>
 
             {/* Sticky Bottom Bar */}
-            <View style={styles.bottomBar}>
+            <View style={[styles.bottomBar, { height: 65 + Math.max(insets.bottom, 16), paddingBottom: Math.max(insets.bottom, 16), backgroundColor: '#fff' }]}>
                 <TouchableOpacity
                     style={styles.bottomBarBtn}
                     onPress={() => router.replace('/(tabs)/scanner')}
                 >
-                    <Camera size={24} color={Colors.textSecondary} />
+                    <View pointerEvents="none">
+                        <Camera size={24} color={Colors.textSecondary} />
+                    </View>
                     <Text style={styles.bottomBarText}>New</Text>
                 </TouchableOpacity>
                 <View style={styles.divider} />
                 <TouchableOpacity style={styles.bottomBarBtn} onPress={handleShare}>
-                    <Share2 size={24} color={Colors.textSecondary} />
+                    <View pointerEvents="none">
+                        <Share2 size={24} color={Colors.textSecondary} />
+                    </View>
                     <Text style={styles.bottomBarText}>Share</Text>
                 </TouchableOpacity>
             </View>
@@ -452,11 +460,8 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: 90,
-        backgroundColor: '#fff',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingBottom: 25,
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
         shadowColor: '#000',

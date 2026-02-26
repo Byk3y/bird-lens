@@ -22,7 +22,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { WaveformPlayer } from '../scanner/WaveformPlayer';
 
@@ -119,7 +119,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             setActiveMediaUrl(activeSound?.url || null);
                             setActionSheetVisible(true);
                         })}>
-                            <MoreHorizontal size={20} color="#999" />
+                            <View pointerEvents="none">
+                                <MoreHorizontal size={20} color="#999" />
+                            </View>
                         </TouchableOpacity>
                     </View>
 
@@ -221,7 +223,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             setActiveMediaUrl(photoUrl || null);
                             setActionSheetVisible(true);
                         }}>
-                            <MoreHorizontal size={20} color="#999" />
+                            <View pointerEvents="none">
+                                <MoreHorizontal size={20} color="#999" />
+                            </View>
                         </TouchableOpacity>
                     </View>
                     <ScrollView
@@ -283,7 +287,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         setActiveMediaUrl(null);
                         setActionSheetVisible(true);
                     }}>
-                        <MoreHorizontal size={20} color="#999" />
+                        <View pointerEvents="none">
+                            <MoreHorizontal size={20} color="#999" />
+                        </View>
                     </TouchableOpacity>
                 </View>
 
@@ -325,7 +331,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             setActiveMediaUrl(activeSound?.url || null);
                             setActionSheetVisible(true);
                         }}>
-                            <MoreHorizontal size={20} color="#999" />
+                            <View pointerEvents="none">
+                                <MoreHorizontal size={20} color="#999" />
+                            </View>
                         </TouchableOpacity>
                     </View>
 
@@ -427,7 +435,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             setActiveMediaUrl(null);
                             setActionSheetVisible(true);
                         }}>
-                            <MoreHorizontal size={20} color="#999" />
+                            <View pointerEvents="none">
+                                <MoreHorizontal size={20} color="#999" />
+                            </View>
                         </TouchableOpacity>
                     </View>
                     <View style={styles.clippedIdContainer}>
@@ -447,7 +457,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         activeOpacity={0.7}
                     >
                         <Text style={styles.expandButtonText}>Learn More</Text>
-                        <ChevronDown size={16} color="#BA6526" />
+                        <View pointerEvents="none">
+                            <ChevronDown size={16} color="#BA6526" />
+                        </View>
                     </TouchableOpacity>
                 </View>
             )}
@@ -468,7 +480,9 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                 setActiveMediaUrl(null);
                                 setActionSheetVisible(true);
                             }}>
-                                <MoreHorizontal size={20} color="#999" />
+                                <View pointerEvents="none">
+                                    <MoreHorizontal size={20} color="#999" />
+                                </View>
                             </TouchableOpacity>
                         </View>
                         <Text
@@ -491,11 +505,13 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                 <Text style={styles.expandButtonText}>
                                     {isExpanded ? 'Show Less' : 'Read Full Description'}
                                 </Text>
-                                {isExpanded ? (
-                                    <ChevronUp size={16} color="#BA6526" />
-                                ) : (
-                                    <ChevronDown size={16} color="#BA6526" />
-                                )}
+                                <View pointerEvents="none">
+                                    {isExpanded ? (
+                                        <ChevronUp size={16} color="#BA6526" />
+                                    ) : (
+                                        <ChevronDown size={16} color="#BA6526" />
+                                    )}
+                                </View>
                             </TouchableOpacity>
                         )}
                     </>

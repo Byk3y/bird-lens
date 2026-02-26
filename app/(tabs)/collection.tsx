@@ -18,8 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Diamond, Forward, Gem, Mic, MoreHorizontal, Plus, Settings } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useCallback, useRef, useState } from 'react';
-import { Dimensions, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { FlatList, ScrollView } from 'react-native-gesture-handler';
+import { Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -207,10 +206,14 @@ export default function MeScreen() {
                             style={styles.headerBtn}
                             onPress={() => setIsTellFriendsVisible(true)}
                         >
-                            <Forward color={Colors.white} size={22} />
+                            <View pointerEvents="none">
+                                <Forward color={Colors.white} size={22} />
+                            </View>
                         </Pressable>
                         <Pressable style={styles.headerBtn} onPress={() => router.push('/settings')}>
-                            <Settings color={Colors.white} size={22} />
+                            <View pointerEvents="none">
+                                <Settings color={Colors.white} size={22} />
+                            </View>
                         </Pressable>
                     </View>
 
@@ -223,7 +226,9 @@ export default function MeScreen() {
                                 transition={{ duration: 800 }}
                                 style={styles.subscribeBanner}
                             >
-                                <Gem color="#fbbf24" size={20} />
+                                <View pointerEvents="none">
+                                    <Gem color="#fbbf24" size={20} />
+                                </View>
                                 <Text style={styles.subscribeText}>Subscribe Now</Text>
                             </MotiView>
                         </Pressable>
@@ -234,7 +239,9 @@ export default function MeScreen() {
                             transition={{ duration: 600 }}
                             style={styles.proBadge}
                         >
-                            <Diamond color="#fcd34d" size={14} fill="#fcd34d" />
+                            <View pointerEvents="none">
+                                <Diamond color="#fcd34d" size={14} fill="#fcd34d" />
+                            </View>
                             <Text style={styles.proText}>Pro Member • {sightings.length} Birds Found</Text>
                         </MotiView>
                     )}
@@ -281,7 +288,9 @@ export default function MeScreen() {
                                         style={styles.cardWrapper}
                                     >
                                         <Pressable style={styles.plusCard} onPress={() => router.push('/scanner')}>
-                                            <Plus color="#94a3b8" size={40} strokeWidth={1.5} />
+                                            <View pointerEvents="none">
+                                                <Plus color="#94a3b8" size={40} strokeWidth={1.5} />
+                                            </View>
                                         </Pressable>
                                     </MotiView>
                                 );
@@ -309,7 +318,9 @@ export default function MeScreen() {
                                             />
                                             {sighting.audio_url && (
                                                 <View style={styles.audioTag}>
-                                                    <Mic color={Colors.white} size={14} />
+                                                    <View pointerEvents="none">
+                                                        <Mic color={Colors.white} size={14} />
+                                                    </View>
                                                 </View>
                                             )}
                                         </View>
@@ -327,7 +338,9 @@ export default function MeScreen() {
                                                     style={styles.moreBtn}
                                                     onPress={() => handleOptionsPress(sighting)}
                                                 >
-                                                    <MoreHorizontal color="#64748b" size={18} strokeWidth={2} />
+                                                    <View pointerEvents="none">
+                                                        <MoreHorizontal color="#64748b" size={18} strokeWidth={2} />
+                                                    </View>
                                                 </TouchableOpacity>
                                             </View>
                                         </View>
