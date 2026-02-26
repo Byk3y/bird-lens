@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
         zIndex: 100,
         justifyContent: 'space-between',
         paddingTop: 0,
-        paddingBottom: 60,
+        paddingBottom: 120,
     },
     header: {
         paddingHorizontal: Spacing.lg,
