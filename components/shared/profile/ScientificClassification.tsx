@@ -28,7 +28,9 @@ export const ScientificClassification: React.FC<ScientificClassificationProps> =
                     </View>
                     {onMorePress && (
                         <TouchableOpacity onPress={onMorePress}>
-                            <MoreHorizontal size={20} color="#999" />
+                            <View pointerEvents="none">
+                                <MoreHorizontal size={20} color="#999" />
+                            </View>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -98,11 +100,13 @@ export const ScientificClassification: React.FC<ScientificClassificationProps> =
                     <Text style={styles.expandButtonText}>
                         {isExpanded ? 'Show Less' : 'Learn More'}
                     </Text>
-                    {isExpanded ? (
-                        <ChevronUp size={16} color="#BA6526" />
-                    ) : (
-                        <ChevronDown size={16} color="#BA6526" />
-                    )}
+                    <View pointerEvents="none">
+                        {isExpanded ? (
+                            <ChevronUp size={16} color="#BA6526" />
+                        ) : (
+                            <ChevronDown size={16} color="#BA6526" />
+                        )}
+                    </View>
                 </TouchableOpacity>
             </View>
         </View>

@@ -177,7 +177,9 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 onPress={() => handleQuickAction('like')}
                                                 disabled={isSubmitting}
                                             >
-                                                <Heart size={24} color={Colors.text} strokeWidth={1.5} />
+                                                <View pointerEvents="none">
+                                                    <Heart size={24} color={Colors.text} strokeWidth={1.5} />
+                                                </View>
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>I Like This Content</Text>
                                                 </View>
@@ -189,7 +191,9 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 onPress={() => handleOpenForm('error')}
                                                 disabled={isSubmitting}
                                             >
-                                                <FileWarning size={24} color={Colors.text} strokeWidth={1.5} />
+                                                <View pointerEvents="none">
+                                                    <FileWarning size={24} color={Colors.text} strokeWidth={1.5} />
+                                                </View>
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>Error in Content</Text>
                                                     <Text style={styles.optionSubtitle}>Poor content, errors, etc.</Text>
@@ -202,7 +206,9 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 onPress={() => handleQuickAction('incorrect_id')}
                                                 disabled={isSubmitting}
                                             >
-                                                <ScanEye size={24} color={Colors.text} strokeWidth={1.5} />
+                                                <View pointerEvents="none">
+                                                    <ScanEye size={24} color={Colors.text} strokeWidth={1.5} />
+                                                </View>
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>Incorrect Identification</Text>
                                                 </View>
@@ -210,7 +216,9 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                             </TouchableOpacity>
 
                                             <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('suggestion')}>
-                                                <Edit3 size={24} color={Colors.text} strokeWidth={1.5} />
+                                                <View pointerEvents="none">
+                                                    <Edit3 size={24} color={Colors.text} strokeWidth={1.5} />
+                                                </View>
                                                 <View style={styles.optionContent}>
                                                     <Text style={styles.optionTitle}>Suggestions</Text>
                                                     <Text style={styles.optionSubtitle}>Help us make it better</Text>
@@ -230,7 +238,9 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                         >
                                             <View style={styles.formHeader}>
                                                 <TouchableOpacity onPress={() => setView('menu')} style={styles.backButton}>
-                                                    <ChevronLeft size={24} color={Colors.text} />
+                                                    <View pointerEvents="none">
+                                                        <ChevronLeft size={24} color={Colors.text} />
+                                                    </View>
                                                 </TouchableOpacity>
                                                 <Text style={styles.formTitle}>
                                                     {formType === 'error' ? 'Error in Content' : 'Suggestions'}
@@ -275,7 +285,9 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                             transition={{ type: 'timing', duration: 300 }}
                                             style={styles.successContainer}
                                         >
-                                            <CheckCircle2 size={64} color={Colors.success} strokeWidth={1.5} />
+                                            <View pointerEvents="none">
+                                                <CheckCircle2 size={64} color={Colors.success} strokeWidth={1.5} />
+                                            </View>
                                             <Text style={styles.successTitle}>Thank You!</Text>
                                             <Text style={styles.successSubtitle}>Your feedback helps us improve BirdSnap.</Text>
                                         </MotiView>

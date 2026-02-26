@@ -68,7 +68,9 @@ export default function ManageAccountScreen() {
             <SafeAreaView style={styles.header}>
                 <View style={[styles.headerContent, { marginTop: insets.top > 40 ? 0 : 10 }]}>
                     <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                        <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                        <View pointerEvents="none">
+                            <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                        </View>
                     </Pressable>
                     <Text style={styles.headerTitle}>Manage Account</Text>
                     <View style={{ width: 44 }} />
@@ -98,7 +100,9 @@ export default function ManageAccountScreen() {
                 <View style={styles.card}>
                     <View style={styles.statRow}>
                         <View style={styles.iconCircle}>
-                            <Camera color="#FFFFFF" size={24} fill="#FFFFFF" />
+                            <View pointerEvents="none">
+                                <Camera color="#FFFFFF" size={24} fill="#FFFFFF" />
+                            </View>
                         </View>
                         <View style={styles.statInfo}>
                             {loading ? (
@@ -119,10 +123,14 @@ export default function ManageAccountScreen() {
                 >
                     <View style={styles.row}>
                         <View style={styles.rowLeft}>
-                            <GraduationCap color="#1C1C1E" size={24} />
+                            <View pointerEvents="none">
+                                <GraduationCap color="#1C1C1E" size={24} />
+                            </View>
                             <Text style={styles.rowLabel}>{knowledgeLevel || 'Knowledge Level'}</Text>
                         </View>
-                        <ChevronRight color="#C7C7CC" size={20} strokeWidth={2} />
+                        <View pointerEvents="none">
+                            <ChevronRight color="#C7C7CC" size={20} strokeWidth={2} />
+                        </View>
                     </View>
                 </Pressable>
 
@@ -134,10 +142,14 @@ export default function ManageAccountScreen() {
                 >
                     <View style={styles.row}>
                         <View style={styles.rowLeft}>
-                            <Trash2 color="#1C1C1E" size={24} />
+                            <View pointerEvents="none">
+                                <Trash2 color="#1C1C1E" size={24} />
+                            </View>
                             <Text style={styles.rowLabel}>Delete Account and All Data</Text>
                         </View>
-                        <ChevronRight color="#C7C7CC" size={20} strokeWidth={2} />
+                        <View pointerEvents="none">
+                            <ChevronRight color="#C7C7CC" size={20} strokeWidth={2} />
+                        </View>
                     </View>
                 </Pressable>
             </ScrollView>

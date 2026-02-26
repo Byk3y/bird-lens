@@ -18,9 +18,13 @@ export const GuestNudge = ({ onPress, onClose }: GuestNudgeProps) => {
         >
             <View style={styles.content}>
                 <View style={styles.mainInfo}>
-                    <Cloud color="#3b82f6" size={20} />
+                    <View pointerEvents="none">
+                        <Cloud color="#3b82f6" size={20} />
+                    </View>
                     <Text style={styles.title}>Sign up to sync your sightings</Text>
-                    <Sparkles color="#fbbf24" size={14} />
+                    <View pointerEvents="none">
+                        <Sparkles color="#fbbf24" size={14} />
+                    </View>
                 </View>
 
                 <Pressable style={styles.button} onPress={onPress}>
@@ -30,7 +34,9 @@ export const GuestNudge = ({ onPress, onClose }: GuestNudgeProps) => {
 
             {onClose && (
                 <Pressable style={styles.closeBtn} onPress={onClose}>
-                    <X color={Colors.textTertiary} size={16} />
+                    <View pointerEvents="none">
+                        <X color={Colors.textTertiary} size={16} />
+                    </View>
                 </Pressable>
             )}
         </MotiView>

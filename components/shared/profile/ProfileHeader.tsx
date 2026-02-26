@@ -31,7 +31,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce,
                     )}
                 </View>
                 <Pressable onPress={onMorePress} style={styles.editBtn}>
-                    <MoreHorizontal size={20} color="#999" />
+                    <View pointerEvents="none">
+                        <MoreHorizontal size={20} color="#999" />
+                    </View>
                 </Pressable>
             </View>
 
@@ -54,7 +56,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce,
                             <View style={styles.metaRowContent}>
                                 <Text style={styles.metaLabel}>Scientific name: </Text>
                                 <Text style={[styles.metaValue, { fontStyle: 'italic' }]}>{bird.scientific_name}</Text>
-                                <View style={styles.soundIconContainer}>
+                                <View style={styles.soundIconContainer} pointerEvents="none">
                                     <Volume2 size={13} color="#FFFFFF" />
                                 </View>
                             </View>

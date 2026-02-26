@@ -67,7 +67,9 @@ export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird, onMorePr
                 </View>
                 {onMorePress && (
                     <TouchableOpacity onPress={onMorePress}>
-                        <MoreHorizontal size={20} color="#999" />
+                        <View pointerEvents="none">
+                            <MoreHorizontal size={20} color="#999" />
+                        </View>
                     </TouchableOpacity>
                 )}
             </View>
@@ -117,11 +119,13 @@ export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird, onMorePr
                     <Text style={styles.expandButtonText}>
                         {isFactsExpanded ? 'Show Less' : 'Learn More'}
                     </Text>
-                    {isFactsExpanded ? (
-                        <ChevronUp size={16} color="#BA6526" />
-                    ) : (
-                        <ChevronDown size={16} color="#BA6526" />
-                    )}
+                    <View pointerEvents="none">
+                        {isFactsExpanded ? (
+                            <ChevronUp size={16} color="#BA6526" />
+                        ) : (
+                            <ChevronDown size={16} color="#BA6526" />
+                        )}
+                    </View>
                 </TouchableOpacity>
             )}
         </View>

@@ -54,7 +54,9 @@ export default function KnowledgeLevelScreen() {
 
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                    <View pointerEvents="none">
+                        <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                    </View>
                 </Pressable>
             </View>
 

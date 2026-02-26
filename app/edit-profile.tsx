@@ -113,7 +113,9 @@ export default function EditProfileScreen() {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft color={Colors.text} size={28} />
+                    <View pointerEvents="none">
+                        <ChevronLeft color={Colors.text} size={28} />
+                    </View>
                 </Pressable>
                 <Text style={styles.headerTitle}>Edit Profile</Text>
                 <Pressable onPress={handleSave} disabled={isSaving} style={styles.saveBtn}>
@@ -138,7 +140,7 @@ export default function EditProfileScreen() {
                         {/* Profile Photo Row */}
                         <View style={styles.row}>
                             <Text style={styles.label}>Profile Photo</Text>
-                            <View style={styles.avatarPlaceholder}>
+                            <View style={styles.avatarPlaceholder} pointerEvents="none">
                                 <UserIcon color="#94a3b8" size={32} />
                             </View>
                         </View>

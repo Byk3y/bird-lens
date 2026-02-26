@@ -22,7 +22,9 @@ export default function AppInfoScreen() {
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                    <View pointerEvents="none">
+                        <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
+                    </View>
                 </Pressable>
                 <Text style={styles.headerTitle}>App Info</Text>
                 <View style={{ width: 44 }} />

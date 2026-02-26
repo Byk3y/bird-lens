@@ -54,7 +54,9 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                     ) : (
                         <Text style={{ color: '#CCC', fontSize: 16, fontWeight: '600' }}>{displayLoadingOrUnknown}</Text>
                     )}
-                    <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+                    <View pointerEvents="none">
+                        <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+                    </View>
                 </View>
             </TouchableOpacity>
 
@@ -66,7 +68,9 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                     </View>
                     <View style={styles.cardRight}>
                         <OverlapAvatars tags={bird.feeder_info.feeder_types} type="feeder" />
-                        <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+                        <View pointerEvents="none">
+                            <ChevronRight size={20} color="#A1A1A1" strokeWidth={2.5} style={{ marginLeft: 8 }} />
+                        </View>
                     </View>
                 </TouchableOpacity>
             )}
@@ -76,7 +80,9 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                 <TouchableOpacity style={styles.halfCard} onPress={() => onOpenTips?.('habitat')} activeOpacity={0.7}>
                     <View style={styles.halfCardTop}>
                         <Text style={styles.cardLabel}>Habitat</Text>
-                        <Map size={20} color="#666" />
+                        <View pointerEvents="none">
+                            <Map size={20} color="#666" />
+                        </View>
                     </View>
                     <View style={styles.halfCardMain}>
                         <Image source={getHabitatIcon(bird)} style={[styles.habitatIcon, !bird.habitat && { opacity: 0.1 }]} cachePolicy="memory-disk" />
@@ -87,7 +93,9 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                 <TouchableOpacity style={styles.halfCard} onPress={() => onOpenTips?.('nesting')} activeOpacity={0.7}>
                     <View style={styles.halfCardTop}>
                         <Text style={styles.cardLabel}>Nesting</Text>
-                        <Home size={20} color="#666" />
+                        <View pointerEvents="none">
+                            <Home size={20} color="#666" />
+                        </View>
                     </View>
                     <View style={styles.halfCardMain}>
                         <Image source={getNestingIcon(bird)} style={[styles.habitatIcon, !bird.nesting_info && { opacity: 0.1 }]} cachePolicy="memory-disk" />
