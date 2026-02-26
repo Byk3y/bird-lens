@@ -9,6 +9,9 @@ export default function PaywallScreen() {
 
     const handleFinishOnboarding = async () => {
         await onboardingState.markAsCompleted();
+        if (router.canDismiss()) {
+            router.dismissAll();
+        }
         router.replace('/(tabs)');
     };
 
