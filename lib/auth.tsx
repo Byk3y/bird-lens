@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (event === 'SIGNED_OUT') {
                 setSession(null);
                 setUser(null);
+                setIsPro(false);
                 subscriptionService.logOut();
                 handleAnonymousSignIn();
             } else if (session) {
@@ -133,10 +134,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const signIn = async (email: string, password: string) => {
+        const previousAnonId = user?.is_anonymous ? user.id : null;
+
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
+
+        if (!error && previousAnonId) {
+            console.log('Merging anonymous data from:', previousAnonId);
+            const { error: rpcError } = await supabase.rpc('transfer_anonymous_data', {
+                old_user_id: previousAnonId
+            });
+            if (rpcError) {
+                console.error('Failed to transfer anonymous data:', rpcError);
+            }
+        }
+
         return { error };
     };
 
