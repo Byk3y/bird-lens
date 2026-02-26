@@ -153,7 +153,9 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             {/* Top Navigation */}
             <View style={styles.topNav}>
                 <TouchableOpacity onPress={onReset} style={styles.navButton}>
-                    <ChevronLeft color={Colors.white} size={28} />
+                    <View pointerEvents="none">
+                        <ChevronLeft color={Colors.white} size={28} />
+                    </View>
                 </TouchableOpacity>
 
                 {/* Credits Badge — only for free users */}
@@ -176,7 +178,9 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                 )}
 
                 <TouchableOpacity style={styles.navButton} onPress={onReset}>
-                    <Camera color={Colors.white} size={24} />
+                    <View pointerEvents="none">
+                        <Camera color={Colors.white} size={24} />
+                    </View>
                 </TouchableOpacity>
             </View>
 
@@ -280,9 +284,13 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         {isSaving ? (
                             <ActivityIndicator size="small" color={Colors.primary} />
                         ) : isSavedForActive ? (
-                            <Check color={Colors.primary} size={24} />
+                            <View pointerEvents="none">
+                                <Check color={Colors.primary} size={24} />
+                            </View>
                         ) : (
-                            <Save color={Colors.text} size={24} />
+                            <View pointerEvents="none">
+                                <Save color={Colors.text} size={24} />
+                            </View>
                         )}
                         <Text style={[styles.actionText, (isSaving || isSavedForActive) && { color: Colors.primary }]}>
                             {isSaving ? 'Saving...' : isSavedForActive ? 'Saved' : 'Save'}
@@ -293,12 +301,16 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         style={styles.actionItem}
                         onPress={onReset}
                     >
-                        <Camera color={Colors.text} size={24} />
+                        <View pointerEvents="none">
+                            <Camera color={Colors.text} size={24} />
+                        </View>
                         <Text style={styles.actionText}>New</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionItem} onPress={() => setShareSheetVisible(true)}>
-                        <Share2 color={Colors.text} size={24} />
+                        <View pointerEvents="none">
+                            <Share2 color={Colors.text} size={24} />
+                        </View>
                         <Text style={styles.actionText}>Share</Text>
                     </TouchableOpacity>
                 </View>
