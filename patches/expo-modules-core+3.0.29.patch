@@ -1,0 +1,17 @@
+diff --git a/node_modules/expo-modules-core/ios/Core/Logging/PersistentFileLog.swift b/node_modules/expo-modules-core/ios/Core/Logging/PersistentFileLog.swift
+index 2863e1a..8b01612 100644
+--- a/node_modules/expo-modules-core/ios/Core/Logging/PersistentFileLog.swift
++++ b/node_modules/expo-modules-core/ios/Core/Logging/PersistentFileLog.swift
+@@ -118,7 +118,11 @@ public class PersistentFileLog {
+     if let data = text.data(using: .utf8) {
+       if let fileHandle = FileHandle(forWritingAtPath: filePath) {
+         fileHandle.seekToEndOfFile()
+-        try fileHandle.write(data)
++        if #available(iOS 13.4, *) {
++          try fileHandle.write(contentsOf: data)
++        } else {
++          fileHandle.write(data)
++        }
+         fileHandle.closeFile()
+       }
+     }
