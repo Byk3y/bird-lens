@@ -2,7 +2,7 @@ import { Colors, Typography } from '@/constants/theme';
 import { ScanMode } from '@/types/scanner';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HelpCircle, Image as ImageIcon, UploadCloud } from 'lucide-react-native';
+import { HelpCircle, Images, UploadCloud } from 'lucide-react-native';
 import React from 'react';
 import {
     ActivityIndicator,
@@ -118,9 +118,9 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                 <View style={styles.shutterRow}>
                     {activeMode === 'photo' ? (
                         <TouchableOpacity style={styles.sideControl} onPress={onGalleryPress}>
-                            <View style={styles.galleryPreview}>
+                            <View style={styles.galleryButton}>
                                 <View pointerEvents="none">
-                                    <ImageIcon color="#f97316" size={21} />
+                                    <Images color={Colors.primary} size={24} strokeWidth={2.5} />
                                 </View>
                             </View>
                             <Text style={styles.sideLabel}>Photos</Text>
@@ -255,31 +255,39 @@ const styles = StyleSheet.create({
     shutterRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 40,
+        justifyContent: 'center',
+        gap: 64,
+        width: '100%',
     },
     sideControl: {
         alignItems: 'center',
         gap: 8,
     },
     sideControlSpacer: {
-        width: 56,
+        width: 48,
     },
-    galleryPreview: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+    galleryButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: '#fff7ed',
         borderWidth: 1.5,
         borderColor: '#ffedd5',
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     tipsBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#f1f5f9',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#f8fafc',
+        borderWidth: 1.5,
+        borderColor: '#f1f5f9',
         justifyContent: 'center',
         alignItems: 'center',
     },

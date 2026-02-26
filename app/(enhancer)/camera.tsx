@@ -12,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Download, Image as ImageIcon, ShieldAlert, X } from 'lucide-react-native';
+import { Download, Images, ShieldAlert, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
@@ -442,12 +442,13 @@ export default function EnhancerScreen() {
                     </View>
                 </GestureDetector>
 
-                {/* Bottom Controls */}
                 <View style={[styles.controls, { paddingBottom: insets.bottom + 20 }]}>
                     {/* Gallery */}
                     <TouchableOpacity style={styles.sideButton} onPress={handlePickPhoto}>
-                        <View style={styles.galleryIcon}>
-                            <ImageIcon color="#f97316" size={21} />
+                        <View style={styles.galleryButton}>
+                            <View pointerEvents="none">
+                                <Images color={Colors.primary} size={24} strokeWidth={2.5} />
+                            </View>
                         </View>
                         <Text style={styles.sideLabel}>Photos</Text>
                     </TouchableOpacity>
@@ -463,9 +464,9 @@ export default function EnhancerScreen() {
                         </View>
                     </TouchableOpacity>
 
-                    {/* Spacer */}
+                    {/* Spacer for symmetry */}
                     <View style={styles.sideButton}>
-                        <View style={{ width: 40, height: 40 }} />
+                        <View style={{ width: 48, height: 48 }} />
                         <Text style={[styles.sideLabel, { opacity: 0 }]}>—</Text>
                     </View>
                 </View>
@@ -492,23 +493,27 @@ const styles = StyleSheet.create({
         paddingTop: 24,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 40,
+        justifyContent: 'center',
+        gap: 64,
     },
     sideButton: {
         alignItems: 'center',
         gap: 8,
-        width: 56,
     },
-    galleryIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+    galleryButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: '#fff7ed',
         borderWidth: 1.5,
         borderColor: '#ffedd5',
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     sideLabel: {
         fontSize: 12,
