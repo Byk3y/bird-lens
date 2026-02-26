@@ -81,7 +81,7 @@ export default function HomeScreen() {
             <View pointerEvents="none">
               <Sparkles color={Colors.primary} size={20} style={styles.sectionIcon} />
             </View>
-            <Text style={styles.sectionTitle}>Bird Photo AI Enhancer</Text>
+            <Text style={styles.sectionTitle}>Bird Photo Enhancer</Text>
             <View style={styles.betaBadge}>
               <Text style={styles.betaText}>BETA</Text>
             </View>

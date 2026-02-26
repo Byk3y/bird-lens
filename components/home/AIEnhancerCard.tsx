@@ -17,8 +17,7 @@ import {
 } from 'react-native-gesture-handler';
 import Animated, {
     useAnimatedStyle,
-    useSharedValue,
-    withSpring
+    useSharedValue
 } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
@@ -30,17 +29,15 @@ export const AIEnhancerCard: React.FC = () => {
     const { isPro } = useAuth();
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
     const containerWidth = width * 0.38;
-    const sliderPos = useSharedValue(0.6); // Start at 60% across (showing 60% blur, 40% sharp)
+    const sliderPos = useSharedValue(0.6); // Current position (0-1)
+    const startSliderPos = useSharedValue(0.6); // Position at start of gesture
 
     const panGesture = Gesture.Pan()
-        .onBegin((event) => {
-            let newPos = event.x / containerWidth;
-            if (newPos < 0.05) newPos = 0.05;
-            if (newPos > 0.95) newPos = 0.95;
-            sliderPos.value = withSpring(newPos, { damping: 20, stiffness: 200 });
+        .onStart(() => {
+            startSliderPos.value = sliderPos.value;
         })
         .onUpdate((event) => {
-            let newPos = event.x / containerWidth;
+            let newPos = startSliderPos.value + (event.translationX / containerWidth);
             if (newPos < 0.05) newPos = 0.05;
             if (newPos > 0.95) newPos = 0.95;
             sliderPos.value = newPos;
@@ -104,9 +101,9 @@ export const AIEnhancerCard: React.FC = () => {
             >
                 <Text style={styles.enhancerTitle}>Turn your phone into a pro camera</Text>
                 <View style={styles.startButton}>
-                    <Text style={styles.startText}>Learn More</Text>
-                    <View pointerEvents="none">
-                        <ChevronRight color={Colors.primary} size={16} />
+                    <Text style={styles.startText}>Start</Text>
+                    <View style={styles.iconCircle}>
+                        <ChevronRight color={Colors.white} size={10} strokeWidth={4} />
                     </View>
                 </View>
             </TouchableOpacity>
@@ -210,12 +207,29 @@ const styles = StyleSheet.create({
     startButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: Colors.primary,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 20,
+        gap: 8,
+        alignSelf: 'flex-start',
     },
     startText: {
         color: Colors.primary,
-        fontWeight: '800',
-        fontSize: 14,
+        fontWeight: '900',
+        fontSize: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    iconCircle: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: Colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     proBadge: {
         position: 'absolute',
