@@ -6,7 +6,8 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { PostHogProvider } from 'posthog-react-native';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { View } from 'react-native';
 import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
 
@@ -24,7 +25,7 @@ export {
 } from 'expo-router';
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
+  // Ensure that reloading on `/ modal` keeps a back button present.
   initialRouteName: '(tabs)',
 };
 
@@ -123,50 +124,45 @@ function RootLayoutNav() {
   }
 
   return (
-    <PostHogProvider
-      apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY!}
-      options={{
-        host: 'https://us.i.posthog.com',
-        enableSessionReplay: true,
-        sessionReplayConfig: {
-          maskAllTextInputs: true,
-          maskAllImages: true,
-          captureLog: true,
-          captureNetworkTelemetry: true,
-          throttleDelayMs: 1000,
-        },
-      }}
-    >
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{ persister: asyncStoragePersister }}
+    <View style={{ flex: 1 }}>
+      <PostHogProvider
+        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY!}
+        options={{
+          host: 'https://us.i.posthog.com',
+          enableSessionReplay: false,
+        }}
       >
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AuthProvider>
-            <AlertProvider>
-              <ThemeProvider value={DefaultTheme}>
-                <Stack>
-                  <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
-                  <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-                  <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
-                  <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
-                  <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{ persister: asyncStoragePersister }}
+        >
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <AuthProvider>
+              <AlertProvider>
+                <ThemeProvider value={DefaultTheme}>
+                  <Stack>
+                    <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+                    <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+                    <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
+                    <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
+                    <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
 
-                  <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-                  <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
-                  <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
-                  <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
-                  <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
-                  <Stack.Screen name="(enhancer)" options={{ headerShown: false, animation: 'none' }} />
-                  <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                </Stack>
-              </ThemeProvider>
-            </AlertProvider>
-          </AuthProvider>
-        </GestureHandlerRootView>
-      </PersistQueryClientProvider>
-    </PostHogProvider>
+                    <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+                    <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
+                    <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
+                    <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
+                    <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
+                    <Stack.Screen name="(enhancer)" options={{ headerShown: false, animation: 'none' }} />
+                    <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                  </Stack>
+                </ThemeProvider>
+              </AlertProvider>
+            </AuthProvider>
+          </GestureHandlerRootView>
+        </PersistQueryClientProvider>
+      </PostHogProvider>
+    </View>
   );
 }
