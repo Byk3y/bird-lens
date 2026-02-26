@@ -378,6 +378,8 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                                             onChangeText={setEmail}
                                                             autoCapitalize="none"
                                                             keyboardType="email-address"
+                                                            autoCorrect={false}
+                                                            spellCheck={false}
                                                         />
                                                         {isCheckingEmail && <ActivityIndicator size="small" color={Colors.primary} />}
                                                         {!isCheckingEmail && emailAvailable && (
