@@ -224,6 +224,38 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     // PHASE 1: Identification
                     const openRouterModel = "openai/gpt-4o";
 
+                    const processIdentificationResponse = async (response: Response, isAudio: boolean) => {
+                        const resultJson = await response.json().catch((jsonErr: any) => {
+                            console.error("[PHASE1] Error reading AI response JSON:", jsonErr);
+                            throw new Error("Failed to parse AI response body. The connection may have been closed.");
+                        });
+
+                        const content = resultJson.choices?.[0]?.message?.content;
+
+                        if (!content) {
+                            console.error("[PHASE1] AI returned no content. Full response:", JSON.stringify(resultJson));
+                            throw new Error("AI returned empty content.");
+                        }
+
+                        console.log('[PHASE1] Raw AI Response Content: ' + content);
+                        console.log('[PHASE1] AI response successfully parsed. Model: ' + resultJson.model);
+
+                        const parsed = cleanAndParseJson(content, resultJson.model || "OpenRouter");
+
+                        // For audio, log the AI's acoustic description if available
+                        if (isAudio && parsed.audio_description) {
+                            console.log('[PHASE1] Audio Analysis: ' + parsed.audio_description);
+                        }
+
+                        let candidates = parsed.candidates || parsed.birds || parsed.species || parsed.results || (Array.isArray(parsed) ? parsed : []);
+
+                        if (!candidates || candidates.length === 0) {
+                            throw new Error("AI returned no bird candidates.");
+                        }
+
+                        return { candidates, content, audio_description: parsed.audio_description };
+                    };
+
                     const attemptAI = async (isPrimary: boolean, promptText: string): Promise<Response> => {
                         const isGemini = !isPrimary;
                         const model = isGemini ? GEMINI_MODEL : openRouterModel;
@@ -267,6 +299,8 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     let isGeminiUsed = false;
                     let birdNetCandidates: any[] = [];
                     let usedBirdNet = false;
+                    let candidates: any[] = [];
+                    let content: string = "";
 
                     try {
                         // If audio is present, try BirdNET first
@@ -384,6 +418,13 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                                 const errBody = await identificationResponse.text().catch(() => "unknown");
                                 throw new Error('Primary AI failed with status ' + identificationResponse.status + ': ' + errBody);
                             }
+
+                            const processed = await processIdentificationResponse(identificationResponse, !!audio);
+                            candidates = processed.candidates;
+                            content = processed.content;
+                            if (processed.audio_description) {
+                                writeChunk(controller, { type: "progress", message: 'Analysis: ' + processed.audio_description });
+                            }
                         }
                     } catch (err) {
                         console.warn("[PHASE1] Primary AI or BirdNET failed, checking fallback:", err);
@@ -396,6 +437,13 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                                     const errBody = await identificationResponse.text().catch(() => "unknown");
                                     throw new Error('Fallback AI failed with status ' + identificationResponse.status + ': ' + errBody);
                                 }
+
+                                const processed = await processIdentificationResponse(identificationResponse, !!audio);
+                                candidates = processed.candidates;
+                                content = processed.content;
+                                if (processed.audio_description) {
+                                    writeChunk(controller, { type: "progress", message: 'Analysis: ' + processed.audio_description });
+                                }
                             } catch (innerErr) {
                                 console.error("[PHASE1] Fallback AI also failed:", innerErr);
                                 throw innerErr;
@@ -405,44 +453,11 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                         }
                     }
 
-                    let candidates: any[] = [];
-                    let content: string = "";
-
                     if (usedBirdNet) {
                         candidates = birdNetCandidates;
                         content = JSON.stringify({ predictions: birdNetCandidates });
                         console.log('[PHASE1] Using BirdNET candidates.');
                         writeChunk(controller, { type: "progress", message: 'Analysis: Acoustic analysis matched ' + candidates.length + ' potential species.' });
-                    } else {
-                        if (!identificationResponse) {
-                            throw new Error("All AI models failed to identify the bird. Please try again.");
-                        }
-
-                        const resultJson = await identificationResponse.json().catch((jsonErr: any) => {
-                            console.error("[PHASE1] Error reading AI response JSON:", jsonErr);
-                            throw new Error("Failed to parse AI response body. The connection may have been closed.");
-                        });
-
-                        content = resultJson.choices?.[0]?.message?.content;
-
-                        if (!content) {
-                            console.error("[PHASE1] AI returned no content. Full response:", JSON.stringify(resultJson));
-                            throw new Error("AI returned empty content.");
-                        }
-
-                        console.log('[PHASE1] Raw AI Response Content: ' + content);
-                        console.log('[PHASE1] AI response successfully parsed. Model: ' + resultJson.model);
-
-                        const parsed = cleanAndParseJson(content, resultJson.model || "OpenRouter");
-
-                        // For audio, log the AI's acoustic description if available
-                        if (audio && parsed.audio_description) {
-                            console.log('[PHASE1] Audio Analysis: ' + parsed.audio_description);
-                            // Optionally send this back as a progress message so user sees it
-                            writeChunk(controller, { type: "progress", message: 'Analysis: ' + parsed.audio_description });
-                        }
-
-                        candidates = parsed.candidates || parsed.birds || parsed.species || parsed.results || (Array.isArray(parsed) ? parsed : []);
                     }
 
                     if (!candidates || candidates.length === 0) {
@@ -526,7 +541,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                 } catch (streamError: any) { // @ts-ignore: Deno.serve error type
                     if (heartbeatId) clearInterval(heartbeatId);
                     console.error("[STREAM ERROR]", streamError);
-                    try { writeChunk(controller, { type: "error", message: "An internal server error occurred during identification." }); } catch { /* ignore stream close */ }
+                    try { writeChunk(controller, { type: "error", message: "We couldn't identify the bird this time. Please try again with a clearer image or audio recording." }); } catch { /* ignore stream close */ }
                     controller.close();
                 }
             }
@@ -535,7 +550,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
         return createStreamResponse(stream);
     } catch (error: any) { // Type 'unknown' requires casting for .message access
         console.error("Critical Error:", error);
-        return new Response(JSON.stringify({ error: "An internal server error occurred during identification." }), {
+        return new Response(JSON.stringify({ error: "We couldn't identify the bird this time. Please try again with a clearer image or audio recording." }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
