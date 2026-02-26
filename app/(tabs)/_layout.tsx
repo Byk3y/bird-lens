@@ -24,24 +24,28 @@ export default function TabLayout() {
           right: 0,
           paddingHorizontal: 16,
           paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
-          elevation: 0,
-          shadowOpacity: 0,
-          zIndex: 100,
+          elevation: 100,
+          shadowOpacity: 0.1,
+          zIndex: 999,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginBottom: Platform.OS === 'ios' ? 5 : 12, // Lifted labels a bit
+          marginBottom: Platform.OS === 'ios' ? 5 : 12,
         },
         tabBarIconStyle: {
-          marginTop: 6, // Gave icons a bit more breathing room from the top
+          marginTop: 6,
         }
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <LayoutGrid color={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <View pointerEvents="none">
+              <LayoutGrid color={color} size={24} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -51,7 +55,7 @@ export default function TabLayout() {
           tabBarStyle: { display: 'none' },
           title: '',
           tabBarIcon: () => (
-            <View style={[styles.fabContainer, { bottom: Platform.OS === 'ios' ? 10 : 15 }]}>
+            <View pointerEvents="none" style={[styles.fabContainer, { bottom: Platform.OS === 'ios' ? 10 : 15 }]}>
               <View style={styles.fabGradient}>
                 <Camera color={Colors.white} size={32} strokeWidth={2.5} />
               </View>
@@ -63,7 +67,11 @@ export default function TabLayout() {
         name="collection"
         options={{
           title: 'Me',
-          tabBarIcon: ({ color }) => <CircleUserRound color={color} size={24} />,
+          tabBarIcon: ({ color }) => (
+            <View pointerEvents="none">
+              <CircleUserRound color={color} size={24} />
+            </View>
+          ),
         }}
       />
     </Tabs>
