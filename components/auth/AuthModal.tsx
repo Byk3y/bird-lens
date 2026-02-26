@@ -94,7 +94,9 @@ const PasswordRequirementItem = ({ label, met, show }: { label: string; met: boo
         style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
     >
         {met ? (
-            <Check size={14} color={Colors.success || '#34C759'} />
+            <View pointerEvents="none">
+                <Check size={14} color={Colors.success || '#34C759'} />
+            </View>
         ) : (
             <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: Colors.textTertiary }} />
         )}
@@ -316,7 +318,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                                 style={styles.backBtn}
                                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                             >
-                                                <View style={styles.backIconCircle}>
+                                                <View style={styles.backIconCircle} pointerEvents="none">
                                                     <ArrowLeft color={Colors.text} size={24} strokeWidth={2.5} />
                                                 </View>
                                             </Pressable>
@@ -354,8 +356,16 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                                                     keyboardType="email-address"
                                                                 />
                                                                 {isCheckingEmail && <ActivityIndicator size="small" color={Colors.primary} />}
-                                                                {!isCheckingEmail && emailAvailable && <Check size={18} color={Colors.success || '#34C759'} />}
-                                                                {!isCheckingEmail && emailError && <AlertCircle size={18} color="#FF3B30" />}
+                                                                {!isCheckingEmail && emailAvailable && (
+                                                                    <View pointerEvents="none">
+                                                                        <Check size={18} color={Colors.success || '#34C759'} />
+                                                                    </View>
+                                                                )}
+                                                                {!isCheckingEmail && emailError && (
+                                                                    <View pointerEvents="none">
+                                                                        <AlertCircle size={18} color="#FF3B30" />
+                                                                    </View>
+                                                                )}
                                                             </View>
                                                         </Pressable>
                                                         {emailError && (
@@ -391,7 +401,9 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                                                     onPress={() => setShowPassword(!showPassword)}
                                                                     style={styles.eyeIcon}
                                                                 >
-                                                                    {showPassword ? <EyeOff color={Colors.textTertiary} size={18} /> : <Eye color={Colors.textTertiary} size={18} />}
+                                                                    <View pointerEvents="none">
+                                                                        {showPassword ? <EyeOff color={Colors.textTertiary} size={18} /> : <Eye color={Colors.textTertiary} size={18} />}
+                                                                    </View>
                                                                 </Pressable>
                                                             </View>
                                                         </Pressable>
@@ -517,7 +529,6 @@ const styles = StyleSheet.create({
     },
     keyboardView: {
         flex: 1,
-        paddingHorizontal: Spacing.xl,
     },
     topNav: {
         height: 60,
@@ -541,6 +552,7 @@ const styles = StyleSheet.create({
     mainContent: {
         flex: 1,
         paddingTop: height * 0.02,
+        paddingHorizontal: Spacing.xl,
     },
     branding: {
         alignItems: 'center',

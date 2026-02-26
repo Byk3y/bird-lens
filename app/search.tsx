@@ -136,11 +136,15 @@ export default function SearchScreen() {
             {/* Header with Search Input */}
             <View style={[styles.header, { paddingTop: insets.top + (Spacing.xs) }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft color={Colors.text} size={28} />
+                    <View pointerEvents="none">
+                        <ChevronLeft color={Colors.text} size={28} />
+                    </View>
                 </TouchableOpacity>
 
                 <View style={styles.inputWrapper}>
-                    <Search color={Colors.textTertiary} size={20} style={styles.innerSearchIcon} />
+                    <View pointerEvents="none">
+                        <Search color={Colors.textTertiary} size={20} style={styles.innerSearchIcon} />
+                    </View>
                     <TextInput
                         ref={searchInputRef}
                         value={query}
@@ -153,7 +157,9 @@ export default function SearchScreen() {
                     />
                     {query.length > 0 && (
                         <TouchableOpacity onPress={() => handleSearch('')} style={styles.clearInputButton}>
-                            <X color={Colors.textTertiary} size={18} />
+                            <View pointerEvents="none">
+                                <X color={Colors.textTertiary} size={18} />
+                            </View>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -228,7 +234,9 @@ export default function SearchScreen() {
                                             />
                                         ) : (
                                             <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-                                                <Search color={Colors.textTertiary} size={16} />
+                                                <View pointerEvents="none">
+                                                    <Search color={Colors.textTertiary} size={16} />
+                                                </View>
                                             </View>
                                         )}
                                     </View>
@@ -236,7 +244,9 @@ export default function SearchScreen() {
                                         {renderHighlight(item.preferred_common_name || item.name, query)}
                                         <Text style={styles.scientificName}>{item.name}</Text>
                                     </View>
-                                    <ChevronRight color={Colors.textTertiary} size={18} />
+                                    <View pointerEvents="none">
+                                        <ChevronRight color={Colors.textTertiary} size={18} />
+                                    </View>
                                 </TouchableOpacity>
                             )}
                             ListEmptyComponent={

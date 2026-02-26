@@ -35,7 +35,9 @@ export const HomeHeader: React.FC = () => {
                     style={styles.searchBar}
                     onPress={() => router.push('/search')}
                 >
-                    <Search color="#475569" size={20} style={styles.searchIcon} />
+                    <View pointerEvents="none">
+                        <Search color="#475569" size={20} style={styles.searchIcon} />
+                    </View>
                     <Text style={styles.searchPlaceholder}>Search over 30,000 species</Text>
                 </TouchableOpacity>
             </View>

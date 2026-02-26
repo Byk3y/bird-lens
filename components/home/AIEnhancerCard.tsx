@@ -105,7 +105,9 @@ export const AIEnhancerCard: React.FC = () => {
                 <Text style={styles.enhancerTitle}>Turn your phone into a pro camera</Text>
                 <View style={styles.startButton}>
                     <Text style={styles.startText}>Learn More</Text>
-                    <ChevronRight color={Colors.primary} size={16} />
+                    <View pointerEvents="none">
+                        <ChevronRight color={Colors.primary} size={16} />
+                    </View>
                 </View>
             </TouchableOpacity>
 

@@ -47,11 +47,15 @@ export const ActionCard: React.FC<ActionCardProps> = ({
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
                 >
-                    {icon}
+                    <View pointerEvents="none">
+                        {icon}
+                    </View>
                 </LinearGradient>
             ) : (
                 <View style={[styles.cardIconContainer, (isMap || transparentIcon) && styles.cardIconMap]}>
-                    {icon}
+                    <View pointerEvents="none">
+                        {icon}
+                    </View>
                 </View>
             )}
             <View style={styles.cardTextContainer}>

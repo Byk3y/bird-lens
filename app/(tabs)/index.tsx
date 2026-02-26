@@ -55,7 +55,9 @@ export default function HomeScreen() {
             <View style={styles.overlayCard}>
               <View style={styles.overlayHeader}>
                 <View style={styles.overlayIconCircle}>
-                  <Camera color={Colors.primary} size={24} />
+                  <View pointerEvents="none">
+                    <Camera color={Colors.primary} size={24} />
+                  </View>
                 </View>
                 <View style={styles.overlayTextContent}>
                   <Text style={styles.overlayTitle}>Camera Ready?</Text>
@@ -76,7 +78,9 @@ export default function HomeScreen() {
         {/* AI Enhancer Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Sparkles color={Colors.primary} size={20} style={styles.sectionIcon} />
+            <View pointerEvents="none">
+              <Sparkles color={Colors.primary} size={20} style={styles.sectionIcon} />
+            </View>
             <Text style={styles.sectionTitle}>Bird Photo AI Enhancer</Text>
             <View style={styles.betaBadge}>
               <Text style={styles.betaText}>BETA</Text>
