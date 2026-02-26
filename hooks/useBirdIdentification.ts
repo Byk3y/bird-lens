@@ -109,14 +109,21 @@ export const useBirdIdentification = () => {
                         switch (chunk.type) {
                             case 'progress':
                                 console.log(`[Stream Progress] ${chunk.message}`);
-                                setProgressMessage(chunk.message);
+                                // Sanitize message to hide internal tools from the progress scanner
+                                const sanitizedMessage = chunk.message?.replace(/ (with|via) BirdNET/gi, '');
+                                setProgressMessage(sanitizedMessage);
                                 break;
 
                             case 'candidates': {
                                 receivedCandidates = true; // Transition Guard: once candidates arrive, we never retry
-                                rawCandidates = chunk.data;
+                                // Sanitize candidates to hide internal tools
+                                const sanitizedCandidates = chunk.data.map((bird: any) => ({
+                                    ...bird,
+                                    identifying_features: bird.identifying_features?.replace(/BirdNET/gi, 'acoustic')
+                                }));
+                                rawCandidates = sanitizedCandidates;
                                 rawAiResponse = chunk.raw_content || null;
-                                const initialBirds = rawCandidates.map((bird: any) =>
+                                const initialBirds = sanitizedCandidates.map((bird: any) =>
                                     IdentificationService.toBirdResult(bird)
                                 );
                                 finalBirds = initialBirds;
