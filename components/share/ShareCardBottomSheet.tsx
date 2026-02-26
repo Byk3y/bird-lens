@@ -4,16 +4,21 @@ import { AnimatePresence, MotiView } from 'moti';
 import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Animated,
     Dimensions,
-    PanResponder,
     Pressable,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
+import Animated, {
+    interpolate,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
 import ViewShot from 'react-native-view-shot';
 import { FieldGuideCard } from './FieldGuideCard';
 import { MagazineCard, ShareCardData } from './MagazineCard';
@@ -70,59 +75,46 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         imageUrl: imageUrl,
     };
 
-    // Drag-to-dismiss — responsive, real-time tracking on header area
-    const dragY = useRef(new Animated.Value(0)).current;
+    // Reanimated shared value for drag-to-dismiss
+    const dragY = useSharedValue(0);
 
     React.useEffect(() => {
         if (visible) {
-            dragY.stopAnimation();
-            dragY.setValue(0);
+            dragY.value = 0;
         }
     }, [visible]);
 
-    // Backdrop opacity fades as user drags down
-    const backdropOpacity = dragY.interpolate({
-        inputRange: [0, SCREEN_HEIGHT * 0.4],
-        outputRange: [1, 0.2],
-        extrapolate: 'clamp',
-    });
-
-    // Header drag zone — captures gestures immediately
-    const headerPanResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
-            onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
-            onPanResponderGrant: () => { },
-            onPanResponderMove: (_, g) => {
-                if (g.dy > 0) {
-                    dragY.setValue(g.dy);
-                }
-            },
-            onPanResponderRelease: (_, g) => {
-                const shouldDismiss = g.dy > 80 || (g.dy > 20 && g.vy > 0.5);
-                if (shouldDismiss) {
-                    // Let MotiView exit animation handle the slide-down
-                    onClose();
-                } else {
-                    Animated.spring(dragY, {
-                        toValue: 0,
-                        useNativeDriver: true,
-                        tension: 120,
-                        friction: 10,
-                    }).start();
-                }
-            },
-            onPanResponderTerminate: () => {
-                Animated.spring(dragY, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                    tension: 120,
-                    friction: 10,
-                }).start();
-            },
+    // Gesture handler for drag-to-dismiss on the header
+    const panGesture = Gesture.Pan()
+        .activeOffsetY(5)
+        .onUpdate((e) => {
+            if (e.translationY > 0) {
+                dragY.value = e.translationY;
+            }
         })
-    ).current;
+        .onEnd((e) => {
+            const shouldDismiss = e.translationY > 80 || (e.translationY > 20 && e.velocityY > 500);
+            if (shouldDismiss) {
+                runOnJS(onClose)();
+            } else {
+                dragY.value = withSpring(0, { damping: 15, stiffness: 200 });
+            }
+        });
+
+    // Animated styles for the sheet container (follows drag)
+    const cardAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: dragY.value }],
+    }));
+
+    // Backdrop opacity fades as user drags down
+    const backdropAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(
+            dragY.value,
+            [0, SCREEN_HEIGHT * 0.4],
+            [1, 0.2],
+            'clamp'
+        ),
+    }));
 
     const renderCardTemplate = (template: TemplateType, scale: number = 1) => {
         const containerStyle = scale < 1
@@ -151,7 +143,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                         transition={{ type: 'timing', duration: 300 }}
                         style={StyleSheet.absoluteFill}
                     >
-                        <Animated.View style={[StyleSheet.absoluteFill, { opacity: backdropOpacity }]}>
+                        <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
                             <Pressable
                                 style={styles.backdrop}
                                 onPress={onClose}
@@ -166,14 +158,16 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                         transition={{ type: 'timing', duration: 350 }}
                         style={styles.sheetContainer}
                     >
-                        <Animated.View style={[styles.sheet, { transform: [{ translateY: dragY }] }]}>
-                            {/* Draggable header zone — handle + title */}
-                            <View {...headerPanResponder.panHandlers}>
-                                <View style={styles.handleRow}>
-                                    <View style={styles.handle} />
-                                </View>
-                                <Text style={styles.title}>Share your sighting</Text>
-                            </View>
+                        <Animated.View style={[styles.sheet, cardAnimatedStyle]}>
+                            {/* Draggable header zone — GestureDetector handles drag */}
+                            <GestureDetector gesture={panGesture}>
+                                <Animated.View>
+                                    <View style={styles.handleRow}>
+                                        <View style={styles.handle} />
+                                    </View>
+                                    <Text style={styles.title}>Share your sighting</Text>
+                                </Animated.View>
+                            </GestureDetector>
 
                             {/* Template Previews */}
                             <ScrollView
@@ -194,7 +188,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                                         setSelectedTemplate(TEMPLATES[index].key);
                                     }
                                 }}
-                                ref={scrollRef}
+                                ref={scrollRef as any}
                             >
                                 {TEMPLATES.map((tmpl, index) => (
                                     <TouchableOpacity

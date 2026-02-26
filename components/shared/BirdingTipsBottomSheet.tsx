@@ -7,19 +7,24 @@ import { ChevronLeft, Lightbulb, MoreHorizontal } from 'lucide-react-native';
 import { AnimatePresence, MotiView } from 'moti';
 import React from 'react';
 import {
-    Animated,
     Dimensions,
     Modal,
     NativeScrollEvent,
     NativeSyntheticEvent,
-    PanResponder,
     Pressable,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
+import Animated, {
+    interpolate,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_TOP = Math.max(SCREEN_HEIGHT * 0.12, 80);
@@ -43,7 +48,6 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
     const [actionSheetVisible, setActionSheetVisible] = React.useState(false);
     const [activeSection, setActiveSection] = React.useState<string | null>(null);
     const [isAnimatingOut, setIsAnimatingOut] = React.useState(false);
-    const isAtTop = React.useRef(true);
 
     // Reset state when closing
     React.useEffect(() => {
@@ -72,108 +76,46 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
         }
     }, [visible, initialSection, layoutsReady]);
 
-    // Drag-to-dismiss — responsive, real-time tracking on header area
-    const dragY = React.useRef(new Animated.Value(0)).current;
-    const isDraggingHeader = React.useRef(false);
+    // Reanimated shared values for drag-to-dismiss
+    const dragY = useSharedValue(0);
 
     React.useEffect(() => {
         if (visible) {
-            dragY.stopAnimation();
-            dragY.setValue(0);
-            isDraggingHeader.current = false;
+            dragY.value = 0;
         }
     }, [visible]);
 
+    // Gesture handler for drag-to-dismiss on the header/handle
+    const panGesture = Gesture.Pan()
+        .activeOffsetY(5)
+        .onUpdate((e) => {
+            if (e.translationY > 0) {
+                dragY.value = e.translationY;
+            }
+        })
+        .onEnd((e) => {
+            const shouldDismiss = e.translationY > 80 || (e.translationY > 20 && e.velocityY > 500);
+            if (shouldDismiss) {
+                runOnJS(onClose)();
+            } else {
+                dragY.value = withSpring(0, { damping: 15, stiffness: 200 });
+            }
+        });
+
+    // Animated styles for the sheet card (follows drag)
+    const cardAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: dragY.value }],
+    }));
+
     // Backdrop opacity fades as user drags down
-    const backdropOpacity = dragY.interpolate({
-        inputRange: [0, SCREEN_HEIGHT * 0.4],
-        outputRange: [1, 0.2],
-        extrapolate: 'clamp',
-    });
-
-    // Header drag zone — captures gestures immediately with very low threshold
-    const headerPanResponder = React.useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
-            onMoveShouldSetPanResponderCapture: (_, g) => g.dy > 2 && Math.abs(g.dy) > Math.abs(g.dx),
-            onPanResponderGrant: () => {
-                isDraggingHeader.current = true;
-            },
-            onPanResponderMove: (_, g) => {
-                // Only allow dragging downward (positive dy)
-                if (g.dy > 0) {
-                    dragY.setValue(g.dy);
-                }
-            },
-            onPanResponderRelease: (_, g) => {
-                isDraggingHeader.current = false;
-                // Dismiss if dragged far enough OR if velocity is high (fast flick)
-                const shouldDismiss = g.dy > 80 || (g.dy > 20 && g.vy > 0.5);
-                if (shouldDismiss) {
-                    // Let MotiView exit animation handle the slide-down
-                    onClose();
-                } else {
-                    Animated.spring(dragY, {
-                        toValue: 0,
-                        useNativeDriver: true,
-                        tension: 120,
-                        friction: 10,
-                    }).start();
-                }
-            },
-            onPanResponderTerminate: () => {
-                isDraggingHeader.current = false;
-                Animated.spring(dragY, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                    tension: 120,
-                    friction: 10,
-                }).start();
-            },
-        })
-    ).current;
-
-    // ScrollView overscroll dismiss (for content area)
-    const scrollPanResponder = React.useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => false,
-            onMoveShouldSetPanResponder: (_, g) => isAtTop.current && g.dy > 10 && Math.abs(g.dy) > Math.abs(g.dx),
-            onMoveShouldSetPanResponderCapture: (_, g) => isAtTop.current && g.dy > 10 && Math.abs(g.dy) > Math.abs(g.dx),
-            onPanResponderGrant: () => {
-                isDraggingHeader.current = true;
-            },
-            onPanResponderMove: (_, g) => {
-                if (g.dy > 0) {
-                    dragY.setValue(g.dy);
-                }
-            },
-            onPanResponderRelease: (_, g) => {
-                isDraggingHeader.current = false;
-                const shouldDismiss = g.dy > 80 || (g.dy > 20 && g.vy > 0.5);
-                if (shouldDismiss) {
-                    // Let MotiView exit animation handle the slide-down
-                    onClose();
-                } else {
-                    Animated.spring(dragY, {
-                        toValue: 0,
-                        useNativeDriver: true,
-                        tension: 120,
-                        friction: 10,
-                    }).start();
-                }
-            },
-            onPanResponderTerminate: () => {
-                isDraggingHeader.current = false;
-                Animated.spring(dragY, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                    tension: 120,
-                    friction: 10,
-                }).start();
-            },
-        })
-    ).current;
+    const backdropAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(
+            dragY.value,
+            [0, SCREEN_HEIGHT * 0.4],
+            [1, 0.2],
+            'clamp'
+        ),
+    }));
 
     // Dismiss when user overscrolls down from top
     const handleScrollEndDrag = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -181,10 +123,6 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
         if (contentOffset.y <= 0 && velocity && velocity.y < -0.5) {
             onClose();
         }
-    };
-
-    const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-        isAtTop.current = e.nativeEvent.contentOffset.y <= 0;
     };
 
     const handleLayout = (section: string, y: number) => {
@@ -326,7 +264,7 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
                             transition={{ type: 'timing', duration: 300 }}
                             style={StyleSheet.absoluteFill}
                         >
-                            <Animated.View style={[StyleSheet.absoluteFill, { opacity: backdropOpacity }]}>
+                            <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
                                 <Pressable style={styles.backdrop} onPress={onClose} />
                             </Animated.View>
                         </MotiView>
@@ -341,175 +279,174 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
                             pointerEvents="box-none"
                         >
                             <Animated.View
-                                style={[styles.card, { transform: [{ translateY: dragY }] }]}
+                                style={[styles.card, cardAnimatedStyle]}
                             >
-                                {/* Draggable header zone — entire area responds to drag */}
-                                <View {...headerPanResponder.panHandlers}>
-                                    {/* Drag handle */}
-                                    <View style={styles.handleBarTouchArea}>
-                                        <View style={styles.handleBar} />
+                                {/* Draggable header zone — GestureDetector handles drag */}
+                                <GestureDetector gesture={panGesture}>
+                                    <Animated.View>
+                                        {/* Drag handle */}
+                                        <View style={styles.handleBarTouchArea}>
+                                            <View style={styles.handleBar} />
+                                        </View>
+
+                                        {/* Header */}
+                                        <View style={styles.header}>
+                                            <Pressable
+                                                onPress={onClose}
+                                                style={styles.backBtn}
+                                                hitSlop={12}
+                                            >
+                                                <ChevronLeft color="#333" size={24} strokeWidth={2.5} />
+                                            </Pressable>
+                                            <Text style={styles.headerTitle}>Birding Tips</Text>
+                                            <View style={{ width: 44 }} />
+                                        </View>
+                                        <View style={styles.headerDivider} />
+                                    </Animated.View>
+                                </GestureDetector>
+
+                                {/* Scrollable content — no PanResponder wrapper */}
+                                <ScrollView
+                                    ref={scrollViewRef as any}
+                                    style={styles.scrollView}
+                                    contentContainerStyle={styles.scrollContent}
+                                    showsVerticalScrollIndicator={false}
+                                    scrollEventThrottle={16}
+                                    bounces={false}
+                                    onScrollEndDrag={handleScrollEndDrag}
+                                >
+                                    {/* Diet Section */}
+                                    {renderAssetGrid('Diet', getDietTags(), DIET_ASSETS, (e) =>
+                                        handleLayout('diet', e.nativeEvent.layout.y)
+                                    )}
+
+                                    {/* Feeder Section */}
+                                    {renderAssetGrid(
+                                        'Feeder',
+                                        bird.feeder_info?.feeder_types || [],
+                                        FEEDER_ASSETS,
+                                        (e) => handleLayout('feeder', e.nativeEvent.layout.y)
+                                    )}
+
+                                    {/* Backyard Birding Tips Card */}
+                                    <View style={styles.tipCard}>
+                                        <Text style={styles.tipCardTitle}>
+                                            Backyard Birding Tips
+                                        </Text>
+                                        <Text style={styles.tipCardText}>
+                                            {bird.behavior ||
+                                                `Offer preferred foods in appropriate feeders to entice ${bird.name}. Provide a water source for drinking and bathing to create a conducive habitat.`}
+                                        </Text>
                                     </View>
 
-                                    {/* Header */}
-                                    <View style={styles.header}>
-                                        <Pressable
-                                            onPress={onClose}
-                                            style={styles.backBtn}
-                                            hitSlop={12}
-                                        >
-                                            <ChevronLeft color="#333" size={24} strokeWidth={2.5} />
-                                        </Pressable>
-                                        <Text style={styles.headerTitle}>Birding Tips</Text>
-                                        <View style={{ width: 44 }} />
-                                    </View>
-                                    <View style={styles.headerDivider} />
-                                </View>
-
-                                {/* Scrollable content — also supports drag-dismiss when at top */}
-                                <View style={{ flex: 1 }} {...scrollPanResponder.panHandlers}>
-                                    <ScrollView
-                                        ref={scrollViewRef}
-                                        style={styles.scrollView}
-                                        contentContainerStyle={styles.scrollContent}
-                                        showsVerticalScrollIndicator={false}
-                                        scrollEventThrottle={16}
-                                        bounces={false}
-                                        onScrollEndDrag={handleScrollEndDrag}
-                                        onScroll={handleScroll}
+                                    {/* Habitat Section */}
+                                    <View
+                                        style={styles.section}
+                                        onLayout={(e) =>
+                                            handleLayout('habitat', e.nativeEvent.layout.y)
+                                        }
                                     >
-                                        {/* Diet Section */}
-                                        {renderAssetGrid('Diet', getDietTags(), DIET_ASSETS, (e) =>
-                                            handleLayout('diet', e.nativeEvent.layout.y)
-                                        )}
-
-                                        {/* Feeder Section */}
-                                        {renderAssetGrid(
-                                            'Feeder',
-                                            bird.feeder_info?.feeder_types || [],
-                                            FEEDER_ASSETS,
-                                            (e) => handleLayout('feeder', e.nativeEvent.layout.y)
-                                        )}
-
-                                        {/* Backyard Birding Tips Card */}
-                                        <View style={styles.tipCard}>
-                                            <Text style={styles.tipCardTitle}>
-                                                Backyard Birding Tips
-                                            </Text>
-                                            <Text style={styles.tipCardText}>
-                                                {bird.behavior ||
-                                                    `Offer preferred foods in appropriate feeders to entice ${bird.name}. Provide a water source for drinking and bathing to create a conducive habitat.`}
+                                        <View style={styles.sectionHeaderRow}>
+                                            <Text style={styles.sectionTitle}>Habitat</Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setActiveSection('Habitat Tips');
+                                                    setActionSheetVisible(true);
+                                                }}
+                                                style={styles.moreBtn}
+                                            >
+                                                <MoreHorizontal size={20} color="#999" />
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.habitatIconContainer}>
+                                            <Image
+                                                source={getHabitatIcon(bird)}
+                                                style={styles.habitatLargeIcon}
+                                                contentFit="contain"
+                                            />
+                                            <Text style={styles.habitatName}>
+                                                {bird.habitat_tags?.[0] || bird.habitat || 'N/A'}
                                             </Text>
                                         </View>
+                                        <Text style={styles.habitatDescription}>
+                                            {bird.taxonomy?.genus_description || bird.description}
+                                        </Text>
+                                    </View>
 
-                                        {/* Habitat Section */}
-                                        <View
-                                            style={styles.section}
-                                            onLayout={(e) =>
-                                                handleLayout('habitat', e.nativeEvent.layout.y)
-                                            }
-                                        >
-                                            <View style={styles.sectionHeaderRow}>
-                                                <Text style={styles.sectionTitle}>Habitat</Text>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        setActiveSection('Habitat Tips');
-                                                        setActionSheetVisible(true);
-                                                    }}
-                                                    style={styles.moreBtn}
-                                                >
-                                                    <MoreHorizontal size={20} color="#999" />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View style={styles.habitatIconContainer}>
-                                                <Image
-                                                    source={getHabitatIcon(bird)}
-                                                    style={styles.habitatLargeIcon}
-                                                    contentFit="contain"
+                                    {/* Finding Tips Card */}
+                                    <View style={styles.tipCard}>
+                                        <Text style={styles.tipCardTitle}>Finding Tips</Text>
+                                        <Text style={styles.tipCardText}>
+                                            {`Spot ${bird.name} in their preferred habitats. Listen for distinct calls and look for movement in the foliage. They are best observed during early morning or late afternoon when they are most active. Recognize their flight by the flash of colors.`}
+                                        </Text>
+                                    </View>
+
+                                    {/* Nesting Section */}
+                                    <View
+                                        style={styles.section}
+                                        onLayout={(e) =>
+                                            handleLayout('nesting', e.nativeEvent.layout.y)
+                                        }
+                                    >
+                                        <View style={styles.sectionHeaderRow}>
+                                            <Text style={styles.sectionTitle}>Nesting</Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setActiveSection('Nesting Tips');
+                                                    setActionSheetVisible(true);
+                                                }}
+                                                style={styles.moreBtn}
+                                            >
+                                                <MoreHorizontal size={20} color="#999" />
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.habitatIconContainer}>
+                                            <Image
+                                                source={getNestingIcon(bird)}
+                                                style={styles.habitatLargeIcon}
+                                                contentFit="contain"
+                                            />
+                                            <Text style={styles.habitatName}>
+                                                {bird.nesting_info?.location ||
+                                                    bird.habitat ||
+                                                    'N/A'}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.habitatDescription}>
+                                            {bird.nesting_info?.description ||
+                                                `${bird.name}'s nests are often located in protected locations, surrounded by dense foliage. Common trees and shrubs are used to provide shelter and security.`}
+                                        </Text>
+                                    </View>
+
+                                    {/* Fun Facts Section */}
+                                    <View style={[styles.section, { marginBottom: 60 }]}>
+                                        <View style={styles.sectionHeaderRow}>
+                                            <Text style={styles.sectionTitle}>Fun Facts</Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setActiveSection('Fun Facts');
+                                                    setActionSheetVisible(true);
+                                                }}
+                                                style={styles.moreBtn}
+                                            >
+                                                <MoreHorizontal size={20} color="#999" />
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.funFactCard}>
+                                            <View style={styles.funFactIconWrapper}>
+                                                <Lightbulb
+                                                    size={24}
+                                                    color="#FF6B35"
+                                                    fill="#FF6B35"
+                                                    strokeWidth={3}
                                                 />
-                                                <Text style={styles.habitatName}>
-                                                    {bird.habitat_tags?.[0] || bird.habitat || 'N/A'}
-                                                </Text>
                                             </View>
-                                            <Text style={styles.habitatDescription}>
-                                                {bird.taxonomy?.genus_description || bird.description}
+                                            <Text style={styles.funFactTitleText}>
+                                                {bird.behavior}
                                             </Text>
                                         </View>
-
-                                        {/* Finding Tips Card */}
-                                        <View style={styles.tipCard}>
-                                            <Text style={styles.tipCardTitle}>Finding Tips</Text>
-                                            <Text style={styles.tipCardText}>
-                                                {`Spot ${bird.name} in their preferred habitats. Listen for distinct calls and look for movement in the foliage. They are best observed during early morning or late afternoon when they are most active. Recognize their flight by the flash of colors.`}
-                                            </Text>
-                                        </View>
-
-                                        {/* Nesting Section */}
-                                        <View
-                                            style={styles.section}
-                                            onLayout={(e) =>
-                                                handleLayout('nesting', e.nativeEvent.layout.y)
-                                            }
-                                        >
-                                            <View style={styles.sectionHeaderRow}>
-                                                <Text style={styles.sectionTitle}>Nesting</Text>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        setActiveSection('Nesting Tips');
-                                                        setActionSheetVisible(true);
-                                                    }}
-                                                    style={styles.moreBtn}
-                                                >
-                                                    <MoreHorizontal size={20} color="#999" />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View style={styles.habitatIconContainer}>
-                                                <Image
-                                                    source={getNestingIcon(bird)}
-                                                    style={styles.habitatLargeIcon}
-                                                    contentFit="contain"
-                                                />
-                                                <Text style={styles.habitatName}>
-                                                    {bird.nesting_info?.location ||
-                                                        bird.habitat ||
-                                                        'N/A'}
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.habitatDescription}>
-                                                {bird.nesting_info?.description ||
-                                                    `${bird.name}'s nests are often located in protected locations, surrounded by dense foliage. Common trees and shrubs are used to provide shelter and security.`}
-                                            </Text>
-                                        </View>
-
-                                        {/* Fun Facts Section */}
-                                        <View style={[styles.section, { marginBottom: 60 }]}>
-                                            <View style={styles.sectionHeaderRow}>
-                                                <Text style={styles.sectionTitle}>Fun Facts</Text>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        setActiveSection('Fun Facts');
-                                                        setActionSheetVisible(true);
-                                                    }}
-                                                    style={styles.moreBtn}
-                                                >
-                                                    <MoreHorizontal size={20} color="#999" />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View style={styles.funFactCard}>
-                                                <View style={styles.funFactIconWrapper}>
-                                                    <Lightbulb
-                                                        size={24}
-                                                        color="#FF6B35"
-                                                        fill="#FF6B35"
-                                                        strokeWidth={3}
-                                                    />
-                                                </View>
-                                                <Text style={styles.funFactTitleText}>
-                                                    {bird.behavior}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    </ScrollView>
-                                </View>
+                                    </View>
+                                </ScrollView>
                             </Animated.View>
                         </MotiView>
 
