@@ -3,6 +3,7 @@ import { useAlert } from '@/components/common/AlertProvider';
 import { CustomActionSheet } from '@/components/common/CustomActionSheet';
 import { SkeletonScreen } from '@/components/common/SkeletonScreen';
 import { Paywall } from '@/components/Paywall';
+import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
 import { GuestNudge } from '@/components/shared/GuestNudge';
 import { TellFriendsModal } from '@/components/shared/TellFriendsModal';
 import { Colors, Spacing, Typography } from '@/constants/theme';
@@ -22,7 +23,8 @@ import { Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, T
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const CACHE_KEY = 'bird_lens_collection_cache';
+const GET_CACHE_KEY = (userId: string) => `bird_lens_collection_${userId}`;
+const LEGACY_CACHE_KEY = 'bird_lens_collection_cache';
 const REFRESH_COOLDOWN_MS = 30 * 1000; // Don't refetch within 30 seconds
 
 const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, audio_url, scientific_name, rarity, confidence, metadata';
@@ -41,19 +43,32 @@ export default function MeScreen() {
     const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
     const [isTellFriendsVisible, setIsTellFriendsVisible] = useState(false);
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
+    const [isShareVisible, setIsShareVisible] = useState(false);
     const isGuest = user?.is_anonymous;
     const lastFetchRef = useRef<number>(0);
+    const userId = user?.id;
 
-    // Load cached data instantly on mount, then fetch fresh data
+    // 1. One-time cleanup of legacy global cache
     React.useEffect(() => {
-        if (!user) return;
+        AsyncStorage.removeItem(LEGACY_CACHE_KEY).catch(() => { });
+    }, []);
+
+    // 2. Load cached data instantly on mount, then fetch fresh data
+    React.useEffect(() => {
+        if (!userId) {
+            setSightings([]);
+            setLoading(false);
+            return;
+        }
 
         let isMounted = true;
+        const currentCacheKey = GET_CACHE_KEY(userId);
 
         async function loadCachedThenFetch() {
+            setLoading(true);
             // 1. Load from AsyncStorage cache instantly
             try {
-                const cachedJson = await AsyncStorage.getItem(CACHE_KEY);
+                const cachedJson = await AsyncStorage.getItem(currentCacheKey);
                 if (cachedJson && isMounted) {
                     const cached = JSON.parse(cachedJson);
                     if (cached?.data?.length > 0) {
@@ -70,7 +85,7 @@ export default function MeScreen() {
                 const { data, error } = await supabase
                     .from('sightings')
                     .select(SIGHTINGS_QUERY)
-                    .eq('user_id', user?.id)
+                    .eq('user_id', userId)
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -78,7 +93,7 @@ export default function MeScreen() {
                     setSightings(data);
                     lastFetchRef.current = Date.now();
                     // Persist to cache
-                    AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
+                    AsyncStorage.setItem(currentCacheKey, JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
                 }
             } catch (err) {
                 console.error('Error fetching sightings:', err);
@@ -90,12 +105,12 @@ export default function MeScreen() {
         loadCachedThenFetch();
 
         return () => { isMounted = false; };
-    }, [user]);
+    }, [userId]);
 
     // Refresh data silently when screen comes into focus (with cooldown)
     useFocusEffect(
         useCallback(() => {
-            if (!user) return;
+            if (!userId) return;
 
             // Skip if we fetched recently (within cooldown)
             const timeSinceLastFetch = Date.now() - lastFetchRef.current;
@@ -106,21 +121,21 @@ export default function MeScreen() {
                     const { data, error } = await supabase
                         .from('sightings')
                         .select(SIGHTINGS_QUERY)
-                        .eq('user_id', user?.id)
+                        .eq('user_id', userId)
                         .order('created_at', { ascending: false });
 
                     if (!error && data) {
                         setSightings(data);
                         lastFetchRef.current = Date.now();
                         // Update cache
-                        AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
+                        AsyncStorage.setItem(GET_CACHE_KEY(userId), JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
                     }
                 } catch (err) {
                     console.error('Silent refresh failed:', err);
                 }
             }
             refreshCollections();
-        }, [user])
+        }, [userId])
     );
 
 
@@ -149,6 +164,11 @@ export default function MeScreen() {
         setIsActionSheetVisible(true);
     };
 
+    const handleSharePress = () => {
+        setIsActionSheetVisible(false);
+        setIsShareVisible(true);
+    };
+
 
 
     const handleDeleteConfirm = (id: string) => {
@@ -165,7 +185,7 @@ export default function MeScreen() {
     };
 
     const deleteSighting = async (id: string) => {
-        if (!user || isDeleting) return;
+        if (!userId || isDeleting) return;
 
         setIsDeleting(true);
         try {
@@ -173,14 +193,14 @@ export default function MeScreen() {
                 .from('sightings')
                 .delete()
                 .eq('id', id)
-                .eq('user_id', user.id);
+                .eq('user_id', userId);
 
             if (error) throw error;
 
             const updated = sightings.filter(s => s.id !== id);
             setSightings(updated);
             // Update cache to reflect deletion
-            AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: updated, timestamp: Date.now() })).catch(() => { });
+            AsyncStorage.setItem(GET_CACHE_KEY(userId), JSON.stringify({ data: updated, timestamp: Date.now() })).catch(() => { });
         } catch (err: any) {
             console.error('Error deleting sighting:', err);
             showAlert({
@@ -356,10 +376,9 @@ export default function MeScreen() {
                 visible={isActionSheetVisible}
                 onClose={() => setIsActionSheetVisible(false)}
                 options={[
-
                     {
-                        label: 'Correct the result',
-                        onPress: () => selectedSighting && handleBirdPress(selectedSighting),
+                        label: 'Share sighting',
+                        onPress: handleSharePress,
                     },
                     {
                         label: 'Delete',
@@ -368,6 +387,22 @@ export default function MeScreen() {
                     },
                 ]}
             />
+
+            {selectedSighting && (
+                <ShareCardBottomSheet
+                    visible={isShareVisible}
+                    onClose={() => setIsShareVisible(false)}
+                    bird={{
+                        name: selectedSighting.species_name,
+                        scientific_name: selectedSighting.scientific_name,
+                        rarity: selectedSighting.rarity,
+                        confidence: selectedSighting.confidence,
+                        taxonomy: selectedSighting.metadata?.taxonomy,
+                        ...selectedSighting.metadata
+                    } as any}
+                    imageUrl={selectedSighting.image_url}
+                />
+            )}
 
             <AuthModal
                 visible={isAuthModalVisible}
