@@ -73,6 +73,7 @@ export default function ScannerScreen() {
     updateHeroImage,
     saveSighting,
     resetResult,
+    lastLocation,
   } = useBirdIdentification();
 
   const {
@@ -456,6 +457,7 @@ export default function ScannerScreen() {
             setActiveIndex={setActiveIndex}
             enrichCandidate={enrichCandidate}
             updateHeroImage={updateHeroImage}
+            locationName={lastLocation?.locationName}
             onSave={async (bird, image, recording) => {
               const success = await saveSighting(bird, image, recording);
               if (success) {

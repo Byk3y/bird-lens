@@ -452,5 +452,6 @@ export const useBirdIdentification = () => {
         updateHeroImage,
         saveSighting,
         resetResult,
+        lastLocation,
     };
 };

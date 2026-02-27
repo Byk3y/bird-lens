@@ -38,6 +38,7 @@ interface IdentificationResultProps {
     onSave: (bird: BirdResult, capturedImage: string | null, recordingUri?: string | null) => void;
     onReset: () => void;
     isProcessing?: boolean;
+    locationName?: string | null;
 }
 
 const SkeletonLoader = () => {
@@ -73,6 +74,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     onReset,
     isProcessing = false,
     recordingUri,
+    locationName,
 }) => {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -331,7 +333,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     onClose={() => setShareSheetVisible(false)}
                     bird={activeBird}
                     imageUrl={heroImages[activeBird.scientific_name]}
-                    locationName={activeBird.distribution_area}
+                    locationName={locationName || undefined}
                 />
             )}
 

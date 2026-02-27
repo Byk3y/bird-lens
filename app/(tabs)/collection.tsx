@@ -27,7 +27,7 @@ const GET_CACHE_KEY = (userId: string) => `bird_lens_collection_${userId}`;
 const LEGACY_CACHE_KEY = 'bird_lens_collection_cache';
 const REFRESH_COOLDOWN_MS = 30 * 1000; // Don't refetch within 30 seconds
 
-const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, audio_url, scientific_name, rarity, confidence, metadata';
+const SIGHTINGS_QUERY = 'id, species_name, created_at, image_url, audio_url, scientific_name, rarity, confidence, location_name, metadata';
 
 export default function MeScreen() {
     const insets = useSafeAreaInsets();
@@ -128,7 +128,9 @@ export default function MeScreen() {
                         setSightings(data);
                         lastFetchRef.current = Date.now();
                         // Update cache
-                        AsyncStorage.setItem(GET_CACHE_KEY(userId), JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
+                        if (userId) {
+                            AsyncStorage.setItem(GET_CACHE_KEY(userId), JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
+                        }
                     }
                 } catch (err) {
                     console.error('Silent refresh failed:', err);
@@ -153,8 +155,10 @@ export default function MeScreen() {
             pathname: '/bird-detail',
             params: {
                 birdData: JSON.stringify(birdData),
+                imageUrl: sighting.image_url,
                 sightingDate: sighting.created_at,
-                imageUrl: sighting.image_url
+                locationName: sighting.location_name,
+                dateIdentified: sighting.created_at,
             }
         });
     };
@@ -401,6 +405,8 @@ export default function MeScreen() {
                         ...selectedSighting.metadata
                     } as any}
                     imageUrl={selectedSighting.image_url}
+                    locationName={selectedSighting.location_name}
+                    dateIdentified={selectedSighting.created_at}
                 />
             )}
 

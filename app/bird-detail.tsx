@@ -40,8 +40,10 @@ export default function BirdDetailScreen() {
     const insets = useSafeAreaInsets();
     const params = useLocalSearchParams<{
         birdData: string;
-        sightingDate?: string;
         imageUrl?: string;
+        sightingDate?: string;
+        locationName?: string;
+        dateIdentified?: string;
     }>();
 
     const bird = React.useMemo(() => JSON.parse(params.birdData as string) as BirdResult, [params.birdData]);
@@ -344,7 +346,8 @@ export default function BirdDetailScreen() {
                 onClose={() => setShareSheetVisible(false)}
                 bird={birdDetails}
                 imageUrl={heroImageSource || undefined}
-                locationName={birdDetails.distribution_area}
+                locationName={params.locationName}
+                dateIdentified={params.dateIdentified || params.sightingDate}
             />
 
             {/* Birding Tips Bottom Sheet */}
