@@ -7,7 +7,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { fetch } from 'expo/fetch';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { getCurrentLocation } from './useLocation';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -23,16 +24,35 @@ export const useBirdIdentification = () => {
     const [heroImages, setHeroImages] = useState<Record<string, string>>({});
     const [error, setError] = useState<string | null>(null);
     const [progressMessage, setProgressMessage] = useState<string | null>(null);
-    const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+    // Use Ref for controller to access it reliably within the AppState closure
+    const abortControllerRef = useRef<AbortController | null>(null);
     const [lastLocation, setLastLocation] = useState<{ locationName: string; latitude: number; longitude: number } | null>(null);
     const { user, isLoading: isAuthLoading } = useAuth();
     const { showAlert } = useAlert();
+
+    // Setup listener for app backgrounding to cleanly sever open streams
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+            if (nextAppState === 'background' || nextAppState === 'inactive') {
+                if (abortControllerRef.current) {
+                    console.log('App backgrounded, aborting current stream to prevent dangling sockets...');
+                    abortControllerRef.current.abort();
+                    abortControllerRef.current = null;
+                }
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, []);
 
     const identifyBird = async (imageB64?: string, audioB64?: string): Promise<BirdResult | null | undefined> => {
         if (isProcessing) return;
 
         const controller = new AbortController();
-        setAbortController(controller);
+        abortControllerRef.current = controller;
 
         try {
 
@@ -65,7 +85,7 @@ export const useBirdIdentification = () => {
                 attempts++;
                 // Create a fresh controller for each attempt to avoid stale abort signals
                 const currentController = new AbortController();
-                setAbortController(currentController);
+                abortControllerRef.current = currentController;
                 setError(null);
 
                 try {
@@ -265,7 +285,7 @@ export const useBirdIdentification = () => {
         } finally {
             setIsProcessing(false);
             setProgressMessage(null);
-            setAbortController(null);
+            abortControllerRef.current = null;
         }
     };
 
@@ -405,9 +425,9 @@ export const useBirdIdentification = () => {
     };
 
     const resetResult = () => {
-        if (abortController) {
-            abortController.abort();
-            setAbortController(null);
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
         }
         setResult(null);
         setCandidates([]);
