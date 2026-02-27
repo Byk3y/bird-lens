@@ -32,6 +32,13 @@ const GAP = 16;
 const PADDING = (SCREEN_WIDTH - PREVIEW_SIZE) / 2;
 const SNAP_INTERVAL = PREVIEW_SIZE + GAP;
 
+const getTemplateDimensions = (template: TemplateType) => {
+    if (template === 'fieldguide' || template === 'wild' || template === 'magazine') {
+        return { width: 1080, height: 1350 };
+    }
+    return { width: 1080, height: 1080 };
+};
+
 type TemplateType = 'magazine' | 'wild' | 'fieldguide' | 'minimal';
 
 interface ShareCardBottomSheetProps {
@@ -40,6 +47,7 @@ interface ShareCardBottomSheetProps {
     bird: BirdResult;
     imageUrl?: string;
     locationName?: string;
+    dateIdentified?: string | Date;
 }
 
 const TEMPLATES: { key: TemplateType; label: string }[] = [
@@ -55,6 +63,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     bird,
     imageUrl,
     locationName,
+    dateIdentified,
 }) => {
     const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('wild');
     const scrollRef = useRef<ScrollView>(null);
@@ -66,13 +75,18 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         familyName: bird.taxonomy?.family || 'Unknown',
         orderName: bird.taxonomy?.order,
         confidence: bird.confidence ?? 0.99,
-        dateIdentified: new Date().toLocaleDateString('en-US', {
+        dateIdentified: new Date(dateIdentified || Date.now()).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
         }),
-        locationName: locationName,
+        locationName: locationName || 'Unknown Location',
         imageUrl: imageUrl,
+        description: bird.description,
+        rarity: bird.rarity,
+        habitat_tags: bird.habitat_tags,
+        diet_tags: bird.diet_tags,
+        behavior: bird.behavior,
     };
 
     // Reanimated shared value for drag-to-dismiss
@@ -117,16 +131,21 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     }));
 
     const renderCardTemplate = (template: TemplateType, scale: number = 1) => {
-        const containerStyle = scale < 1
-            ? { transform: [{ scale }], width: 1080, height: 1080 }
-            : { width: 1080, height: 1080 };
+        const dims = getTemplateDimensions(template);
+        const containerStyle = {
+            width: dims.width * scale,
+            height: dims.height * scale,
+            overflow: 'hidden' as const,
+        };
 
         return (
             <View style={containerStyle}>
-                {template === 'magazine' && <MagazineCard data={cardData} />}
-                {template === 'wild' && <WildCard data={cardData} />}
-                {template === 'fieldguide' && <FieldGuideCard data={cardData} />}
-                {template === 'minimal' && <MinimalCard data={cardData} />}
+                <View style={{ transform: [{ scale }], width: dims.width, height: dims.height, transformOrigin: '0 0' }}>
+                    {template === 'magazine' && <MagazineCard data={cardData} />}
+                    {template === 'wild' && <WildCard data={cardData} />}
+                    {template === 'fieldguide' && <FieldGuideCard data={cardData} />}
+                    {template === 'minimal' && <MinimalCard data={cardData} />}
+                </View>
             </View>
         );
     };
@@ -262,8 +281,8 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                             options={{
                                 format: 'png',
                                 quality: 1,
-                                width: 1080,
-                                height: 1080,
+                                width: getTemplateDimensions(selectedTemplate).width,
+                                height: getTemplateDimensions(selectedTemplate).height,
                             }}
                         >
                             {renderCardTemplate(selectedTemplate, 1)}
@@ -320,7 +339,7 @@ const styles = StyleSheet.create({
     },
     previewCard: {
         width: PREVIEW_SIZE,
-        height: PREVIEW_SIZE,
+        height: PREVIEW_SIZE * 1.25, // Allow height for 4:5 aspect
         borderRadius: 16,
         overflow: 'hidden',
         backgroundColor: '#FFFFFF',
@@ -338,10 +357,10 @@ const styles = StyleSheet.create({
     },
     previewInner: {
         width: PREVIEW_SIZE,
-        height: PREVIEW_SIZE,
+        height: PREVIEW_SIZE * 1.25,
         overflow: 'hidden',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start', // Align to top so all headers match
     },
     templateLabel: {
         fontSize: 13,

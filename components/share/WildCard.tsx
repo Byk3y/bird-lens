@@ -9,6 +9,9 @@ interface WildCardProps {
 }
 
 export const WildCard: React.FC<WildCardProps> = ({ data }) => {
+    // Generate Observation Text
+    const observationText = data.behavior || (data.description ? data.description.split('. ')[0] + '.' : null);
+
     return (
         <View style={styles.card}>
             {/* Full-bleed background photo */}
@@ -32,10 +35,10 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: '#2D3436' }]} />
             )}
 
-            {/* Dark gradient overlay from 40% down */}
+            {/* Subtle top-down vignette for branding visibility */}
             <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.85)']}
-                locations={[0, 0.4, 1]}
+                colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.9)']}
+                locations={[0, 0.2, 0.4, 1]}
                 style={StyleSheet.absoluteFill}
             />
 
@@ -53,14 +56,11 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
                 <Text style={styles.scientificName} numberOfLines={1}>
                     {data.scientificName}
                 </Text>
-                <Text style={styles.familyNameSmall}>
-                    {data.familyName}
-                </Text>
 
                 <View style={styles.metaRow}>
                     <View style={styles.metaLeft}>
                         <Text style={styles.metaText}>
-                            {data.dateIdentified}
+                            {data.familyName} • {data.dateIdentified}
                         </Text>
                         {data.locationName ? (
                             <Text style={styles.metaText} numberOfLines={1}>
@@ -69,6 +69,15 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
                         ) : null}
                     </View>
                 </View>
+
+                {/* Addition: Field Observation notes for Wild card */}
+                {observationText && (
+                    <View style={styles.observationContainer}>
+                        <Text style={styles.observationText} numberOfLines={3}>
+                            {observationText}
+                        </Text>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -77,7 +86,7 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
 const styles = StyleSheet.create({
     card: {
         width: 1080,
-        height: 1080,
+        height: 1350, // Updated to matches Field Guide height
         backgroundColor: '#1a1a1a',
     },
     topBrand: {
@@ -87,7 +96,7 @@ const styles = StyleSheet.create({
         zIndex: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 12,
     },
     appIcon: {
         width: 28 * 2.5,
@@ -99,6 +108,9 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#FFFFFF',
         letterSpacing: -0.3,
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     bottomContent: {
         position: 'absolute',
@@ -106,7 +118,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         paddingHorizontal: 40,
-        paddingBottom: 36,
+        paddingBottom: 48,
     },
     commonName: {
         fontSize: 28 * 2.5,
@@ -118,19 +130,13 @@ const styles = StyleSheet.create({
     scientificName: {
         fontSize: 15 * 2.5,
         fontStyle: 'italic',
-        color: 'rgba(255,255,255,0.7)',
-        marginBottom: 4,
-    },
-    familyNameSmall: {
-        fontSize: 13 * 2.5,
-        fontStyle: 'italic',
-        color: 'rgba(255,255,255,0.6)',
-        marginBottom: 18,
+        color: 'rgba(255,255,255,0.85)',
+        marginBottom: 16,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        marginBottom: 16,
+        marginBottom: 20,
     },
     metaLeft: {
         flex: 1,
@@ -138,6 +144,19 @@ const styles = StyleSheet.create({
     },
     metaText: {
         fontSize: 12 * 2.5,
-        color: 'rgba(255,255,255,0.85)',
+        color: 'rgba(255,255,255,0.8)',
+        fontWeight: '500',
     },
+    observationContainer: {
+        marginTop: 12,
+        paddingTop: 20,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.15)',
+    },
+    observationText: {
+        fontSize: 13 * 2.5,
+        color: 'rgba(255,255,255,0.9)',
+        lineHeight: 18 * 2.5,
+        fontWeight: '400',
+    }
 });
