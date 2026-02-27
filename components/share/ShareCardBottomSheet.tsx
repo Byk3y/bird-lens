@@ -150,6 +150,19 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         );
     };
 
+    const handleSave = async () => {
+        await saveToPhotos(() => {
+            onClose();
+        });
+    };
+
+    const handleShare = async () => {
+        const success = await shareCard();
+        if (success) {
+            onClose();
+        }
+    };
+
     return (
         <AnimatePresence>
             {visible && (
@@ -246,11 +259,10 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                                 ))}
                             </ScrollView>
 
-                            {/* Action Buttons */}
                             <View style={styles.actions}>
                                 <TouchableOpacity
                                     style={styles.secondaryBtn}
-                                    onPress={saveToPhotos}
+                                    onPress={handleSave}
                                     disabled={isCapturing}
                                 >
                                     {isCapturing ? (
@@ -261,7 +273,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.primaryBtn}
-                                    onPress={shareCard}
+                                    onPress={handleShare}
                                     disabled={isCapturing}
                                 >
                                     {isCapturing ? (
@@ -271,6 +283,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
                                     )}
                                 </TouchableOpacity>
                             </View>
+
                         </Animated.View>
                     </MotiView>
 

@@ -28,7 +28,7 @@ export function useShareCard() {
         }
     }, [showAlert]);
 
-    const saveToPhotos = useCallback(async () => {
+    const saveToPhotos = useCallback(async (onSuccess?: () => void) => {
         const uri = await captureCard();
         if (!uri) return;
 
@@ -45,7 +45,15 @@ export function useShareCard() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             showAlert({
                 title: 'Saved!',
-                message: 'Your bird card has been saved to Photos.'
+                message: 'Your bird card has been saved to Photos.',
+                actions: [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            if (onSuccess) onSuccess();
+                        }
+                    }
+                ]
             });
         } catch (err) {
             console.error('Failed to save to photos:', err);
@@ -56,9 +64,9 @@ export function useShareCard() {
         }
     }, [captureCard, showAlert]);
 
-    const shareCard = useCallback(async () => {
+    const shareCard = useCallback(async (): Promise<boolean> => {
         const uri = await captureCard();
-        if (!uri) return;
+        if (!uri) return false;
 
         try {
             const isAvailable = await Sharing.isAvailableAsync();
@@ -67,14 +75,16 @@ export function useShareCard() {
                     title: 'Sharing not available',
                     message: 'Sharing is not supported on this device.'
                 });
-                return;
+                return false;
             }
             await Sharing.shareAsync(uri, {
                 mimeType: 'image/png',
                 dialogTitle: 'Share your bird sighting',
             });
+            return true;
         } catch (err) {
             console.error('Failed to share:', err);
+            return false;
         }
     }, [captureCard, showAlert]);
 
