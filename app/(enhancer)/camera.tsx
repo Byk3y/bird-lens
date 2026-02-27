@@ -3,6 +3,7 @@ import { PhotoFramingView } from '@/components/scanner/PhotoFramingView';
 import { ScannerHeader } from '@/components/scanner/ScannerHeader';
 import { ScannerViewfinder } from '@/components/scanner/ScannerViewfinder';
 import { Colors, Typography } from '@/constants/theme';
+import { useIsCameraActive } from '@/hooks/useIsCameraActive';
 import { EnhancerService } from '@/services/EnhancerService';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -73,6 +74,7 @@ export default function EnhancerScreen() {
     const [pickedImage, setPickedImage] = useState<string | null>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [phase, setPhase] = useState<EnhancerPhase>('camera');
+    const isCameraActive = useIsCameraActive();
 
     const cameraRef = useRef<CameraView>(null);
     const router = useRouter();
@@ -416,14 +418,16 @@ export default function EnhancerScreen() {
                 {/* Camera */}
                 <GestureDetector gesture={pinchGesture}>
                     <View style={styles.fullScreenCamera}>
-                        <CameraView
-                            style={StyleSheet.absoluteFill}
-                            ref={cameraRef}
-                            facing="back"
-                            flash={flash}
-                            enableTorch={flash === 'on'}
-                            zoom={zoom}
-                        />
+                        {isCameraActive && (
+                            <CameraView
+                                style={StyleSheet.absoluteFill}
+                                ref={cameraRef}
+                                facing="back"
+                                flash={flash}
+                                enableTorch={flash === 'on'}
+                                zoom={zoom}
+                            />
+                        )}
 
                         {/* Flash overlay */}
                         {isFlashing && (

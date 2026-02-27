@@ -17,6 +17,7 @@ import { GestureDetector } from 'react-native-gesture-handler';
 // Hooks
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { useBirdIdentification } from '@/hooks/useBirdIdentification';
+import { useIsCameraActive } from '@/hooks/useIsCameraActive';
 import { useScannerGestures } from '@/hooks/useScannerGestures';
 import { useSubscriptionGating } from '@/hooks/useSubscriptionGating';
 import { useAuth } from '@/lib/auth';
@@ -44,6 +45,7 @@ export default function ScannerScreen() {
   const [mediaPermission, requestMediaPermission] = ImagePicker.useMediaLibraryPermissions();
   const [activeMode, setActiveMode] = useState<ScanMode>('photo');
   const [flash, setFlash] = useState<'off' | 'on'>('off');
+  const isCameraActive = useIsCameraActive();
   const [showSnapTips, setShowSnapTips] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [pickedImage, setPickedImage] = useState<string | null>(null);
@@ -390,14 +392,16 @@ export default function ScannerScreen() {
             {activeMode === 'photo' ? (
               <GestureDetector gesture={pinchGesture}>
                 <View style={styles.fullScreenCamera}>
-                  <CameraView
-                    style={StyleSheet.absoluteFill}
-                    ref={cameraRef}
-                    facing="back"
-                    flash={flash}
-                    enableTorch={flash === 'on'}
-                    zoom={zoom}
-                  />
+                  {isCameraActive && (
+                    <CameraView
+                      style={StyleSheet.absoluteFill}
+                      ref={cameraRef}
+                      facing="back"
+                      flash={flash}
+                      enableTorch={flash === 'on'}
+                      zoom={zoom}
+                    />
+                  )}
                   {isFlashing && (
                     <View style={[StyleSheet.absoluteFill, { backgroundColor: '#fff', zIndex: 999 }]} />
                   )}
