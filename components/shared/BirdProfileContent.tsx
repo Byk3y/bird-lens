@@ -443,8 +443,10 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                     <View style={styles.clippedIdContainer}>
                         {bird.identification_tips ? (
                             <IdentificationComparison bird={bird} onPress={onOpenIdentification} variant="inline" />
-                        ) : (
+                        ) : !isEnrichmentComplete ? (
                             <IdentificationSkeleton />
+                        ) : (
+                            <Text style={styles.descriptionText}>Identification details not available.</Text>
                         )}
                         <LinearGradient
                             colors={['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}
@@ -515,12 +517,14 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             </TouchableOpacity>
                         )}
                     </>
-                ) : (
+                ) : !isEnrichmentComplete ? (
                     <View style={{ paddingVertical: 20 }}>
                         <View style={{ height: 18, width: '90%', backgroundColor: '#F0F0F0', borderRadius: 4, marginBottom: 8 }} />
                         <View style={{ height: 18, width: '95%', backgroundColor: '#F0F0F0', borderRadius: 4, marginBottom: 8 }} />
                         <View style={{ height: 18, width: '70%', backgroundColor: '#F0F0F0', borderRadius: 4, marginBottom: 8 }} />
                     </View>
+                ) : (
+                    <Text style={styles.descriptionText}>Description not available.</Text>
                 )}
             </View>
 
