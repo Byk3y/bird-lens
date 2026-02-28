@@ -222,8 +222,9 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     writeChunk(controller, { type: "progress", message: audio ? "Analyzing acoustic patterns with BirdNET..." : "Scanning image features..." });
 
                     // PHASE 1: Identification
-                    const primaryModel = GEMINI_MODEL;
-                    const fallbackModel = "openai/gpt-4o";
+                    const PRIMARY_MODEL = GEMINI_MODEL;
+                    const QWEN_MODEL = "qwen/qwen2.5-vl-72b-instruct";
+                    const ERROR_FALLBACK_MODEL = "openai/gpt-4o";
 
                     const processIdentificationResponse = async (response: Response, isAudio: boolean) => {
                         const resultJson = await response.json().catch((jsonErr: any) => {
@@ -257,13 +258,11 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                         return { candidates, content, audio_description: parsed.audio_description };
                     };
 
-                    const attemptAI = async (isPrimary: boolean, promptText: string): Promise<Response> => {
-                        const model = isPrimary ? primaryModel : fallbackModel;
-
+                    const attemptAI = async (model: string, promptText: string): Promise<Response> => {
                         console.log('[AI] Routing to OpenRouter: ' + model);
 
                         const contentParts: any[] = [
-                            { type: "text", text: isGemini ? promptText : promptText + '\n\nMANDATORY: Return a JSON object.' }
+                            { type: "text", text: model.includes("gemini") ? promptText : promptText + '\n\nMANDATORY: Return a JSON object.' }
                         ];
 
                         if (image) {
@@ -296,7 +295,6 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     };
 
                     let identificationResponse: Response | undefined;
-                    let isGeminiUsed = false;
                     let birdNetCandidates: any[] = [];
                     let usedBirdNet = false;
                     let candidates: any[] = [];
@@ -411,8 +409,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
 
                         } else {
                             // Image path: Primary model
-                            isGeminiUsed = false;
-                            identificationResponse = await attemptAI(true, fastPrompt);
+                            identificationResponse = await attemptAI(PRIMARY_MODEL, fastPrompt);
 
                             if (!identificationResponse.ok) {
                                 const errBody = await identificationResponse.text().catch(() => "unknown");
@@ -423,30 +420,29 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             candidates = processed.candidates;
                             content = processed.content;
 
-                            // CHANGE 3: Confidence-Based Fallback
+                            // CHANGE 3: Confidence-Based Fallback (now uses Qwen)
                             const primaryConfidence = candidates[0]?.confidence || 0;
                             let finalAudioDescription = processed.audio_description;
 
                             if (primaryConfidence < 0.60) {
-                                console.log(`[PHASE1] Primary confidence ${primaryConfidence} < 0.60. Requesting fallback for comparison.`);
+                                console.log(`[PHASE1] Primary confidence ${primaryConfidence} < 0.60. Requesting fallback (Qwen) for comparison.`);
                                 try {
-                                    isGeminiUsed = true;
-                                    const fallbackResponse = await attemptAI(false, fastPrompt);
+                                    const fallbackResponse = await attemptAI(QWEN_MODEL, fastPrompt);
                                     if (fallbackResponse.ok) {
                                         const processedFallback = await processIdentificationResponse(fallbackResponse, !!audio);
                                         const fallbackConfidence = processedFallback.candidates[0]?.confidence || 0;
 
                                         if (fallbackConfidence > primaryConfidence) {
-                                            console.log(`[PHASE1] Fallback won (${fallbackConfidence} > ${primaryConfidence}). Using fallback results.`);
+                                            console.log(`[PHASE1] Fallback (Qwen) won (${fallbackConfidence} > ${primaryConfidence}). Using fallback results.`);
                                             candidates = processedFallback.candidates;
                                             content = processedFallback.content;
                                             finalAudioDescription = processedFallback.audio_description;
                                         } else {
-                                            console.log(`[PHASE1] Primary stayed winner (${primaryConfidence} >= ${fallbackConfidence}). Sticking with primary.`);
+                                            console.log(`[PHASE1] Primary (Gemini) stayed winner (${primaryConfidence} >= ${fallbackConfidence}). Sticking with primary.`);
                                         }
                                     }
                                 } catch (err) {
-                                    console.warn("[PHASE1] Confidence fallback effort failed - sticking with primary results:", err);
+                                    console.warn("[PHASE1] Confidence fallback effort (Qwen) failed - sticking with primary results:", err);
                                 }
                             }
 
@@ -455,29 +451,24 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             }
                         }
                     } catch (err) {
-                        console.warn("[PHASE1] Primary AI or BirdNET failed, checking fallback:", err);
-                        // Only fallback if we haven't already used the secondary model
-                        if (!isGeminiUsed) {
-                            isGeminiUsed = true;
-                            try {
-                                identificationResponse = await attemptAI(false, fastPrompt);
-                                if (!identificationResponse.ok) {
-                                    const errBody = await identificationResponse.text().catch(() => "unknown");
-                                    throw new Error('Fallback AI failed with status ' + identificationResponse.status + ': ' + errBody);
-                                }
-
-                                const processed = await processIdentificationResponse(identificationResponse, !!audio);
-                                candidates = processed.candidates;
-                                content = processed.content;
-                                if (processed.audio_description) {
-                                    writeChunk(controller, { type: "progress", message: 'Analysis: ' + processed.audio_description });
-                                }
-                            } catch (innerErr) {
-                                console.error("[PHASE1] Fallback AI also failed:", innerErr);
-                                throw innerErr;
+                        console.warn("[PHASE1] Primary pipeline failed, checking emergency fallback (GPT-4o):", err);
+                        // Final safety net for when everything above crashes or fails completely
+                        try {
+                            identificationResponse = await attemptAI(ERROR_FALLBACK_MODEL, fastPrompt);
+                            if (!identificationResponse.ok) {
+                                const errBody = await identificationResponse.text().catch(() => "unknown");
+                                throw new Error('Emergency Fallback AI failed with status ' + identificationResponse.status + ': ' + errBody);
                             }
-                        } else {
-                            throw err;
+
+                            const processed = await processIdentificationResponse(identificationResponse, !!audio);
+                            candidates = processed.candidates;
+                            content = processed.content;
+                            if (processed.audio_description) {
+                                writeChunk(controller, { type: "progress", message: 'Analysis: ' + processed.audio_description });
+                            }
+                        } catch (innerErr) {
+                            console.error("[PHASE1] Emergency Fallback AI also failed:", innerErr);
+                            throw innerErr;
                         }
                     }
 
