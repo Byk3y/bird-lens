@@ -40,16 +40,16 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, isEnrichment
 
             <View style={styles.scientificNameRow}>
                 <View style={styles.metaContainer}>
-                    {!isEnrichmentComplete ? (
-                        <View style={styles.metaRow}>
-                            <View style={[styles.skeletonLine, { width: 140 }]} />
-                        </View>
-                    ) : bird.also_known_as && bird.also_known_as.length > 0 ? (
+                    {bird.also_known_as && bird.also_known_as.length > 0 ? (
                         <View style={styles.metaRow}>
                             <Text style={styles.metaFlowText}>
                                 <Text style={styles.metaLabel}>Also known as: </Text>
                                 <Text style={styles.metaValue}>{bird.also_known_as.join(', ')}</Text>
                             </Text>
+                        </View>
+                    ) : !isEnrichmentComplete ? (
+                        <View style={styles.metaRow}>
+                            <View style={[styles.skeletonLine, { width: 140 }]} />
                         </View>
                     ) : null}
                     {bird.scientific_name && (
@@ -72,9 +72,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, isEnrichment
                             <Text style={styles.genusLineText}>
                                 <Text style={styles.metaLabel}>Genus: </Text>
                                 <Text style={styles.genusName}>{bird.taxonomy.genus}</Text>
-                                {!isEnrichmentComplete ? (
-                                    <View style={[styles.skeletonLine, { width: 120, height: 16, marginLeft: 6, marginTop: 0, marginBottom: 0, transform: [{ translateY: 2 }] }]} />
-                                ) : bird.taxonomy.genus_description ? (
+                                {bird.taxonomy.genus_description ? (
                                     (() => {
                                         // Parse "Commonly called X" to separate label from common name
                                         const desc = bird.taxonomy.genus_description;
@@ -92,6 +90,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, isEnrichment
                                         }
                                         return <Text style={styles.genusDescription}>, {desc}</Text>;
                                     })()
+                                ) : !isEnrichmentComplete ? (
+                                    <View style={[styles.skeletonLine, { width: 120, height: 16, marginLeft: 6, marginTop: 0, marginBottom: 0, transform: [{ translateY: 2 }] }]} />
                                 ) : null}
                             </Text>
                         </View>

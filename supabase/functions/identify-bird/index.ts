@@ -52,11 +52,13 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 // ---------- Helper: Search Cache (using species_meta table) ----------
 
+const CACHE_TTL_DAYS = 14;
+
 async function getCachedMedia(scientificName: string) {
     try {
         const { data, error } = await supabase
             .from('species_meta')
-            .select('inat_photos, sounds, male_image_url, female_image_url, juvenile_image_url, wikipedia_image, updated_at')
+            .select('inat_photos, sounds, male_image_url, female_image_url, juvenile_image_url, wikipedia_image, updated_at, identification_data')
             .eq('scientific_name', scientificName.trim())
             .maybeSingle();
 
@@ -164,16 +166,17 @@ Return a JSON object with a "candidates" array. Each object in the array must in
 - "name": Common name
 - "scientific_name": Scientific name
 - "confidence": A number from 0-1
+- "also_known_as": Array of strings (2-4 alternative common names)
 - "taxonomy": {
     "family": "Common name of family",
     "family_scientific": "Scientific name of family",
     "genus": "Scientific name of genus",
-    "genus_description": "Commonly called [Common Name of Genus]",
+    "genus_description": "A single short string: the common name for the genus group (e.g. 'Goldfinches' for genus Spinus)",
     "order": "Scientific name of order",
     "order_description": "Common name of order"
   }
 
-Example response format: {"candidates": [{"name": "...", "scientific_name": "...", "confidence": 0.95, "taxonomy": {...}}]}
+Example response format: {"candidates": [{"name": "...", "scientific_name": "...", "confidence": 0.95, "also_known_as": ["..."], "taxonomy": {...}}]}
 `;
 
         const audioPromptInstructions = `
@@ -486,6 +489,39 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     }
 
                     candidates = candidates.slice(0, 3);
+
+                    // --- PRE-POPULATE METADATA FROM CACHE ---
+                    // If we have a top candidate, check if we have recent metadata in the cache
+                    // to eliminate the "skeleton" state on the ProfileHeader.
+                    const topCandidate = candidates[0];
+                    if (topCandidate && topCandidate.scientific_name) {
+                        try {
+                            const cacheResult = await getCachedMedia(topCandidate.scientific_name);
+                            if (cacheResult && cacheResult.updated_at) {
+                                const updatedAt = new Date(cacheResult.updated_at);
+                                const now = new Date();
+                                const diffDays = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+                                if (diffDays < CACHE_TTL_DAYS && cacheResult.identification_data) {
+                                    const idData = cacheResult.identification_data as any;
+                                    // Only merge if we have the critical fields that eliminate skeletons
+                                    if (idData.also_known_as || idData.genus_description) {
+                                        console.log(`[CACHE] Hit! Pre-populating metadata for ${topCandidate.scientific_name}`);
+                                        candidates[0] = {
+                                            ...topCandidate,
+                                            also_known_as: idData.also_known_as || topCandidate.also_known_as,
+                                            taxonomy: {
+                                                ...topCandidate.taxonomy,
+                                                genus_description: idData.genus_description || topCandidate.taxonomy?.genus_description
+                                            }
+                                        };
+                                    }
+                                }
+                            }
+                        } catch (cacheErr) {
+                            console.warn("[CACHE] Meta lookup failed (non-critical):", cacheErr);
+                        }
+                    }
 
                     writeChunk(controller, {
                         type: "candidates",
