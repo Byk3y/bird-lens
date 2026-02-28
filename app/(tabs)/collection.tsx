@@ -274,7 +274,7 @@ export default function MeScreen() {
 
             <View style={styles.content}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>My Collections ({sightings.length})</Text>
+                    <Text style={styles.sectionTitle}>Collection ({sightings.length})</Text>
                 </View>
 
                 {loading ? (

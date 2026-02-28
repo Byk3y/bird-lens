@@ -13,18 +13,11 @@ import { TouchableOpacity } from 'react-native';
 export const HomeHeader: React.FC = () => {
     const router = useSafeNavigation();
 
-    const getGreeting = () => {
-        const hour = new Date().getHours();
-        if (hour < 12) return 'Good Morning';
-        if (hour < 17) return 'Good Afternoon';
-        return 'Good Evening';
-    };
-
     return (
         <View>
             {/* Header Section */}
             <View style={styles.headerTitleContainer}>
-                <Text style={styles.headerGreeting}>{getGreeting()}</Text>
+                <Text style={styles.headerGreeting}>BirdMark</Text>
                 <Text style={styles.headerSubtitle}>Ready to find some birds?</Text>
             </View>
 
@@ -52,8 +45,8 @@ const styles = StyleSheet.create({
     },
     headerGreeting: {
         fontSize: 28,
-        fontWeight: '900',
-        color: Colors.white,
+        fontFamily: 'PoppinsBold',
+        color: '#FAFAF7',
         letterSpacing: -0.5,
     },
     headerSubtitle: {
