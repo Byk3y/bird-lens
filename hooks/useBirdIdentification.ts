@@ -325,7 +325,20 @@ export const useBirdIdentification = () => {
                 if (capturedImage) {
                     uploadTasks.push((async () => {
                         const fileName = `images/${user?.id}/${Date.now()}.webp`;
-                        const bytes = Buffer.from(capturedImage, 'base64');
+
+                        // Handle both base64 and file URIs
+                        let base64Data;
+                        if (capturedImage.startsWith('file://')) {
+                            base64Data = await FileSystem.readAsStringAsync(capturedImage, {
+                                encoding: FileSystem.EncodingType.Base64,
+                            });
+                        } else {
+                            // If it's already base64 (e.g. from a legacy flow or enhancer), 
+                            // strip the prefix if it exists
+                            base64Data = capturedImage.replace(/^data:image\/[a-z]+;base64,/, '');
+                        }
+
+                        const bytes = Buffer.from(base64Data, 'base64');
 
                         const { error: uploadError } = await supabase.storage
                             .from('sightings')
