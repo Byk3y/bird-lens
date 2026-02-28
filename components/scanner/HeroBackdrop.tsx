@@ -32,7 +32,7 @@ export const HeroBackdrop = React.memo(({
                 />
             ) : sourceMode === 'photo' && capturedImage ? (
                 <Image
-                    source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
+                    source={{ uri: capturedImage }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
                     transition={300}
@@ -47,7 +47,7 @@ export const HeroBackdrop = React.memo(({
                 </View>
             ) : isComparisonTab && capturedImage ? (
                 <Image
-                    source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
+                    source={{ uri: capturedImage }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
                     transition={500}

@@ -17,6 +17,7 @@ interface AlertOptions {
 interface AlertContextType {
     showAlert: (options: AlertOptions) => void;
     hideAlert: () => void;
+    showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 const AlertContext = createContext<AlertContextType | undefined>(undefined);
@@ -36,6 +37,16 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const hideAlert = useCallback(() => {
         setVisible(false);
+    }, []);
+
+    const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        // Fallback to alert since a dedicated toast isn't built yet
+        setConfig({
+            title: type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notice',
+            message: message,
+            actions: [{ text: 'OK' }]
+        });
+        setVisible(true);
     }, []);
 
     const handleConfirm = async () => {
@@ -73,7 +84,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const hasCancelAction = !!cancelAction;
 
     return (
-        <AlertContext.Provider value={{ showAlert, hideAlert }}>
+        <AlertContext.Provider value={{ showAlert, hideAlert, showToast }}>
             {children}
             <CustomAlert
                 visible={visible}

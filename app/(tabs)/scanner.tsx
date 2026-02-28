@@ -117,7 +117,7 @@ export default function ScannerScreen() {
             encoding: FileSystem.EncodingType.Base64,
           });
 
-          setCapturedImage(base64);
+          setCapturedImage(params.enhancedImageUri!);
           const bird = await identifyBird(base64);
           if (bird) incrementCount();
         } catch (e) {
@@ -187,16 +187,27 @@ export default function ScannerScreen() {
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      // Ensure crop rectangle is within image bounds
+      const originX = Math.max(0, cropData.originX);
+      const originY = Math.max(0, cropData.originY);
+
+      // Adjust width and height if origin was clamped, and ensure they don't exceed remaining image space
+      const availableWidth = (cropData.baseImageWidth || 0) - originX;
+      const availableHeight = (cropData.baseImageHeight || 0) - originY;
+
+      const width = Math.min(cropData.width - (originX - cropData.originX), availableWidth);
+      const height = Math.min(cropData.height - (originY - cropData.originY), availableHeight);
+
       // Perform crop then resize
       const manipResult = await manipulateAsync(
         pickedImage,
         [
           {
             crop: {
-              originX: Math.max(0, cropData.originX),
-              originY: Math.max(0, cropData.originY),
-              width: cropData.width,
-              height: cropData.height,
+              originX: Math.floor(originX),
+              originY: Math.floor(originY),
+              width: Math.floor(width),
+              height: Math.floor(height),
             },
           },
           { resize: { width: 800 } },
@@ -204,9 +215,9 @@ export default function ScannerScreen() {
         { compress: 0.8, format: SaveFormat.JPEG, base64: true }
       );
 
-      if (manipResult.base64) {
-        setCapturedImage(manipResult.base64);
-        const bird = await identifyBird(manipResult.base64);
+      if (manipResult.uri) {
+        setCapturedImage(manipResult.uri);
+        const bird = await identifyBird(manipResult.base64!);
         if (bird) incrementCount();
         setPickedImage(null);
       }
@@ -250,10 +261,11 @@ export default function ScannerScreen() {
           );
 
           if (manipResult.uri) {
-            // We still setCapturedImage(base64) for instant local UI preview
-            setCapturedImage(manipResult.base64 || null);
-            const bird = await identifyBird(manipResult.base64);
-            if (bird) incrementCount();
+            // We store the URI for direct display and share sheet compatibility
+            setCapturedImage(manipResult.uri);
+            if (manipResult.base64) {
+              await identifyBird(manipResult.base64);
+            }
           }
         }
       } catch (error) {
@@ -464,14 +476,6 @@ export default function ScannerScreen() {
                 setSavedIndices(prev => new Set(prev).add(activeIndex));
 
                 // Navigate to collection after a brief delay to show success state
-                setTimeout(() => {
-                  resetResult();
-                  setCapturedImage(null);
-                  clearRecording();
-                  setSavedIndices(new Set());
-                  setActiveIndex(0);
-                  router.replace('/(tabs)/collection');
-                }, 1200);
               }
             }}
             onReset={() => {

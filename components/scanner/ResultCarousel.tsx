@@ -80,7 +80,7 @@ export const ResultCarousel = React.memo(({
                             ) : (
                                 sourceMode === 'photo' && capturedImage ? (
                                     <Image
-                                        source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
+                                        source={{ uri: capturedImage }}
                                         style={styles.circleImage}
                                         cachePolicy="memory-disk"
                                     />

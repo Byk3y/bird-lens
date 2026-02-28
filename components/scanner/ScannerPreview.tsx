@@ -129,7 +129,7 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
                     <View style={styles.imageRelative}>
                         {activeMode === 'photo' && imageUri ? (
                             <Image
-                                source={{ uri: `data:image/webp;base64,${imageUri}` }}
+                                source={{ uri: imageUri }}
                                 style={styles.image}
                             />
                         ) : (
