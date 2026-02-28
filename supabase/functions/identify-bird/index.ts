@@ -200,7 +200,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
         const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
         const locationContext = location
-            ? `The user is currently located in ${location}. Prioritize bird species commonly found in this region and consider local migration patterns.`
+            ? `The user is currently located in ${location}. Use location as a secondary hint only — if the visual evidence clearly identifies a species not common to this region, trust the visual evidence first. Only use location to break ties between equally likely candidates.`
             : '';
 
         const contextPrompt = `Today is ${currentDate}. ${locationContext}\n\n`;
@@ -222,7 +222,8 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     writeChunk(controller, { type: "progress", message: audio ? "Analyzing acoustic patterns with BirdNET..." : "Scanning image features..." });
 
                     // PHASE 1: Identification
-                    const openRouterModel = "openai/gpt-4o";
+                    const primaryModel = GEMINI_MODEL;
+                    const fallbackModel = "openai/gpt-4o";
 
                     const processIdentificationResponse = async (response: Response, isAudio: boolean) => {
                         const resultJson = await response.json().catch((jsonErr: any) => {
@@ -257,8 +258,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     };
 
                     const attemptAI = async (isPrimary: boolean, promptText: string): Promise<Response> => {
-                        const isGemini = !isPrimary;
-                        const model = isGemini ? GEMINI_MODEL : openRouterModel;
+                        const model = isPrimary ? primaryModel : fallbackModel;
 
                         console.log('[AI] Routing to OpenRouter: ' + model);
 
@@ -290,7 +290,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                                     content: contentParts
                                 }],
                                 response_format: { type: "json_object" },
-                                temperature: isGemini ? 0.1 : undefined
+                                temperature: 0.1
                             }),
                         });
                     };
@@ -410,7 +410,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             }
 
                         } else {
-                            // Image path: OpenRouter primary
+                            // Image path: Primary model
                             isGeminiUsed = false;
                             identificationResponse = await attemptAI(true, fastPrompt);
 
@@ -422,13 +422,41 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             const processed = await processIdentificationResponse(identificationResponse, !!audio);
                             candidates = processed.candidates;
                             content = processed.content;
-                            if (processed.audio_description) {
-                                writeChunk(controller, { type: "progress", message: 'Analysis: ' + processed.audio_description });
+
+                            // CHANGE 3: Confidence-Based Fallback
+                            const primaryConfidence = candidates[0]?.confidence || 0;
+                            let finalAudioDescription = processed.audio_description;
+
+                            if (primaryConfidence < 0.60) {
+                                console.log(`[PHASE1] Primary confidence ${primaryConfidence} < 0.60. Requesting fallback for comparison.`);
+                                try {
+                                    isGeminiUsed = true;
+                                    const fallbackResponse = await attemptAI(false, fastPrompt);
+                                    if (fallbackResponse.ok) {
+                                        const processedFallback = await processIdentificationResponse(fallbackResponse, !!audio);
+                                        const fallbackConfidence = processedFallback.candidates[0]?.confidence || 0;
+
+                                        if (fallbackConfidence > primaryConfidence) {
+                                            console.log(`[PHASE1] Fallback won (${fallbackConfidence} > ${primaryConfidence}). Using fallback results.`);
+                                            candidates = processedFallback.candidates;
+                                            content = processedFallback.content;
+                                            finalAudioDescription = processedFallback.audio_description;
+                                        } else {
+                                            console.log(`[PHASE1] Primary stayed winner (${primaryConfidence} >= ${fallbackConfidence}). Sticking with primary.`);
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.warn("[PHASE1] Confidence fallback effort failed - sticking with primary results:", err);
+                                }
+                            }
+
+                            if (finalAudioDescription) {
+                                writeChunk(controller, { type: "progress", message: 'Analysis: ' + finalAudioDescription });
                             }
                         }
                     } catch (err) {
                         console.warn("[PHASE1] Primary AI or BirdNET failed, checking fallback:", err);
-                        // Only fallback if we haven't already used Gemini
+                        // Only fallback if we haven't already used the secondary model
                         if (!isGeminiUsed) {
                             isGeminiUsed = true;
                             try {
