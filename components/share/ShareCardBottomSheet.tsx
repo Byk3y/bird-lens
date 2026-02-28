@@ -48,6 +48,7 @@ interface ShareCardBottomSheetProps {
     imageUrl?: string;
     locationName?: string;
     dateIdentified?: string | Date;
+    onSuccess?: () => void;
 }
 
 const TEMPLATES: { key: TemplateType; label: string }[] = [
@@ -64,6 +65,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     imageUrl,
     locationName,
     dateIdentified,
+    onSuccess,
 }) => {
     const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('wild');
     const scrollRef = useRef<ScrollView>(null);
@@ -160,6 +162,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         const success = await shareCard();
         if (success) {
             onClose();
+            onSuccess?.();
         }
     };
 
