@@ -487,7 +487,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     if (!candidates || candidates.length === 0) {
                         throw new Error(audio
                             ? "Could not identify any distinct bird sounds. Try recording closer to the source."
-                            : "AI returned no bird candidates. Please try again with a clearer image.");
+                            : "We couldn't spot a bird in that image. Try centering the bird in the frame, moving closer, or using a clearer photo.");
                     }
 
                     candidates = candidates.slice(0, 3);

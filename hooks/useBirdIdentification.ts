@@ -53,6 +53,7 @@ export const useBirdIdentification = () => {
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
+        let enrichmentTimeout: any = null;
 
         try {
 
@@ -88,6 +89,10 @@ export const useBirdIdentification = () => {
                 abortControllerRef.current = currentController;
                 setError(null);
 
+                let rawCandidates: any[] = [];
+                let finalBirds: BirdResult[] = [];
+                let rawAiResponse: string | null = null;
+
                 try {
                     console.log(`Identification attempt ${attempts} initiating...`);
 
@@ -121,10 +126,6 @@ export const useBirdIdentification = () => {
                     const reader = response.body?.getReader();
                     if (!reader) throw new Error('No response body to read');
 
-                    let rawCandidates: any[] = [];
-                    let finalBirds: BirdResult[] = [];
-                    let rawAiResponse: string | null = null;
-
                     await IdentificationService.processStream(reader, (chunk) => {
                         switch (chunk.type) {
                             case 'progress':
@@ -152,6 +153,12 @@ export const useBirdIdentification = () => {
                                 setEnrichedCandidates(initialBirds);
                                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 console.log(`Received ${initialBirds.length} candidates`);
+
+                                // Fix 3: Start 15s enrichment timeout
+                                enrichmentTimeout = setTimeout(() => {
+                                    console.log('[Timeout] Enrichment phase exceeded 15s. Aborting stream to show partial results.');
+                                    currentController.abort();
+                                }, 15000);
                                 break;
                             }
 
@@ -202,6 +209,10 @@ export const useBirdIdentification = () => {
                             }
 
                             case 'done':
+                                if (enrichmentTimeout) {
+                                    clearTimeout(enrichmentTimeout);
+                                    enrichmentTimeout = null;
+                                }
                                 console.log(`Stream complete in ${chunk.duration}ms`);
                                 break;
 
@@ -231,6 +242,10 @@ export const useBirdIdentification = () => {
                         currentController.signal.aborted;
 
                     if (isManualAbort) {
+                        if (receivedCandidates && finalBirds.length > 0) {
+                            console.log('Enrichment phase timed out or aborted after candidates; returning partial results');
+                            return finalBirds[0];
+                        }
                         console.log('Identification request cancelled by user');
                         return undefined;
                     }
@@ -270,8 +285,8 @@ export const useBirdIdentification = () => {
                     // FINAL ERROR HANDLING (If not retrying)
                     if (isQuotaError) {
                         showAlert({
-                            title: 'AI is taking a nap 😴',
-                            message: "We've hit the Google Gemini free tier limit. Please wait about 30-60 seconds and try your capture again."
+                            title: 'Servers are Busy',
+                            message: "Our servers are experiencing high demand right now. Please wait a moment and try again."
                         });
                     } else if (!receivedCandidates) {
                         // Only set the error state if we haven't jumped to the results screen
@@ -283,6 +298,10 @@ export const useBirdIdentification = () => {
                 }
             }
         } finally {
+            if (enrichmentTimeout) {
+                clearTimeout(enrichmentTimeout);
+                enrichmentTimeout = null;
+            }
             setIsProcessing(false);
             setProgressMessage(null);
             abortControllerRef.current = null;
