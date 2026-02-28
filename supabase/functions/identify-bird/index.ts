@@ -167,6 +167,8 @@ Return a JSON object with a "candidates" array. Each object in the array must in
 - "scientific_name": Scientific name
 - "confidence": A number from 0-1
 - "also_known_as": Array of strings (2-4 alternative common names)
+- "diet_tags": Array of 1-3 simple keywords (e.g. ["Insects", "Seeds"])
+- "habitat_tags": Array of 1-2 short keywords (e.g. ["Forest", "Shrubland"])
 - "taxonomy": {
     "family": "Common name of family",
     "family_scientific": "Scientific name of family",
@@ -504,18 +506,15 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
 
                                 if (diffDays < CACHE_TTL_DAYS && cacheResult.identification_data) {
                                     const idData = cacheResult.identification_data as any;
-                                    // Only merge if we have the critical fields that eliminate skeletons
-                                    if (idData.also_known_as || idData.genus_description) {
-                                        console.log(`[CACHE] Hit! Pre-populating metadata for ${topCandidate.scientific_name}`);
-                                        candidates[0] = {
-                                            ...topCandidate,
-                                            also_known_as: idData.also_known_as || topCandidate.also_known_as,
-                                            taxonomy: {
-                                                ...topCandidate.taxonomy,
-                                                genus_description: idData.genus_description || topCandidate.taxonomy?.genus_description
-                                            }
-                                        };
-                                    }
+                                    console.log(`[CACHE] Hit! Pre-populating full metadata for ${topCandidate.scientific_name}`);
+                                    candidates[0] = {
+                                        ...idData,        // Cache as base (habitat, diet, nesting, etc.)
+                                        ...topCandidate,  // Fresh identification wins (Confidence, Name)
+                                        taxonomy: {
+                                            ...idData.taxonomy,
+                                            ...topCandidate.taxonomy
+                                        }
+                                    };
                                 }
                             }
                         } catch (cacheErr) {
