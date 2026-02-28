@@ -6,8 +6,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import LottieView from 'lottie-react-native';
 import { Check } from 'lucide-react-native';
+import { MotiView } from 'moti';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,16 +17,15 @@ interface PaywallProps {
 }
 
 const FEATURES = [
-    'Identify any bird by photo or sound, instantly',
-    'Access detailed profiles for 10,000+ species',
-    'Build and track your personal bird collection',
-    'Discover calls, songs, and habitat information',
-    'Unlimited identifications, no daily limits',
-    'Ad-free, distraction-free birding experience'
+    'Never wonder what bird that was again',
+    'Identify any species by photo or sound, instantly',
+    'Build a life list that tells your story',
+    '10,000+ species with calls, songs and habitat info'
 ];
 
 export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const [offerings, setOfferings] = useState<any>(null);
+    const [reminderEnabled, setReminderEnabled] = useState(true);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
     const { showAlert } = useAlert();
@@ -147,9 +147,20 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                     <View style={{ flex: 1 }} />
 
                     <View style={styles.innerContent}>
-                        <Text style={styles.title}>BirdMark</Text>
+                        <MotiView
+                            from={{ opacity: 0, translateY: 15 }}
+                            animate={{ opacity: 1, translateY: 0 }}
+                            transition={{ type: 'timing', duration: 600, delay: 100 }}
+                        >
+                            <Text style={styles.title}>BirdMark</Text>
+                        </MotiView>
 
-                        <View style={styles.featuresList}>
+                        <MotiView
+                            from={{ opacity: 0, translateY: 15 }}
+                            animate={{ opacity: 1, translateY: 0 }}
+                            transition={{ type: 'timing', duration: 600, delay: 200 }}
+                            style={styles.featuresList}
+                        >
                             {FEATURES.map((feature, index) => (
                                 <View key={index} style={styles.featureRow}>
                                     <View style={styles.checkBadge}>
@@ -158,12 +169,17 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                     <Text style={styles.featureText}>{feature}</Text>
                                 </View>
                             ))}
-                        </View>
+                        </MotiView>
 
                         {loading ? (
                             <ActivityIndicator size="large" color="#D35400" style={{ marginVertical: 20 }} />
                         ) : (
-                            <View style={styles.pricingSection}>
+                            <MotiView
+                                from={{ opacity: 0, translateY: 15 }}
+                                animate={{ opacity: 1, translateY: 0 }}
+                                transition={{ type: 'timing', duration: 600, delay: 300 }}
+                                style={styles.pricingSection}
+                            >
                                 <Text style={styles.pricingMainTitle}>
                                     Try 7 days free
                                 </Text>
@@ -210,14 +226,29 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                         <Text style={styles.planCardPrice}>{monthlyPackage ? `${monthlyPackage.product.priceString} billed monthly` : '$4.99 billed monthly'}</Text>
                                     </TouchableOpacity>
                                 </View>
-                            </View>
+                            </MotiView>
                         )}
 
                         {/* Bottom Actions nested directly in flow */}
-                        <View style={styles.bottomContainer}>
-                            <Text style={styles.pricingSubText}>
-                                We'll remind you 3 days before your trial ends.
-                            </Text>
+                        <MotiView
+                            from={{ opacity: 0, translateY: 15 }}
+                            animate={{ opacity: 1, translateY: 0 }}
+                            transition={{ type: 'timing', duration: 600, delay: 400 }}
+                            style={styles.bottomContainer}
+                        >
+                            <View style={styles.reminderToggleContainer}>
+                                <Text style={styles.pricingSubText}>
+                                    Remind me before the trial ends
+                                </Text>
+                                <Switch
+                                    value={reminderEnabled}
+                                    onValueChange={setReminderEnabled}
+                                    trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#D35400' }}
+                                    thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (reminderEnabled ? '#FFFFFF' : '#f4f3f4')}
+                                    ios_backgroundColor="rgba(255,255,255,0.2)"
+                                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                                />
+                            </View>
 
                             <TouchableOpacity
                                 style={[styles.ctaButton, purchasing && styles.ctaButtonDisabled]}
@@ -245,7 +276,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                     Privacy Policy
                                 </Text>.
                             </Text>
-                        </View>
+                        </MotiView>
                     </View>
                 </View>
             </View>
@@ -463,11 +494,14 @@ const styles = StyleSheet.create({
     pricingSubText: {
         color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 12,
-        textAlign: 'center',
-        marginBottom: 8, // Pulled tighter to button
-        paddingHorizontal: 10,
-        lineHeight: 16,
         fontWeight: '500',
+    },
+    reminderToggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+        gap: 8,
     },
     ctaButton: {
         backgroundColor: '#D35400',
