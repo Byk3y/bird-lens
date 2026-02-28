@@ -64,7 +64,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 // Link RevenueCat identity if session exists
                 subscriptionService.logIn(session.user.id);
                 // Initial subscription check
-                subscriptionService.isSubscribed().then(setIsPro);
+                subscriptionService.isSubscribed().then((subscribed) => {
+                    setIsPro(subscribed);
+                });
                 setIsLoading(false);
             }
         });
@@ -87,7 +89,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setSession(session);
                 setUser(session.user);
                 subscriptionService.logIn(session.user.id);
-                subscriptionService.isSubscribed().then(setIsPro);
+                subscriptionService.isSubscribed().then((subscribed) => {
+                    setIsPro(subscribed);
+                });
                 setIsLoading(false);
             }
         });
