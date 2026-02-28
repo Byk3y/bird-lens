@@ -343,8 +343,8 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     featuresList: {
-        gap: 8,
-        marginBottom: 20,
+        gap: 10,
+        marginBottom: 36,
     },
     featureRow: {
         flexDirection: 'row',
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     },
     featureText: {
         color: '#E5E5E5',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '500',
         flex: 1,
     },
