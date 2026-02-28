@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BirdMark",
-    "slug": "birdmark",
+    "slug": "birdsnap",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
