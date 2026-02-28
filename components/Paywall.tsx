@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     innerContent: {
-        paddingHorizontal: 25,
+        paddingHorizontal: 16, // Reduced from 25 to maximize horizontal space for features
         paddingBottom: Platform.OS === 'ios' ? 40 : 25,
     },
     title: {
@@ -357,11 +357,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#D35400',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 14,
+        marginRight: 10, // Reduced from 14 for more text space
     },
     featureText: {
         color: '#E5E5E5',
-        fontSize: 18,
+        fontSize: 16, // Adjusted slightly to ensure single line fit across most devices
         fontWeight: '500',
         flex: 1,
     },
