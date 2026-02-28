@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "BirdSnap",
-    "slug": "birdsnap",
+    "name": "BirdMark",
+    "slug": "birdmark",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "birdsnap",
+    "scheme": "birdmark",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -61,21 +61,21 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "BirdSnap needs your camera to photograph and identify birds.",
-          "microphonePermission": "BirdSnap needs your microphone to record and identify bird calls."
+          "cameraPermission": "BirdMark needs your camera to photograph and identify birds.",
+          "microphonePermission": "BirdMark needs your microphone to record and identify bird calls."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow BirdSnap to save share cards to your photo library.",
-          "savePhotosPermission": "Allow BirdSnap to save share cards to your photo library."
+          "photosPermission": "Allow BirdMark to save share cards to your photo library.",
+          "savePhotosPermission": "Allow BirdMark to save share cards to your photo library."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "BirdSnap uses your location to improve bird identification accuracy for your region."
+          "locationWhenInUsePermission": "BirdMark uses your location to improve bird identification accuracy for your region."
         }
       ],
       "expo-localization"

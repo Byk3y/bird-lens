@@ -1,4 +1,4 @@
-# 🐦 Birdsnap (BirdSnap)
+# 🐦 BirdMark (BirdMark)
 
 A premium React Native bird identification application powered by Expo and Supabase. Identify birds instantly using your camera or microphone, with rich metadata enrichment and lightning-fast streaming results.
 
@@ -91,7 +91,7 @@ npm run test:frontend
 ```
 
 ### 💎 Stability & Reliability
-The Birdsnap backend follows strict stability standards:
+The BirdMark backend follows strict stability standards:
 - **Semantic AI Validation**: Ensures AI-generated metadata is complete and accurate.
 - **Robust JSON Handling**: Normalizes unconventional AI formatting (e.g., measurement marks) automatically.
 - **API Resilience**: Implements timeout protection and graceful fallbacks for external data sources.

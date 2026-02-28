@@ -40,7 +40,7 @@ serve(async (req) => {
         // TODO: Integrate with an email service like Resend or SendGrid
         // Example (pseudo-code):
         // await resend.emails.send({
-        //   from: 'BirdSnap <notifications@birdsnap.app>',
+        //   from: 'BirdMark <notifications@birdmarkapp.com>',
         //   to: 'admin@example.com',
         //   subject: `New Feedback: ${feedback_type} on ${scientific_name}`,
         //   html: `<strong>Context:</strong> ${section_context}<br/><strong>Message:</strong> ${user_message}`

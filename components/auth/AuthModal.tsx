@@ -355,7 +355,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                     <View style={styles.mainContent}>
                                         {/* Branding */}
                                         <View style={styles.branding}>
-                                            <Text style={styles.brandTitle}>BirdSnap</Text>
+                                            <Text style={styles.brandTitle}>BirdMark</Text>
                                         </View>
 
                                         {/* Form */}
@@ -520,7 +520,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                             {/* Footer Legal */}
                             <View style={styles.legalFooter}>
                                 <Text style={styles.legalText}>
-                                    By joining BirdSnap, you acknowledge that you have read and agree to our{' '}
+                                    By joining BirdMark, you acknowledge that you have read and agree to our{' '}
                                     <Text
                                         style={styles.legalLink}
                                         onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}

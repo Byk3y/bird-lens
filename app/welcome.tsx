@@ -20,7 +20,7 @@ export default function WelcomeScreen() {
                         style={styles.icon}
                         resizeMode="contain"
                     />
-                    <Text style={styles.title}>BirdSnap</Text>
+                    <Text style={styles.title}>BirdMark</Text>
                     <Text style={styles.tagline}>Discover the birds around you</Text>
                 </View>
 

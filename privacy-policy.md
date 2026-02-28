@@ -1,8 +1,8 @@
-# Privacy Policy for BirdSnap
+# Privacy Policy for BirdMark
 
 **Last Updated: February 23, 2026**
 
-Welcome to BirdSnap ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your information when you use our mobile application.
+Welcome to BirdMark ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your information when you use our mobile application.
 
 ## 1. Information We Collect
 
@@ -32,7 +32,7 @@ We use the collected data for:
 *   **Communication:** To send you service-related notifications or responses to support requests.
 
 ## 3. Third-Party Services
-BirdSnap utilizes the following trusted third-party services:
+BirdMark utilizes the following trusted third-party services:
 *   **Supabase:** For secure database storage and authentication.
 *   **iNaturalist, Wikipedia, & Xeno-Canto:** We access public APIs from these sources to enrich bird data. Your personal photos are **not** shared with these entities unless specifically requested by you for community identification features.
 
@@ -43,7 +43,7 @@ BirdSnap utilizes the following trusted third-party services:
 You can access, modify, or delete your account information within the app settings. **We provide a clear "Delete Account" option within the Settings menu.** If you choose to delete your account, all associated sightings, photos, and personal data will be permanently removed from our servers in compliance with Apple's developer guidelines.
 
 ## 6. Children's Privacy
-BirdSnap is intended for a general audience. We do not knowingly collect personal information from children under the age of 13.
+BirdMark is intended for a general audience. We do not knowingly collect personal information from children under the age of 13.
 
 ## 7. Changes to This Policy
 We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy within the app and updating the "Last Updated" date.

@@ -36,7 +36,7 @@ export const FieldGuideCard: React.FC<FieldGuideCardProps> = ({ data }) => {
             <View style={styles.headerBar}>
                 <View style={styles.headerLogoRow}>
                     <ExpoImage source={require('@/assets/images/icon.png')} style={styles.appIcon} />
-                    <Text style={styles.headerLeft}>Identified with BirdSnap</Text>
+                    <Text style={styles.headerLeft}>Identified with BirdMark</Text>
                 </View>
                 <Text style={styles.headerRight}>{data.dateIdentified}</Text>
             </View>

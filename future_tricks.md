@@ -1,6 +1,6 @@
 # Future Tricks & Enhancements 🚀
 
-This document outlines advanced features and strategies to further improve the Birdsnap identification accuracy and user experience.
+This document outlines advanced features and strategies to further improve the BirdMark identification accuracy and user experience.
 
 ## 1. Vision & Reasoning Improvements
 ### "Describe Before Decide" (Anatomical Checklist)

@@ -55,7 +55,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
             if (success) {
                 await refreshSubscription();
                 showAlert({
-                    title: 'Welcome to BirdSnap Pro!',
+                    title: 'Welcome to BirdMark Pro!',
                     message: 'Your purchase was successful.',
                     actions: [{ text: 'Start Discovering', onPress: onClose }]
                 });
@@ -147,7 +147,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                     <View style={{ flex: 1 }} />
 
                     <View style={styles.innerContent}>
-                        <Text style={styles.title}>BirdSnap</Text>
+                        <Text style={styles.title}>BirdMark</Text>
 
                         <View style={styles.featuresList}>
                             {FEATURES.map((feature, index) => (

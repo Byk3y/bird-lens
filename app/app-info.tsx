@@ -47,7 +47,7 @@ export default function AppInfoScreen() {
                                 style={styles.appIcon}
                             />
                         </View>
-                        <Text style={styles.appName}>BirdSnap v{version}</Text>
+                        <Text style={styles.appName}>BirdMark v{version}</Text>
                         <Text style={styles.tagline}>Instantly Identify Bird</Text>
                     </LinearGradient>
                 </View>
@@ -55,7 +55,7 @@ export default function AppInfoScreen() {
                 {/* Description Card */}
                 <View style={styles.descriptionCard}>
                     <Text style={styles.descriptionText}>
-                        Don't know the name of a bird? BirdSnap helps you to identify unknown birds and discover nature in the most simple and interesting way.
+                        Don't know the name of a bird? BirdMark helps you to identify unknown birds and discover nature in the most simple and interesting way.
                     </Text>
                     <Text style={styles.descriptionText}>
                         We've been working hard to provide a better user experience and optimize our recognition technology all the time! We would love to have anyone who loves birds join our family.

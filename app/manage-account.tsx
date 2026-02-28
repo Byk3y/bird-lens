@@ -92,7 +92,7 @@ export default function ManageAccountScreen() {
                     end={{ x: 1, y: 0 }}
                     style={styles.banner}
                 >
-                    <Text style={styles.bannerText}>Thank you for joining BirdSnap!</Text>
+                    <Text style={styles.bannerText}>Thank you for joining BirdMark!</Text>
                 </LinearGradient>
 
                 {/* Statistics Section */}

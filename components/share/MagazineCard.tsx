@@ -33,7 +33,7 @@ export const MagazineCard: React.FC<MagazineCardProps> = ({ data }) => {
             <View style={styles.header}>
                 <View style={styles.logoRow}>
                     <ExpoImage source={require('@/assets/images/icon.png')} style={styles.appIcon} />
-                    <Text style={styles.logoText}>Identified with BirdSnap</Text>
+                    <Text style={styles.logoText}>Identified with BirdMark</Text>
                 </View>
                 <Text style={styles.headerDate}>{data.dateIdentified}</Text>
             </View>

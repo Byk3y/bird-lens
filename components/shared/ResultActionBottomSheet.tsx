@@ -121,7 +121,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
     };
 
     const getPlaceholder = () => {
-        if (formType === 'suggestion') return 'Help us make BirdSnap better...';
+        if (formType === 'suggestion') return 'Help us make BirdMark better...';
         if (sectionContext) {
             return `What is wrong with the ${sectionContext.toLowerCase()} section?`;
         }
@@ -289,7 +289,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 <CheckCircle2 size={64} color={Colors.success} strokeWidth={1.5} />
                                             </View>
                                             <Text style={styles.successTitle}>Thank You!</Text>
-                                            <Text style={styles.successSubtitle}>Your feedback helps us improve BirdSnap.</Text>
+                                            <Text style={styles.successSubtitle}>Your feedback helps us improve BirdMark.</Text>
                                         </MotiView>
                                     )}
 

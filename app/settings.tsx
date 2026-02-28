@@ -147,7 +147,7 @@ export default function SettingsScreen() {
                 {/* Account Settings */}
                 <View style={styles.group}>
                     <SettingRow
-                        label="BirdSnap Pro"
+                        label="BirdMark Pro"
                         subtext={isPro ? "Status: Pro" : "Status: Free"}
                         onPress={() => isPro ? subscriptionService.showCustomerCenter() : setIsPaywallVisible(true)}
                     />
