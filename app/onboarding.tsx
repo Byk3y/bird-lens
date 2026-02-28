@@ -59,7 +59,7 @@ export default function OnboardingScreen() {
             <Video
                 ref={video}
                 style={styles.video}
-                source={require('../assets/videos/birdmark_intro.mp4')}
+                source={require('../assets/videos/onboarding.mp4')}
                 useNativeControls={false}
                 resizeMode={ResizeMode.COVER}
                 isLooping={false}
