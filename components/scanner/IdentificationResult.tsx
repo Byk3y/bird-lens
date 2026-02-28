@@ -1,3 +1,4 @@
+import { useAlert } from '@/components/common/AlertProvider';
 import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
 import { BirdingTipsBottomSheet } from '@/components/shared/BirdingTipsBottomSheet';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
@@ -10,7 +11,7 @@ import { BirdResult } from '@/types/scanner';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { Camera, Check, ChevronLeft, Save, Share2 } from 'lucide-react-native';
+import { Camera, Check, ChevronLeft, LayoutGrid, Lightbulb, Save, Share2 } from 'lucide-react-native';
 import { Skeleton } from 'moti/skeleton';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -80,6 +81,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     const insets = useSafeAreaInsets();
     const { isPro } = useAuth();
     const { identificationsUsed } = useSubscriptionGating();
+    const { showToast } = useAlert();
     const sourceMode = recordingUri ? 'sound' : 'photo';
 
     // With streaming, candidate data arrives fast (~4s) but media arrives later.
@@ -135,6 +137,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
     const [isImageViewerVisible, setIsImageViewerVisible] = React.useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
     const [shareSheetVisible, setShareSheetVisible] = React.useState(false);
+    const [seenNudges, setSeenNudges] = React.useState<Set<number>>(new Set());
 
     const playScientificName = () => {
         if (activeBird?.scientific_name) {
@@ -145,6 +148,22 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
             });
         }
     };
+
+    // Discovery Nudge Toast
+    useEffect(() => {
+        if (isSavedForActive && !seenNudges.has(activeIndex)) {
+            // Short delay to let the generic "Saved!" center alert finish/dismiss
+            const timer = setTimeout(() => {
+                showToast('✨ Beautiful capture! Share your sighting card with friends.', 'success');
+                setSeenNudges(prev => {
+                    const next = new Set(prev);
+                    next.add(activeIndex);
+                    return next;
+                });
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isSavedForActive, activeIndex, seenNudges, showToast]);
 
     if (isLoading) {
         return <SkeletonLoader />;
@@ -179,10 +198,12 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     </View>
                 )}
 
-                <TouchableOpacity style={styles.navButton} onPress={onReset}>
-                    <View pointerEvents="none">
-                        <Camera color={Colors.white} size={24} />
-                    </View>
+                <TouchableOpacity
+                    style={[styles.navButton, styles.doneButton, { width: undefined }]}
+                    onPress={onReset}
+                >
+                    <Camera color={Colors.white} size={20} />
+                    <Text style={styles.doneButtonText}>New</Text>
                 </TouchableOpacity>
             </View>
 
@@ -216,7 +237,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     {sourceMode === 'photo' && capturedImage && (
                         <View style={styles.thumbnailContainer}>
                             <Image
-                                source={{ uri: `data:image/webp;base64,${capturedImage}` } as any}
+                                source={{ uri: capturedImage }}
                                 style={styles.thumbnailImage}
                             />
                         </View>
@@ -277,7 +298,31 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
 
             {/* Bottom Action Bar */}
             {!isComparisonTab && activeBird && (
-                <View style={[styles.bottomBar, { height: 65 + Math.max(insets.bottom, 16), paddingBottom: Math.max(insets.bottom, 16), backgroundColor: Colors.white }]}>
+                <View style={[styles.bottomBar, { height: 75 + Math.max(insets.bottom, 16), paddingBottom: Math.max(insets.bottom, 16), backgroundColor: Colors.white, paddingHorizontal: 12 }]}>
+                    {/* Left Slot: Tips or Done */}
+                    {isSavedForActive ? (
+                        <TouchableOpacity
+                            style={styles.actionItem}
+                            onPress={() => router.replace('/(tabs)/collection')}
+                        >
+                            <View style={styles.iconContainer} pointerEvents="none">
+                                <LayoutGrid color={Colors.text} size={24} />
+                            </View>
+                            <Text style={styles.actionText}>Collection</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.actionItem}
+                            onPress={() => setTipsVisible(true)}
+                        >
+                            <View style={styles.iconContainer} pointerEvents="none">
+                                <Lightbulb color={Colors.text} size={24} />
+                            </View>
+                            <Text style={styles.actionText}>Tips</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Center Slot: Save Action */}
                     <TouchableOpacity
                         style={styles.actionItem}
                         onPress={() => onSave(activeBird, capturedImage, recordingUri)}
@@ -285,35 +330,31 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     >
                         {isSaving ? (
                             <ActivityIndicator size="small" color={Colors.primary} />
-                        ) : isSavedForActive ? (
-                            <View pointerEvents="none">
-                                <Check color={Colors.primary} size={24} />
-                            </View>
                         ) : (
-                            <View pointerEvents="none">
-                                <Save color={Colors.text} size={24} />
+                            <View style={isSavedForActive ? styles.savedIconContainer : styles.saveIconContainer}>
+                                {isSavedForActive ? (
+                                    <Check color={Colors.primary} size={24} />
+                                ) : (
+                                    <Save color={Colors.white} size={24} />
+                                )}
                             </View>
                         )}
-                        <Text style={[styles.actionText, (isSaving || isSavedForActive) && { color: Colors.primary }]}>
+                        <Text style={[styles.actionText, isSavedForActive && { color: Colors.primary }]}>
                             {isSaving ? 'Saving...' : isSavedForActive ? 'Saved' : 'Save'}
                         </Text>
                     </TouchableOpacity>
 
+                    {/* Right Slot: Share Action */}
                     <TouchableOpacity
-                        style={styles.actionItem}
-                        onPress={onReset}
+                        style={isSavedForActive ? styles.shareActionHighlight : styles.actionItem}
+                        onPress={() => setShareSheetVisible(true)}
                     >
-                        <View pointerEvents="none">
-                            <Camera color={Colors.text} size={24} />
+                        <View style={isSavedForActive ? styles.shareIconContainerActive : undefined}>
+                            <Share2 color={isSavedForActive ? Colors.white : Colors.text} size={22} />
                         </View>
-                        <Text style={styles.actionText}>New</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.actionItem} onPress={() => setShareSheetVisible(true)}>
-                        <View pointerEvents="none">
-                            <Share2 color={Colors.text} size={24} />
-                        </View>
-                        <Text style={styles.actionText}>Share</Text>
+                        <Text style={[styles.actionText, isSavedForActive && styles.shareTextActive]}>
+                            {isSavedForActive ? "Share Card" : "Share"}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -332,8 +373,16 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     visible={shareSheetVisible}
                     onClose={() => setShareSheetVisible(false)}
                     bird={activeBird}
-                    imageUrl={heroImages[activeBird.scientific_name]}
+                    imageUrl={capturedImage || heroImages[activeBird.scientific_name]}
                     locationName={locationName || undefined}
+                    onSuccess={() => {
+                        // Auto-save if not already saved
+                        if (!isSavedForActive) {
+                            onSave(activeBird, capturedImage, recordingUri);
+                        }
+                        // Navigate to collection after successful share
+                        router.replace('/(tabs)/collection');
+                    }}
                 />
             )}
 
