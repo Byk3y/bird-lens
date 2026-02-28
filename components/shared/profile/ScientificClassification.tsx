@@ -6,10 +6,11 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ScientificClassificationProps {
     bird: BirdResult;
+    isEnrichmentComplete?: boolean;
     onMorePress?: () => void;
 }
 
-export const ScientificClassification: React.FC<ScientificClassificationProps> = ({ bird, onMorePress }) => {
+export const ScientificClassification: React.FC<ScientificClassificationProps> = ({ bird, isEnrichmentComplete = true, onMorePress }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Height ~ 3 full rows + partial 4th

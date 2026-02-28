@@ -98,8 +98,26 @@ serve(async (req: Request) => {
         }
 
         const results = processXenoCantoRecordings(data.recordings);
+        const commonName = data.recordings[0]?.en || scientific_name;
 
         console.log(`Found ${results.length} total recordings`);
+
+        // Write-back to cache
+        const { error: upsertError } = await supabase
+            .from('species_meta')
+            .upsert(
+                {
+                    scientific_name: scientific_name,
+                    common_name: commonName,
+                    sounds: results,
+                    updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'scientific_name' }
+            );
+
+        if (upsertError) {
+            console.error(`Error caching sounds for ${scientific_name}:`, upsertError);
+        }
 
         return new Response(JSON.stringify({ recordings: results }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -129,6 +129,14 @@ export default function BirdDetailScreen() {
     };
 
     useEffect(() => {
+        // If the bird already has enriched metadata (from saved collection),
+        // use existing metadata and skip enrichment.
+        const hasFullEnrichment = (bird.metadata && Object.keys(bird.metadata).length > 0) || !!bird.habitat || !!bird.key_facts;
+        if (hasFullEnrichment) {
+            setIsEnriching(false);
+            return;
+        }
+
         // If we already have cached media data, skip the fetch entirely
         if (media) {
             setIsEnriching(false);

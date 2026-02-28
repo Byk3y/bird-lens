@@ -38,6 +38,7 @@ export default function MeScreen() {
     const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
     const { showAlert } = useAlert();
     const [isDeleting, setIsDeleting] = useState(false);
+    const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
     const [selectedSighting, setSelectedSighting] = useState<any>(null);
     const [sightingToDelete, setSightingToDelete] = useState<string | null>(null);
     const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
@@ -125,11 +126,13 @@ export default function MeScreen() {
                         .order('created_at', { ascending: false });
 
                     if (!error && data) {
-                        setSightings(data);
+                        // Filter out sightings that are currently being deleted to prevent "ghosting"
+                        const filteredData = data.filter(item => !pendingDeletes.has(item.id));
+                        setSightings(filteredData);
                         lastFetchRef.current = Date.now();
                         // Update cache
                         if (userId) {
-                            AsyncStorage.setItem(GET_CACHE_KEY(userId), JSON.stringify({ data, timestamp: Date.now() })).catch(() => { });
+                            AsyncStorage.setItem(GET_CACHE_KEY(userId), JSON.stringify({ data: filteredData, timestamp: Date.now() })).catch(() => { });
                         }
                     }
                 } catch (err) {
@@ -191,6 +194,12 @@ export default function MeScreen() {
     const deleteSighting = async (id: string) => {
         if (!userId || isDeleting) return;
 
+        // 1. Mark as pending and update UI optimistically
+        setPendingDeletes(prev => new Set(prev).add(id));
+        const originalSightings = [...sightings];
+        const updated = sightings.filter(s => s.id !== id);
+        setSightings(updated);
+
         setIsDeleting(true);
         try {
             const { error } = await supabase
@@ -201,18 +210,24 @@ export default function MeScreen() {
 
             if (error) throw error;
 
-            const updated = sightings.filter(s => s.id !== id);
-            setSightings(updated);
-            // Update cache to reflect deletion
+            // 2. Update cache to reflect deletion
             AsyncStorage.setItem(GET_CACHE_KEY(userId), JSON.stringify({ data: updated, timestamp: Date.now() })).catch(() => { });
         } catch (err: any) {
             console.error('Error deleting sighting:', err);
+            // Rollback UI on error
+            setSightings(originalSightings);
             showAlert({
                 title: 'Error',
                 message: 'Could not delete this sighting. Please try again.'
             });
         } finally {
             setIsDeleting(false);
+            // 3. Remove from pending deletes set
+            setPendingDeletes(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
         }
     };
 

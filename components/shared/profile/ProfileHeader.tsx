@@ -5,11 +5,12 @@ import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-nativ
 
 interface ProfileHeaderProps {
     bird: BirdResult;
+    isEnrichmentComplete?: boolean;
     onPronounce?: () => void;
     onMorePress?: () => void;
 }
 
-export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce, onMorePress }) => {
+export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, isEnrichmentComplete = true, onPronounce, onMorePress }) => {
     return (
         <View style={styles.container}>
             {/* Title & Taxonomy Section */}
@@ -39,14 +40,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce,
 
             <View style={styles.scientificNameRow}>
                 <View style={styles.metaContainer}>
-                    {bird.also_known_as && bird.also_known_as.length > 0 && (
+                    {!isEnrichmentComplete ? (
+                        <View style={styles.metaRow}>
+                            <View style={[styles.skeletonLine, { width: 140 }]} />
+                        </View>
+                    ) : bird.also_known_as && bird.also_known_as.length > 0 ? (
                         <View style={styles.metaRow}>
                             <Text style={styles.metaFlowText}>
                                 <Text style={styles.metaLabel}>Also known as: </Text>
                                 <Text style={styles.metaValue}>{bird.also_known_as.join(', ')}</Text>
                             </Text>
                         </View>
-                    )}
+                    ) : null}
                     {bird.scientific_name && (
                         <TouchableOpacity
                             style={styles.metaRow}
@@ -67,22 +72,27 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, onPronounce,
                             <Text style={styles.genusLineText}>
                                 <Text style={styles.metaLabel}>Genus: </Text>
                                 <Text style={styles.genusName}>{bird.taxonomy.genus}</Text>
-                                {bird.taxonomy.genus_description ? (() => {
-                                    // Parse "Commonly called X" to separate label from common name
-                                    const desc = bird.taxonomy.genus_description;
-                                    const match = desc.match(/^(commonly\s+called\s+)/i);
-                                    if (match) {
-                                        const label = match[1];
-                                        const commonName = desc.slice(label.length);
-                                        return (
-                                            <>
-                                                <Text style={styles.genusDescription}>{`, ${label}`}</Text>
-                                                <Text style={styles.genusCommonName}>{commonName}</Text>
-                                            </>
-                                        );
-                                    }
-                                    return <Text style={styles.genusDescription}>, {desc}</Text>;
-                                })() : null}
+                                {!isEnrichmentComplete ? (
+                                    <View style={[styles.skeletonLine, { width: 120, height: 16, marginLeft: 6, marginTop: 0, marginBottom: 0, transform: [{ translateY: 2 }] }]} />
+                                ) : bird.taxonomy.genus_description ? (
+                                    (() => {
+                                        // Parse "Commonly called X" to separate label from common name
+                                        const desc = bird.taxonomy.genus_description;
+                                        if (!desc) return null;
+                                        const match = desc.match(/^(commonly\s+called\s+)/i);
+                                        if (match) {
+                                            const label = match[1];
+                                            const commonName = desc.slice(label.length);
+                                            return (
+                                                <>
+                                                    <Text style={styles.genusDescription}>{`, ${label}`}</Text>
+                                                    <Text style={styles.genusCommonName}>{commonName}</Text>
+                                                </>
+                                            );
+                                        }
+                                        return <Text style={styles.genusDescription}>, {desc}</Text>;
+                                    })()
+                                ) : null}
                             </Text>
                         </View>
                     )}
@@ -210,5 +220,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 8,
+    },
+    skeletonLine: {
+        height: 14,
+        backgroundColor: '#D4D0C8',
+        borderRadius: 4,
+        opacity: 0.5,
+        marginTop: 4,
+        marginBottom: 4,
     },
 });

@@ -94,6 +94,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             {/* Header: Title, Taxonomy, Scientific Name, Genus Description */}
             <ProfileHeader
                 bird={bird}
+                isEnrichmentComplete={isEnrichmentComplete}
                 onPronounce={onPlaySound}
                 onMorePress={() => {
                     setActiveSection('Header');
@@ -533,6 +534,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
             {/* Key Facts Section */}
             <KeyFactsSection
                 bird={bird}
+                isEnrichmentComplete={isEnrichmentComplete}
                 onMorePress={() => {
                     setActiveSection('Key Facts');
                     setActiveMediaUrl(null);
@@ -542,6 +544,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
 
             <ScientificClassification
                 bird={bird}
+                isEnrichmentComplete={isEnrichmentComplete}
                 onMorePress={() => {
                     setActiveSection('Classification');
                     setActiveMediaUrl(null);

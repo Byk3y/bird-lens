@@ -56,7 +56,7 @@ async function getCachedMedia(scientificName: string) {
     try {
         const { data, error } = await supabase
             .from('species_meta')
-            .select('inat_photos, sounds, male_image_url, female_image_url, juvenile_image_url, wikipedia_image')
+            .select('inat_photos, sounds, male_image_url, female_image_url, juvenile_image_url, wikipedia_image, updated_at')
             .eq('scientific_name', scientificName.trim())
             .maybeSingle();
 
@@ -467,6 +467,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                     }
 
                     candidates = candidates.slice(0, 3);
+
                     writeChunk(controller, {
                         type: "candidates",
                         data: candidates,
@@ -521,9 +522,13 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             if (!scientific_name) return;
                             try {
                                 const cached = await getCachedMedia(scientific_name);
-                                if (cached) {
+                                // Implementation Plan: 14-day TTL check
+                                const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 14 * 24 * 60 * 60 * 1000);
+
+                                if (cached && !isStale) {
                                     writeChunk(controller, { type: "media", index, data: cached });
                                 } else {
+                                    if (isStale) console.log(`[TTL] Cache stale for ${scientific_name} (updated ${cached.updated_at}), refreshing...`);
                                     const media = await enrichSpecies(scientific_name, xenoKey);
                                     writeChunk(controller, { type: "media", index, data: media });
                                     setCachedMedia(scientific_name, name, media).catch(() => { });

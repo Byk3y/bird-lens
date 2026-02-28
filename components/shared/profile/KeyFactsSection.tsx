@@ -6,6 +6,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface KeyFactsSectionProps {
     bird: BirdResult;
+    isEnrichmentComplete?: boolean;
     onMorePress?: () => void;
 }
 
@@ -31,10 +32,36 @@ const getBirdColor = (color: string) => {
     return BIRD_COLOR_MAP[color] || '#E2E8F0';
 };
 
-export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird, onMorePress }) => {
+export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird, isEnrichmentComplete = true, onMorePress }) => {
     const [isFactsExpanded, setIsFactsExpanded] = useState(false);
 
-    if (!bird.key_facts) return null;
+    if (!bird.key_facts) {
+        if (isEnrichmentComplete) return null;
+
+        return (
+            <View style={styles.section}>
+                <View style={[styles.sectionHeaderRow, { marginBottom: 12 }]}>
+                    <View style={styles.sectionTitleLeft}>
+                        <FileText size={22} color="#1A1A1A" />
+                        <Text style={styles.sectionTitle}>Key Facts</Text>
+                    </View>
+                </View>
+                <View style={styles.factsContainer}>
+                    {[1, 2, 3].map((_, index) => (
+                        <View
+                            key={`skeleton-${index}`}
+                            style={[
+                                styles.factRow,
+                                { backgroundColor: index % 2 === 0 ? '#F8F8F8' : 'transparent', height: 58, justifyContent: 'center', alignItems: 'flex-start' }
+                            ]}
+                        >
+                            <View style={{ height: 16, width: index === 1 ? '70%' : '90%', backgroundColor: '#D4D0C8', borderRadius: 4, opacity: 0.5 }} />
+                        </View>
+                    ))}
+                </View>
+            </View>
+        );
+    }
 
     // Define all potential rows in priority order
     const allRows = [
