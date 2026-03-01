@@ -73,8 +73,10 @@ export const AttributionWebView: React.FC<AttributionWebViewProps> = ({
                 >
                     <View style={styles.header}>
                         <View style={styles.headerContent}>
-                            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                                <ChevronLeft size={28} color="#1A1A1A" />
+                            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+                                <View pointerEvents="none">
+                                    <ChevronLeft size={28} color="#1A1A1A" />
+                                </View>
                             </TouchableOpacity>
                             <View style={styles.titleContainer}>
                                 <Text style={styles.title} numberOfLines={1}>{title}</Text>

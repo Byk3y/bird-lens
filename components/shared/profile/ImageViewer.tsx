@@ -154,8 +154,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                        <X color="#FFF" size={28} />
+                    <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+                        <View pointerEvents="none">
+                            <X color="#FFF" size={28} />
+                        </View>
                     </TouchableOpacity>
                 </View>
 
@@ -189,8 +191,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                             <Text style={styles.tooltipText}>
                                 <Text style={styles.linkText} onPress={() => handleLinkPress('photo')}>Photos</Text> By <Text style={styles.linkText} onPress={() => handleLinkPress('creator')}>{info.creator}</Text>, used under <Text style={styles.linkText} onPress={() => handleLinkPress('license')}>{info.license}</Text> / Cropped and compressed from original
                             </Text>
-                            <TouchableOpacity onPress={() => setShowCopyright(false)} style={styles.tooltipCloseBtn}>
-                                <X size={16} color="#999" />
+                            <TouchableOpacity onPress={() => setShowCopyright(false)} style={styles.tooltipCloseBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <View pointerEvents="none">
+                                    <X size={16} color="#999" />
+                                </View>
                             </TouchableOpacity>
                         </View>
                         <View style={styles.tooltipArrow} />
@@ -220,8 +224,11 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                             }}
                             disabled={currentIndex === 0}
                             style={[styles.navBtn, currentIndex === 0 && { opacity: 0.3 }]}
+                            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                         >
-                            <ChevronLeft color="#FFF" size={32} />
+                            <View pointerEvents="none">
+                                <ChevronLeft color="#FFF" size={32} />
+                            </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -232,8 +239,11 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                             }}
                             disabled={currentIndex === images.length - 1}
                             style={[styles.navBtn, currentIndex === images.length - 1 && { opacity: 0.3 }]}
+                            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                         >
-                            <ChevronRight color="#FFF" size={32} />
+                            <View pointerEvents="none">
+                                <ChevronRight color="#FFF" size={32} />
+                            </View>
                         </TouchableOpacity>
                     </View>
                 </View>
