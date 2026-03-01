@@ -73,8 +73,10 @@ export const IdentificationComparison: React.FC<IdentificationComparisonProps> =
         <View style={styles.detailSection} key={`${label}-${imageUrl}`}>
             <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>{label}</Text>
-                <TouchableOpacity onPress={() => onMorePress?.(`${label} Comparison`)}>
-                    <MoreHorizontal size={20} color="#999" />
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => onMorePress?.(`${label} Comparison`)}>
+                    <View pointerEvents="none">
+                        <MoreHorizontal size={20} color="#999" />
+                    </View>
                 </TouchableOpacity>
             </View>
             <View style={styles.imageContainer}>

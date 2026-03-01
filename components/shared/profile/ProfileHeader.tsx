@@ -31,7 +31,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, isEnrichment
                         </Text>
                     )}
                 </View>
-                <Pressable onPress={onMorePress} style={styles.editBtn}>
+                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onMorePress} style={styles.editBtn}>
                     <View pointerEvents="none">
                         <MoreHorizontal size={20} color="#999" />
                     </View>
@@ -53,7 +53,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ bird, isEnrichment
                         </View>
                     ) : null}
                     {bird.scientific_name && (
-                        <TouchableOpacity
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={styles.metaRow}
                             onPress={onPronounce}
                             activeOpacity={0.7}

@@ -21,7 +21,7 @@ export default function AppInfoScreen() {
         <SafeAreaView style={styles.container}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()} style={styles.backBtn}>
                     <View pointerEvents="none">
                         <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
                     </View>

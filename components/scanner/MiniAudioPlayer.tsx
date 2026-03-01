@@ -94,7 +94,7 @@ export const MiniAudioPlayer: React.FC<MiniAudioPlayerProps> = ({ uri }) => {
                 })}
             </View>
 
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 onPress={handlePlayPause}
                 style={styles.playButton}
             >

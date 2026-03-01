@@ -453,20 +453,20 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
 
                 {/* Bottom Controls */}
                 <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 20 }]}>
-                    <TouchableOpacity style={styles.bottomBtn} onPress={onRepick}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.bottomBtn} onPress={onRepick}>
                         <View style={styles.iconCircleSec} pointerEvents="none">
                             <ImageIcon size={24} color={Colors.primary} />
                         </View>
                         <Text style={styles.btnText}>Photos</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.captureBtn} onPress={handleConfirm}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.captureBtn} onPress={handleConfirm}>
                         <View pointerEvents="none">
                             <Check size={32} color={Colors.primary} strokeWidth={3} />
                         </View>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.bottomBtn} onPress={onShowTips}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.bottomBtn} onPress={onShowTips}>
                         <View style={styles.iconCircleSec} pointerEvents="none">
                             <HelpCircle size={24} color={Colors.text} />
                         </View>
@@ -475,7 +475,7 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
                 </View>
 
                 {/* Close Button */}
-                <TouchableOpacity
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={[styles.closeBtn, { top: Math.max(insets.top, 20) + 10, left: 24 }]}
                     onPress={onCancel}
                     disabled={isProcessing}

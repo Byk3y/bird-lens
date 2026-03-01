@@ -95,15 +95,17 @@ export const RangeMap = ({ taxonKey }: RangeMapProps) => {
                 {/* Monthly Slider Control */}
                 <View style={styles.sliderContainer}>
                     <View style={styles.sliderRow}>
-                        <Pressable
+                        <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             onPress={() => setIsPlaying(!isPlaying)}
                             style={styles.playBtn}
                         >
-                            {isPlaying ? (
-                                <Pause color={Colors.white} size={24} fill={Colors.white} />
-                            ) : (
-                                <Play color={Colors.white} size={24} fill={Colors.white} />
-                            )}
+                            <View pointerEvents="none">
+                                {isPlaying ? (
+                                    <Pause color={Colors.white} size={24} fill={Colors.white} />
+                                ) : (
+                                    <Play color={Colors.white} size={24} fill={Colors.white} />
+                                )}
+                            </View>
                         </Pressable>
 
                         <View style={styles.monthsTrack}>

@@ -241,7 +241,7 @@ export default function MeScreen() {
             >
                 <View style={styles.headerContent}>
                     <View style={styles.topActions}>
-                        <Pressable
+                        <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={styles.headerBtn}
                             onPress={() => setIsTellFriendsVisible(true)}
                         >
@@ -249,7 +249,7 @@ export default function MeScreen() {
                                 <Forward color={Colors.white} size={22} />
                             </View>
                         </Pressable>
-                        <Pressable style={styles.headerBtn} onPress={() => router.push('/settings')}>
+                        <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.headerBtn} onPress={() => router.push('/settings')}>
                             <View pointerEvents="none">
                                 <Settings color={Colors.white} size={22} />
                             </View>
@@ -258,7 +258,7 @@ export default function MeScreen() {
 
 
                     {!isPro ? (
-                        <Pressable onPress={() => setIsPaywallVisible(true)}>
+                        <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setIsPaywallVisible(true)}>
                             <MotiView
                                 from={{ opacity: 0, scale: 0.9, translateY: 10 }}
                                 animate={{ opacity: 1, scale: 1, translateY: 0 }}
@@ -326,7 +326,7 @@ export default function MeScreen() {
                                         animate={{ opacity: 1, scale: 1 }}
                                         style={styles.cardWrapper}
                                     >
-                                        <Pressable style={styles.plusCard} onPress={() => router.push('/scanner')}>
+                                        <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.plusCard} onPress={() => router.push('/scanner')}>
                                             <View pointerEvents="none">
                                                 <Plus color="#94a3b8" size={40} strokeWidth={1.5} />
                                             </View>
@@ -344,7 +344,7 @@ export default function MeScreen() {
                                     transition={{ delay: Math.min(index * 50, 400) }}
                                     style={styles.cardWrapper}
                                 >
-                                    <Pressable
+                                    <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                         style={styles.collectionCard}
                                         onPress={() => handleBirdPress(sighting)}
                                     >

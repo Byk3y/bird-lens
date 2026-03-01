@@ -373,8 +373,10 @@ export default function EnhancerScreen() {
                 <StatusBar style="light" translucent />
                 <View style={[styles.resultHeader, { paddingTop: insets.top + 8 }]}>
                     <Text style={styles.resultTitle}>Enhanced Photo</Text>
-                    <TouchableOpacity style={styles.closeBtn} onPress={handleRetake}>
-                        <X color="#fff" size={24} />
+                    <TouchableOpacity style={styles.closeBtn} onPress={handleRetake} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
+                        <View pointerEvents="none">
+                            <X color="#fff" size={24} />
+                        </View>
                     </TouchableOpacity>
                 </View>
 
@@ -394,9 +396,10 @@ export default function EnhancerScreen() {
                     <TouchableOpacity
                         style={[styles.resultBtn, styles.saveCompactBtn, isSaving && { opacity: 0.6 }]}
                         onPress={handleSave}
-                        disabled={isSaving}
-                    >
-                        <Download color={Colors.text} size={20} />
+                        disabled={isSaving} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
+                        <View pointerEvents="none">
+                            <Download color={Colors.text} size={20} />
+                        </View>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -448,7 +451,7 @@ export default function EnhancerScreen() {
 
                 <View style={[styles.controls, { paddingBottom: insets.bottom + 20 }]}>
                     {/* Gallery */}
-                    <TouchableOpacity style={styles.sideButton} onPress={handlePickPhoto}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.sideButton} onPress={handlePickPhoto}>
                         <View style={styles.galleryButton}>
                             <View pointerEvents="none">
                                 <Images color={Colors.primary} size={24} strokeWidth={2.5} />

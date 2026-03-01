@@ -33,7 +33,7 @@ export const GuestNudge = ({ onPress, onClose }: GuestNudgeProps) => {
             </View>
 
             {onClose && (
-                <Pressable style={styles.closeBtn} onPress={onClose}>
+                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.closeBtn} onPress={onClose}>
                     <View pointerEvents="none">
                         <X color={Colors.textTertiary} size={16} />
                     </View>

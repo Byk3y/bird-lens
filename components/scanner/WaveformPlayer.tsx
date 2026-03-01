@@ -114,20 +114,22 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({ sound, activeSou
         <>
             <View style={[styles.playerContainer, isActive && styles.activePlayerContainer]}>
                 <View style={[styles.card, isActive && styles.activeCard]}>
-                    <Pressable
+                    <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         onPress={handlePlayPause}
                         style={({ pressed }) => [
                             styles.playBtn,
                             pressed && { opacity: 0.8 }
                         ]}
                     >
-                        {loading || (status && !status.isPlaying && status.isBuffering) ? (
-                            <ActivityIndicator color={Colors.white} size="small" />
-                        ) : status?.isPlaying ? (
-                            <Pause color={Colors.white} size={12} fill={Colors.white} />
-                        ) : (
-                            <Play color={Colors.white} size={12} fill={Colors.white} style={{ marginLeft: 2 }} />
-                        )}
+                        <View pointerEvents="none">
+                            {loading || (status && !status.isPlaying && status.isBuffering) ? (
+                                <ActivityIndicator color={Colors.white} size="small" />
+                            ) : status?.isPlaying ? (
+                                <Pause color={Colors.white} size={12} fill={Colors.white} />
+                            ) : (
+                                <Play color={Colors.white} size={12} fill={Colors.white} style={{ marginLeft: 2 }} />
+                            )}
+                        </View>
                     </Pressable>
 
                     <View style={styles.waveformContainer}>

@@ -113,7 +113,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <Activity size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>Sounds</Text>
                         </View>
-                        <TouchableOpacity onPress={(() => {
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={(() => {
                             setActiveSection('Sounds');
                             // If a sound is active, use its URL
                             const activeSound = activeSoundId ? (sounds.find(s => s.id === activeSoundId) || bird.sounds?.find(s => s.id === activeSoundId)) : null;
@@ -216,7 +216,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <ImageIcon size={22} color="#1A1A1A" />
                             <Text style={styles.galleryTitle}>Images of {bird.name}</Text>
                         </View>
-                        <TouchableOpacity onPress={() => {
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => {
                             setActiveSection('Images');
                             // Use first display photo as context
                             const firstPhoto = displayPhotos[0];
@@ -283,7 +283,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         <Notebook size={22} color="#1A1A1A" />
                         <Text style={styles.sectionTitle}>Birding Tips</Text>
                     </View>
-                    <TouchableOpacity onPress={() => {
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => {
                         setActiveSection('Tips');
                         setActiveMediaUrl(null);
                         setActionSheetVisible(true);
@@ -326,7 +326,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <Activity size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>Sounds</Text>
                         </View>
-                        <TouchableOpacity onPress={() => {
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => {
                             setActiveSection('Sounds');
                             const activeSound = activeSoundId ? (sounds.find(s => s.id === activeSoundId) || bird.sounds?.find(s => s.id === activeSoundId)) : null;
                             setActiveMediaUrl(activeSound?.url || null);
@@ -431,7 +431,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             <HelpCircle size={22} color="#1A1A1A" />
                             <Text style={styles.sectionTitle}>How to identify it?</Text>
                         </View>
-                        <TouchableOpacity onPress={() => {
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => {
                             setActiveSection('Identification');
                             setActiveMediaUrl(null);
                             setActionSheetVisible(true);
@@ -454,7 +454,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             style={styles.fadeOverlay}
                         />
                     </View>
-                    <TouchableOpacity
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         onPress={onOpenIdentification}
                         style={styles.expandButton}
                         activeOpacity={0.7}
@@ -478,7 +478,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                                 <FileText size={22} color="#1A1A1A" />
                                 <Text style={styles.sectionTitle}>Description</Text>
                             </View>
-                            <TouchableOpacity onPress={() => {
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => {
                                 setActiveSection('Description');
                                 setActiveMediaUrl(null);
                                 setActionSheetVisible(true);
@@ -501,7 +501,7 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                             {bird.description}
                         </Text>
                         {isTruncated && (
-                            <TouchableOpacity
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 style={styles.expandButton}
                                 onPress={() => setIsExpanded(!isExpanded)}
                             >

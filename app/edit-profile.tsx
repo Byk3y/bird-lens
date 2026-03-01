@@ -112,7 +112,7 @@ export default function EditProfileScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()} style={styles.backBtn}>
                     <View pointerEvents="none">
                         <ChevronLeft color={Colors.text} size={28} />
                     </View>
@@ -136,7 +136,7 @@ export default function EditProfileScreen() {
                     contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Pressable onPress={Keyboard.dismiss}>
+                    <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={Keyboard.dismiss}>
                         {/* Profile Photo Row */}
                         <View style={styles.row}>
                             <Text style={styles.label}>Profile Photo</Text>

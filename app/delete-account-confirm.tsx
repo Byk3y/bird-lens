@@ -49,7 +49,7 @@ export default function DeleteAccountConfirmScreen() {
 
             <SafeAreaView style={styles.header}>
                 <View style={[styles.headerContent, { marginTop: insets.top > 40 ? 0 : 10 }]}>
-                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                    <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()} style={styles.backBtn}>
                         <View pointerEvents="none">
                             <ChevronLeft color="#000000" size={26} strokeWidth={2.5} />
                         </View>

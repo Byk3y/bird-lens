@@ -249,7 +249,7 @@ export default function BirdDetailScreen() {
         <View style={styles.container}>
             {/* Header / Navigation */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.headerBtn}>
+                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()} style={styles.headerBtn}>
                     <View pointerEvents="none">
                         <ChevronLeft color={Colors.white} size={28} strokeWidth={2.5} />
                     </View>
@@ -322,7 +322,7 @@ export default function BirdDetailScreen() {
 
             {/* Sticky Bottom Bar */}
             <View style={[styles.bottomBar, { height: 65 + Math.max(insets.bottom, 16), paddingBottom: Math.max(insets.bottom, 16), backgroundColor: '#fff' }]}>
-                <TouchableOpacity
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={styles.bottomBarBtn}
                     onPress={() => router.replace('/(tabs)/scanner')}
                 >
@@ -332,7 +332,7 @@ export default function BirdDetailScreen() {
                     <Text style={styles.bottomBarText}>New</Text>
                 </TouchableOpacity>
                 <View style={styles.divider} />
-                <TouchableOpacity style={styles.bottomBarBtn} onPress={handleShare}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.bottomBarBtn} onPress={handleShare}>
                     <View pointerEvents="none">
                         <Share2 size={24} color={Colors.textSecondary} />
                     </View>

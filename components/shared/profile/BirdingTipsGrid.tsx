@@ -44,7 +44,7 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
     return (
         <View style={styles.gridContainer}>
             {/* Full Width Tip: Diet */}
-            <TouchableOpacity style={styles.wideCard} onPress={() => onOpenTips?.('diet')} activeOpacity={0.7}>
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.wideCard} onPress={() => onOpenTips?.('diet')} activeOpacity={0.7}>
                 <View style={styles.cardContent}>
                     <Text style={styles.cardLabel}>Diet</Text>
                 </View>
@@ -62,7 +62,7 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
 
             {/* Full Width Tip: Feeder */}
             {hasFeeder && (
-                <TouchableOpacity style={styles.wideCard} onPress={() => onOpenTips?.('feeder')} activeOpacity={0.7}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.wideCard} onPress={() => onOpenTips?.('feeder')} activeOpacity={0.7}>
                     <View style={styles.cardContent}>
                         <Text style={styles.cardLabel}>Feeder</Text>
                     </View>
@@ -77,7 +77,7 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
 
             {/* Two Column Row: Habitat & Nesting */}
             <View style={styles.row}>
-                <TouchableOpacity style={styles.halfCard} onPress={() => onOpenTips?.('habitat')} activeOpacity={0.7}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.halfCard} onPress={() => onOpenTips?.('habitat')} activeOpacity={0.7}>
                     <View style={styles.halfCardTop}>
                         <Text style={styles.cardLabel}>Habitat</Text>
                         <View pointerEvents="none">
@@ -90,7 +90,7 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                     </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.halfCard} onPress={() => onOpenTips?.('nesting')} activeOpacity={0.7}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.halfCard} onPress={() => onOpenTips?.('nesting')} activeOpacity={0.7}>
                     <View style={styles.halfCardTop}>
                         <Text style={styles.cardLabel}>Nesting</Text>
                         <View pointerEvents="none">

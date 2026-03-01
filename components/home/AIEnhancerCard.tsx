@@ -94,7 +94,7 @@ export const AIEnhancerCard: React.FC = () => {
             </GestureDetector>
 
             {/* Text + button area — uses TouchableOpacity for reliable press in production */}
-            <TouchableOpacity
+            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 style={styles.enhancerContent}
                 onPress={handleStartPress}
                 activeOpacity={0.7}
@@ -102,7 +102,7 @@ export const AIEnhancerCard: React.FC = () => {
                 <Text style={styles.enhancerTitle}>Turn your phone into a pro camera</Text>
                 <View style={styles.startButton}>
                     <Text style={styles.startText}>Start</Text>
-                    <View style={styles.iconCircle}>
+                    <View style={styles.iconCircle} pointerEvents="none">
                         <ChevronRight color={Colors.white} size={10} strokeWidth={4} />
                     </View>
                 </View>

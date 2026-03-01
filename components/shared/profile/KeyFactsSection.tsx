@@ -93,7 +93,7 @@ export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird, isEnrich
                     <Text style={styles.sectionTitle}>Key Facts</Text>
                 </View>
                 {onMorePress && (
-                    <TouchableOpacity onPress={onMorePress}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onMorePress}>
                         <View pointerEvents="none">
                             <MoreHorizontal size={20} color="#999" />
                         </View>
@@ -138,7 +138,7 @@ export const KeyFactsSection: React.FC<KeyFactsSectionProps> = ({ bird, isEnrich
             </View>
 
             {showLearnMore && (
-                <TouchableOpacity
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={styles.expandButton}
                     onPress={() => setIsFactsExpanded(!isFactsExpanded)}
                     activeOpacity={0.7}

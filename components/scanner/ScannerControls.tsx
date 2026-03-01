@@ -117,7 +117,7 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                 {/* Captures / Controls */}
                 <View style={styles.shutterRow}>
                     {activeMode === 'photo' ? (
-                        <TouchableOpacity style={styles.sideControl} onPress={onGalleryPress}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.sideControl} onPress={onGalleryPress}>
                             <View style={styles.galleryButton}>
                                 <View pointerEvents="none">
                                     <Images color={Colors.primary} size={24} strokeWidth={2.5} />
@@ -129,7 +129,7 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                         <View style={styles.sideControlSpacer} />
                     )}
 
-                    <TouchableOpacity
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         onPress={onCapture}
                         disabled={isProcessing || isInitializing}
                         style={[styles.mainShutter, activeMode === 'sound' && styles.soundShutter]}
@@ -174,7 +174,7 @@ export const ScannerControls: React.FC<ScannerControlsProps> = ({
                     </TouchableOpacity>
 
                     {activeMode === 'photo' ? (
-                        <TouchableOpacity style={styles.sideControl} onPress={onShowTips}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.sideControl} onPress={onShowTips}>
                             <View style={styles.tipsBtn}>
                                 <View pointerEvents="none">
                                     <HelpCircle color="#1e293b" size={21} />

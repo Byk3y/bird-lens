@@ -348,7 +348,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                     </Pressable>
                                 </View>
 
-                                <Pressable
+                                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                     style={{ flex: 1 }}
                                     onPress={Keyboard.dismiss}
                                 >
@@ -406,7 +406,7 @@ export const AuthModal = ({ visible, onClose, initialMode = 'login' }: AuthModal
                                             </View>
 
                                             <View>
-                                                <Pressable
+                                                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                                     style={[
                                                         styles.inputWrapper,
                                                         mode === 'signup' && passwordStrength && passwordStrength.score < 2 && password.length > 0 ? styles.inputWrapperError : null

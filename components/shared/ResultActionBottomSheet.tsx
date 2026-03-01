@@ -144,7 +144,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                             transition={{ type: 'timing', duration: 300 }}
                             style={StyleSheet.absoluteFill}
                         >
-                            <TouchableOpacity
+                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 style={styles.backdrop}
                                 activeOpacity={1}
                                 onPress={onClose}
@@ -186,7 +186,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 {submittingType === 'like' && <ActivityIndicator size="small" color={Colors.textTertiary} />}
                                             </TouchableOpacity>
 
-                                            <TouchableOpacity
+                                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                                 style={styles.optionRow}
                                                 onPress={() => handleOpenForm('error')}
                                                 disabled={isSubmitting}
@@ -201,7 +201,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 <Text style={styles.chevron}>›</Text>
                                             </TouchableOpacity>
 
-                                            <TouchableOpacity
+                                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                                 style={styles.optionRow}
                                                 onPress={() => handleQuickAction('incorrect_id')}
                                                 disabled={isSubmitting}
@@ -215,7 +215,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                                 {submittingType === 'incorrect_id' && <ActivityIndicator size="small" color={Colors.textTertiary} />}
                                             </TouchableOpacity>
 
-                                            <TouchableOpacity style={styles.optionRow} onPress={() => handleOpenForm('suggestion')}>
+                                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.optionRow} onPress={() => handleOpenForm('suggestion')}>
                                                 <View pointerEvents="none">
                                                     <Edit3 size={24} color={Colors.text} strokeWidth={1.5} />
                                                 </View>
@@ -237,7 +237,7 @@ export const ResultActionBottomSheet: React.FC<ResultActionBottomSheetProps> = (
                                             style={styles.formContainer}
                                         >
                                             <View style={styles.formHeader}>
-                                                <TouchableOpacity onPress={() => setView('menu')} style={styles.backButton}>
+                                                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => setView('menu')} style={styles.backButton}>
                                                     <View pointerEvents="none">
                                                         <ChevronLeft size={24} color={Colors.text} />
                                                     </View>

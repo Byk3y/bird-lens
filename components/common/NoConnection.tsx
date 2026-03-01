@@ -23,8 +23,10 @@ export const NoConnection: React.FC<NoConnectionProps> = ({
         <View style={styles.container}>
             <SafeAreaView style={styles.safeArea}>
                 {onBack && (
-                    <Pressable onPress={onBack} style={styles.backBtn}>
-                        <ChevronLeft color="#A1A1A1" size={28} />
+                    <Pressable onPress={onBack} style={styles.backBtn} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
+                        <View pointerEvents="none">
+                            <ChevronLeft color="#A1A1A1" size={28} />
+                        </View>
                     </Pressable>
                 )}
 

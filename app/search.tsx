@@ -135,7 +135,7 @@ export default function SearchScreen() {
         <View style={styles.container}>
             {/* Header with Search Input */}
             <View style={[styles.header, { paddingTop: insets.top + (Spacing.xs) }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => router.back()} style={styles.backButton}>
                     <View pointerEvents="none">
                         <ChevronLeft color={Colors.text} size={28} />
                     </View>
@@ -156,7 +156,7 @@ export default function SearchScreen() {
                         autoCapitalize="none"
                     />
                     {query.length > 0 && (
-                        <TouchableOpacity onPress={() => handleSearch('')} style={styles.clearInputButton}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={() => handleSearch('')} style={styles.clearInputButton}>
                             <View pointerEvents="none">
                                 <X color={Colors.textTertiary} size={18} />
                             </View>
@@ -222,7 +222,7 @@ export default function SearchScreen() {
                             contentContainerStyle={styles.resultsList}
                             keyboardShouldPersistTaps="handled"
                             renderItem={({ item }) => (
-                                <TouchableOpacity
+                                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                     style={styles.resultRow}
                                     onPress={() => handleSelectBird(item)}
                                 >

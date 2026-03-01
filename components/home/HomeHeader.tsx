@@ -23,7 +23,7 @@ export const HomeHeader: React.FC = () => {
 
             {/* Search Bar - Crystallized */}
             <View style={styles.searchContainer}>
-                <TouchableOpacity
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     activeOpacity={0.9}
                     style={styles.searchBar}
                     onPress={() => router.push('/search')}

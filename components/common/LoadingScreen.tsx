@@ -16,8 +16,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
         <View style={styles.container}>
             <SafeAreaView style={styles.safeArea}>
                 {onBack && (
-                    <Pressable onPress={onBack} style={styles.backBtn}>
-                        <ChevronLeft color={Colors.textSecondary} size={28} />
+                    <Pressable onPress={onBack} style={styles.backBtn} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}>
+                        <View pointerEvents="none">
+                            <ChevronLeft color={Colors.textSecondary} size={28} />
+                        </View>
                     </Pressable>
                 )}
 

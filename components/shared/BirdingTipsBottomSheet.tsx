@@ -15,7 +15,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, {
@@ -178,14 +178,16 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
             <View style={styles.section} onLayout={onLayout}>
                 <View style={styles.sectionHeaderRow}>
                     <Text style={styles.sectionTitle}>{title}</Text>
-                    <TouchableOpacity
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         onPress={() => {
                             setActiveSection(`${title} Tips`);
                             setActionSheetVisible(true);
                         }}
                         style={styles.moreBtn}
                     >
-                        <MoreHorizontal size={20} color="#999" />
+                        <View pointerEvents="none">
+                            <MoreHorizontal size={20} color="#999" />
+                        </View>
                     </TouchableOpacity>
                 </View>
                 <ScrollView
@@ -265,7 +267,7 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
                             style={StyleSheet.absoluteFill}
                         >
                             <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
-                                <Pressable style={styles.backdrop} onPress={onClose} />
+                                <Pressable hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={styles.backdrop} onPress={onClose} />
                             </Animated.View>
                         </MotiView>
 
@@ -296,7 +298,9 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
                                                 style={styles.backBtn}
                                                 hitSlop={12}
                                             >
-                                                <ChevronLeft color="#333" size={24} strokeWidth={2.5} />
+                                                <View pointerEvents="none">
+                                                    <ChevronLeft color="#333" size={24} strokeWidth={2.5} />
+                                                </View>
                                             </Pressable>
                                             <Text style={styles.headerTitle}>Birding Tips</Text>
                                             <View style={{ width: 44 }} />
@@ -348,14 +352,16 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
                                     >
                                         <View style={styles.sectionHeaderRow}>
                                             <Text style={styles.sectionTitle}>Habitat</Text>
-                                            <TouchableOpacity
+                                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                                 onPress={() => {
                                                     setActiveSection('Habitat Tips');
                                                     setActionSheetVisible(true);
                                                 }}
                                                 style={styles.moreBtn}
                                             >
-                                                <MoreHorizontal size={20} color="#999" />
+                                                <View pointerEvents="none">
+                                                    <MoreHorizontal size={20} color="#999" />
+                                                </View>
                                             </TouchableOpacity>
                                         </View>
                                         <View style={styles.habitatIconContainer}>
@@ -390,14 +396,16 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
                                     >
                                         <View style={styles.sectionHeaderRow}>
                                             <Text style={styles.sectionTitle}>Nesting</Text>
-                                            <TouchableOpacity
+                                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                                 onPress={() => {
                                                     setActiveSection('Nesting Tips');
                                                     setActionSheetVisible(true);
                                                 }}
                                                 style={styles.moreBtn}
                                             >
-                                                <MoreHorizontal size={20} color="#999" />
+                                                <View pointerEvents="none">
+                                                    <MoreHorizontal size={20} color="#999" />
+                                                </View>
                                             </TouchableOpacity>
                                         </View>
                                         <View style={styles.habitatIconContainer}>
@@ -422,14 +430,16 @@ export const BirdingTipsBottomSheet: React.FC<BirdingTipsBottomSheetProps> = ({
                                     <View style={[styles.section, { marginBottom: 60 }]}>
                                         <View style={styles.sectionHeaderRow}>
                                             <Text style={styles.sectionTitle}>Fun Facts</Text>
-                                            <TouchableOpacity
+                                            <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                                 onPress={() => {
                                                     setActiveSection('Fun Facts');
                                                     setActionSheetVisible(true);
                                                 }}
                                                 style={styles.moreBtn}
                                             >
-                                                <MoreHorizontal size={20} color="#999" />
+                                                <View pointerEvents="none">
+                                                    <MoreHorizontal size={20} color="#999" />
+                                                </View>
                                             </TouchableOpacity>
                                         </View>
                                         <View style={styles.funFactCard}>

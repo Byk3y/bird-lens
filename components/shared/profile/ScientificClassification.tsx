@@ -28,7 +28,7 @@ export const ScientificClassification: React.FC<ScientificClassificationProps> =
                         <Text style={styles.sectionTitle}>Scientific Classification</Text>
                     </View>
                     {onMorePress && (
-                        <TouchableOpacity onPress={onMorePress}>
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onMorePress}>
                             <View pointerEvents="none">
                                 <MoreHorizontal size={20} color="#999" />
                             </View>
@@ -93,7 +93,7 @@ export const ScientificClassification: React.FC<ScientificClassificationProps> =
                     )}
                 </View>
 
-                <TouchableOpacity
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={styles.expandButton}
                     onPress={() => setIsExpanded(!isExpanded)}
                     activeOpacity={0.7}

@@ -173,7 +173,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
         <View style={styles.container}>
             {/* Top Navigation */}
             <View style={styles.topNav}>
-                <TouchableOpacity onPress={onReset} style={styles.navButton}>
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} onPress={onReset} style={styles.navButton}>
                     <View pointerEvents="none">
                         <ChevronLeft color={Colors.white} size={28} />
                     </View>
@@ -198,12 +198,14 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     </View>
                 )}
 
-                <TouchableOpacity
+                <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={[styles.navButton, styles.doneButton, { width: undefined }]}
                     onPress={onReset}
                 >
-                    <Camera color={Colors.white} size={20} />
-                    <Text style={styles.doneButtonText}>New</Text>
+                    <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Camera color={Colors.white} size={20} />
+                        <Text style={styles.doneButtonText}>New</Text>
+                    </View>
                 </TouchableOpacity>
             </View>
 
@@ -301,7 +303,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                 <View style={[styles.bottomBar, { height: 75 + Math.max(insets.bottom, 16), paddingBottom: Math.max(insets.bottom, 16), backgroundColor: Colors.white, paddingHorizontal: 12 }]}>
                     {/* Left Slot: Tips or Done */}
                     {isSavedForActive ? (
-                        <TouchableOpacity
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={styles.actionItem}
                             onPress={() => router.replace('/(tabs)/collection')}
                         >
@@ -311,7 +313,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                             <Text style={styles.actionText}>Collection</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity
+                        <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                             style={styles.actionItem}
                             onPress={() => setTipsVisible(true)}
                         >
@@ -323,7 +325,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     )}
 
                     {/* Center Slot: Save Action */}
-                    <TouchableOpacity
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         style={styles.actionItem}
                         onPress={() => onSave(activeBird, capturedImage, recordingUri)}
                         disabled={isSaving || isSavedForActive}
@@ -331,7 +333,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                         {isSaving ? (
                             <ActivityIndicator size="small" color={Colors.primary} />
                         ) : (
-                            <View style={isSavedForActive ? styles.savedIconContainer : styles.saveIconContainer}>
+                            <View style={isSavedForActive ? styles.savedIconContainer : styles.saveIconContainer} pointerEvents="none">
                                 {isSavedForActive ? (
                                     <Check color={Colors.primary} size={24} />
                                 ) : (
@@ -345,11 +347,11 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     </TouchableOpacity>
 
                     {/* Right Slot: Share Action */}
-                    <TouchableOpacity
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         style={isSavedForActive ? styles.shareActionHighlight : styles.actionItem}
                         onPress={() => setShareSheetVisible(true)}
                     >
-                        <View style={isSavedForActive ? styles.shareIconContainerActive : undefined}>
+                        <View style={isSavedForActive ? styles.shareIconContainerActive : undefined} pointerEvents="none">
                             <Share2 color={isSavedForActive ? Colors.white : Colors.text} size={22} />
                         </View>
                         <Text style={[styles.actionText, isSavedForActive && styles.shareTextActive]}>

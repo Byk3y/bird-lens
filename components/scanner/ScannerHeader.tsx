@@ -58,7 +58,7 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
 
             {
                 !isDark && (
-                    <TouchableOpacity style={[styles.iconBtn, { backgroundColor: buttonBg }]} onPress={onFlashToggle}>
+                    <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} style={[styles.iconBtn, { backgroundColor: buttonBg }]} onPress={onFlashToggle}>
                         <View pointerEvents="none">
                             {flash === 'on' ? (
                                 <Zap color="#fcd34d" size={22} fill="#fcd34d" />
