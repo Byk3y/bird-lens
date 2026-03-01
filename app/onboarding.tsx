@@ -12,6 +12,7 @@ export default function OnboardingScreen() {
     const insets = useSafeAreaInsets();
     const video = useRef<Video>(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const progressAnim = useRef(new Animated.Value(0)).current;
     const [isLoading, setIsLoading] = useState(true);
     const [isFinished, setIsFinished] = useState(false);
     const [showLocationStep, setShowLocationStep] = useState(false);
@@ -38,6 +39,25 @@ export default function OnboardingScreen() {
     };
 
     const onPlaybackStatusUpdate = (status: any) => {
+        if (status.isLoaded && status.durationMillis) {
+            const progress = status.positionMillis / status.durationMillis;
+            Animated.timing(progressAnim, {
+                toValue: progress,
+                duration: 100,
+                useNativeDriver: false, // width is not supported by native driver
+            }).start();
+
+            // Show button early at 20 seconds mark
+            if (status.positionMillis >= 20000 && !isFinished) {
+                setIsFinished(true);
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                }).start();
+            }
+        }
+
         if (status.didJustFinish && !isFinished) {
             setIsFinished(true);
             Animated.timing(fadeAnim, {
@@ -50,6 +70,21 @@ export default function OnboardingScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Progress Bar */}
+            <View style={[styles.progressContainer, { top: insets.top + 10 }]}>
+                <Animated.View
+                    style={[
+                        styles.progressBar,
+                        {
+                            width: progressAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: ['0%', '100%']
+                            })
+                        }
+                    ]}
+                />
+            </View>
+
             {isLoading && (
                 <View style={styles.loaderContainer}>
                     <ActivityIndicator size="large" color="#F97316" />
@@ -118,6 +153,20 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#000',
+    },
+    progressContainer: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        height: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 3,
+        zIndex: 10,
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        backgroundColor: '#F97316',
     },
     loaderContainer: {
         ...StyleSheet.absoluteFillObject,

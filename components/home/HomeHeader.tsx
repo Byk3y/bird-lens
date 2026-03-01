@@ -17,7 +17,15 @@ export const HomeHeader: React.FC = () => {
         <View>
             {/* Header Section */}
             <View style={styles.headerTitleContainer}>
-                <Text style={styles.headerGreeting}>BirdMark</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.headerGreeting}>BirdMark</Text>
+                    <TouchableOpacity
+                        onPress={() => router.push('/onboarding')}
+                        style={styles.debugButton}
+                    >
+                        <Text style={styles.debugText}>DEBUG: VIDEO</Text>
+                    </TouchableOpacity>
+                </View>
                 <Text style={styles.headerSubtitle}>Ready to find some birds?</Text>
             </View>
 
