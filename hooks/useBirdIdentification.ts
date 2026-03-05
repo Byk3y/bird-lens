@@ -96,9 +96,10 @@ export const useBirdIdentification = () => {
                 try {
                     console.log(`Identification attempt ${attempts} initiating...`);
 
-                    // We use the project's Anon Key specifically for identification requests to ensure
-                    // maximum reliability and avoid gateway 401 issues with user session tokens.
-                    const token = SUPABASE_ANON_KEY;
+                    // Use the user's session token for the Authorization header to track usage,
+                    // but fall back to the Anon Key if unavailable.
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const token = session?.access_token || SUPABASE_ANON_KEY;
                     const url = `${SUPABASE_URL}/functions/v1/identify-bird`;
 
                     const response = await fetch(url, {

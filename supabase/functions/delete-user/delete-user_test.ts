@@ -12,8 +12,8 @@ Deno.test("delete-user: unauthorized request without header", async () => {
     });
     const data = await res.json();
 
-    assertEquals(res.status, 400);
-    assertEquals(data.error, "Missing Authorization header");
+    assertEquals(res.status, 401);
+    assertEquals(data.error, "Authorization required");
 });
 
 Deno.test("delete-user: OPTIONS request should return CORS headers", async () => {

@@ -74,11 +74,26 @@ serve(async (req) => {
             }
         )
     } catch (error: any) {
+        // Log the real error on the server side
+        console.error('Error in delete-user:', error.message, error)
+
+        let clientMessage = 'Failed to delete account'
+        let statusCode = 500
+
+        // Map known errors to safe client-facing messages
+        if (error.message === 'Missing Authorization header') {
+            clientMessage = 'Authorization required'
+            statusCode = 401
+        } else if (error.message === 'Unauthorized') {
+            clientMessage = 'Unauthorized'
+            statusCode = 401
+        }
+
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: clientMessage }),
             {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
+                status: statusCode,
             }
         )
     }

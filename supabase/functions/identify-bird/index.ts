@@ -103,7 +103,29 @@ serve(async (req: Request) => {
 
     try {
         // JWT verification is handled by Supabase (verify_jwt: true)
-        // No manual auth header check needed
+        // However, we apply a hard cap on identifications for authenticated users
+        const authHeader = req.headers.get("Authorization");
+        if (authHeader) {
+            const token = authHeader.replace("Bearer ", "");
+            const { data: { user } } = await supabase.auth.getUser(token);
+            if (user) {
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("identifications_count")
+                    .eq("id", user.id)
+                    .single();
+
+                if (profile && profile.identifications_count >= 50) {
+                    return new Response(
+                        JSON.stringify({ error: "Identification limit reached. Please try again later." }),
+                        {
+                            status: 429,
+                            headers: { ...corsHeaders, "Content-Type": "application/json" }
+                        }
+                    );
+                }
+            }
+        }
 
         if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is missing");
 
