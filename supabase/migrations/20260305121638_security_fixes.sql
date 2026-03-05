@@ -20,6 +20,11 @@ DECLARE
   anon_credits integer;
   is_anon boolean;
 BEGIN
+  -- Guard: Prevent self-transfer (no-op)
+  IF old_user_id = auth.uid() THEN
+    RETURN;
+  END IF;
+
   -- Guard: Verify old_user_id belongs to an anonymous user
   SELECT is_anonymous INTO is_anon
   FROM auth.users
@@ -31,11 +36,6 @@ BEGIN
 
   IF NOT is_anon THEN
     RAISE EXCEPTION 'Source account is not anonymous';
-  END IF;
-
-  -- Guard: Prevent self-transfer (no-op)
-  IF old_user_id = auth.uid() THEN
-    RETURN;
   END IF;
 
   -- 1. Transfer sightings
@@ -70,11 +70,13 @@ $function$;
 -- The old function allowed any user to increment any other user's count.
 
 CREATE OR REPLACE FUNCTION public.increment_identification_count(p_user_id uuid)
- RETURNS void
+ RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+DECLARE
+  new_count integer;
 BEGIN
   -- Guard: Only allow users to increment their own count
   IF p_user_id != auth.uid() THEN
@@ -83,17 +85,20 @@ BEGIN
 
   UPDATE public.profiles
   SET identifications_count = identifications_count + 1
-  WHERE id = p_user_id;
+  WHERE id = p_user_id
+  RETURNING identifications_count INTO new_count;
+
+  RETURN new_count;
 END;
 $function$;
 
 -- =============================================================================
--- 3. FIX: check_email_exists — Revoke anon access
+-- 3. NOTE: check_email_exists — Anon access intentionally kept
 -- =============================================================================
--- Unauthenticated users could enumerate registered emails.
-
-REVOKE EXECUTE ON FUNCTION public.check_email_exists(text) FROM anon;
-REVOKE EXECUTE ON FUNCTION public.check_email_exists(text) FROM PUBLIC;
+-- This function is called pre-auth during signup (lib/auth.tsx:172-181) to
+-- check email availability. Revoking anon access would break the signup flow.
+-- Mitigation: consider adding server-side rate limiting to prevent bulk
+-- enumeration, or move the check into a server-side signup validation flow.
 
 -- =============================================================================
 -- 4. NOTE: Sightings storage bucket is public (intentionally deferred)
