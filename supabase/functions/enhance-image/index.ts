@@ -19,7 +19,7 @@ serve(async (req: Request) => {
     try {
         if (!OPENROUTER_API_KEY) {
             console.error("LOG: OPENROUTER_API_KEY is missing from environment");
-            return new Response(JSON.stringify({ error: "Configuration error: API key missing" }), {
+            return new Response(JSON.stringify({ error: "The enhancement service is currently unavailable" }), {
                 status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
@@ -81,8 +81,7 @@ serve(async (req: Request) => {
             const errorText = await response.text();
             console.error(`LOG: OpenRouter failed with status ${response.status}:`, errorText);
             return new Response(JSON.stringify({
-                error: `AI service error: ${response.status}`,
-                details: errorText
+                error: "The enhancement service is currently unavailable"
             }), {
                 status: response.status,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -99,8 +98,7 @@ serve(async (req: Request) => {
         if (!enhancedImage) {
             console.error("LOG: No image found in AI response", JSON.stringify(responseData));
             return new Response(JSON.stringify({
-                error: "Model failed to generate an enhanced image",
-                debug: responseData
+                error: "Failed to generate an enhanced image"
             }), {
                 status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -113,8 +111,8 @@ serve(async (req: Request) => {
         });
 
     } catch (error: any) {
-        console.error("LOG: Catch-all error in enhance-image:", error);
-        return new Response(JSON.stringify({ error: error.message || "Internal server error" }), {
+        console.error("LOG: Internal error in enhance-image:", error);
+        return new Response(JSON.stringify({ error: "Internal server error" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
