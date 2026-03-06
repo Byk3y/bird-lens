@@ -1,95 +1,272 @@
+import LottieView from 'lottie-react-native';
+import { MotiView } from 'moti';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Image,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+
+import CageScene from '@/components/onboarding/CageScene';
+import FeatherParticles from '@/components/onboarding/FeatherParticles';
+
+export type Phase = 'idle' | 'door_opening' | 'bird_flying' | 'transitioning';
 
 export default function WelcomeScreen() {
-    const router = useRouter();
+  const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
+  const [phase, setPhase] = useState<Phase>('idle');
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-    const handleContinue = () => {
-        router.push('/onboarding');
-    };
+  // Clear all timeouts on unmount
+  useEffect(() => {
+    return () => timers.current.forEach(clearTimeout);
+  }, []);
 
+  // Animated values
+  const doorRotation = useSharedValue(0);
+  const birdTranslateY = useSharedValue(0);
+  const birdTranslateX = useSharedValue(0);
+  const birdScale = useSharedValue(1);
+  const screenOpacity = useSharedValue(1);
+  const promptOpacity = useSharedValue(1);
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
-                <View style={styles.centerContent}>
-                    <Image
-                        source={require('../assets/images/icon.png')}
-                        style={styles.icon}
-                        resizeMode="contain"
-                    />
-                    <Text style={styles.title}>BirdMark</Text>
-                    <Text style={styles.tagline}>Discover the birds around you</Text>
-                </View>
-
-                <View style={styles.bottomContent}>
-                    <TouchableOpacity onPress={handleContinue} style={styles.continueButton}>
-                        <Text style={styles.continueText}>Continue</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </SafeAreaView>
+  // Pulsing "Tap to release" text
+  React.useEffect(() => {
+    promptOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 1200 }),
+        withTiming(1, { duration: 1200 })
+      ),
+      -1,
+      true
     );
+  }, []);
+
+  const navigateToOnboarding = useCallback(() => {
+    router.push('/onboarding');
+  }, [router]);
+
+  const startReleaseSequence = useCallback(() => {
+    if (phase !== 'idle') return;
+
+    // Reduced motion: skip animations entirely
+    if (reducedMotion) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      AccessibilityInfo.announceForAccessibility('Bird released! Moving to next screen.');
+      timers.current.push(setTimeout(() => navigateToOnboarding(), 300));
+      return;
+    }
+
+    // Phase 1: Door opening
+    setPhase('door_opening');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    doorRotation.value = withTiming(-110, {
+      duration: 600,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+    });
+
+    // Phase 2: Bird emerges from cage, then flies away
+    timers.current.push(setTimeout(() => {
+      setPhase('bird_flying');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      AccessibilityInfo.announceForAccessibility('Bird is flying free!');
+
+      // Stage 1: Emerge — rise slowly out of cage with a gentle wobble
+      birdTranslateY.value = withSequence(
+        withTiming(-120, { duration: 900, easing: Easing.out(Easing.quad) }),
+        // Stage 2: Fly away — accelerate off screen
+        withTiming(-screenHeight, { duration: 1000, easing: Easing.in(Easing.cubic) })
+      );
+
+      birdScale.value = withSequence(
+        withTiming(1.15, { duration: 900 }),
+        withTiming(0.5, { duration: 1000 })
+      );
+
+      birdTranslateX.value = withSequence(
+        withTiming(12, { duration: 300 }),
+        withTiming(-8, { duration: 300 }),
+        withTiming(10, { duration: 300 }),
+        withTiming(-5, { duration: 300 }),
+        withTiming(30, { duration: 700 })
+      );
+
+      // Stop the pulse
+      promptOpacity.value = withTiming(0, { duration: 400 });
+
+      // Phase 3: Transition out (after emerge + fly = 1900ms)
+      timers.current.push(setTimeout(() => {
+        setPhase('transitioning');
+        screenOpacity.value = withTiming(0, { duration: 400 });
+        AccessibilityInfo.announceForAccessibility('Navigating to setup.');
+        timers.current.push(setTimeout(() => navigateToOnboarding(), 450));
+      }, 1900));
+    }, 600));
+  }, [phase, reducedMotion, navigateToOnboarding]);
+
+  // Animated styles
+  const birdAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: birdTranslateX.value },
+      { translateY: birdTranslateY.value },
+      { scale: birdScale.value },
+    ],
+  }));
+
+  const screenAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: screenOpacity.value,
+  }));
+
+  const promptAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: promptOpacity.value,
+  }));
+
+  return (
+    <Animated.View style={[styles.wrapper, screenAnimatedStyle]}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          {/* Branding */}
+          <MotiView
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 600, delay: 200 }}
+            style={styles.branding}
+          >
+            <Image
+              source={require('../assets/images/icon.png')}
+              style={styles.icon}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>BirdMark</Text>
+          </MotiView>
+
+          {/* Cage + Bird */}
+          <MotiView
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'timing', duration: 600, delay: 400 }}
+            style={styles.cageArea}
+          >
+            <View style={styles.cageWrapper}>
+              <CageScene
+                doorRotation={doorRotation}
+                onTap={startReleaseSequence}
+                phase={phase}
+              />
+              {/* Bird Lottie positioned inside cage */}
+              <Animated.View style={[styles.birdContainer, birdAnimatedStyle]}>
+                <LottieView
+                  source={require('@/assets/animations/bird-loading.lottie')}
+                  autoPlay
+                  loop
+                  style={styles.birdLottie}
+                />
+              </Animated.View>
+              {/* Feather particles */}
+              <FeatherParticles phase={phase} containerHeight={260} />
+            </View>
+          </MotiView>
+
+          {/* Prompt — directly below cage */}
+          <MotiView
+            from={{ opacity: 0, translateY: 15 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 600, delay: 600 }}
+            style={styles.promptArea}
+          >
+            <Animated.Text style={[styles.promptText, promptAnimatedStyle]}>
+              Tap the cage to release
+            </Animated.Text>
+            <Text style={styles.subtitleText}>Every bird deserves to be free</Text>
+          </MotiView>
+        </View>
+      </SafeAreaView>
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#1a1a1a',
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: 25,
-        justifyContent: 'space-between',
-        paddingBottom: 20,
-    },
-    centerContent: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    icon: {
-        width: 120,
-        height: 120,
-        marginBottom: 20,
-        borderRadius: 26.4,
-    },
-    title: {
-        fontSize: 42,
-        color: '#FFFFFF',
-        fontFamily: 'PoppinsBold',
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    tagline: {
-        fontSize: 18,
-        color: '#AAAAAA',
-        textAlign: 'center',
-        fontWeight: '500',
-    },
-    bottomContent: {
-        width: '100%',
-        alignItems: 'center',
-        gap: 15,
-    },
-    continueButton: {
-        backgroundColor: '#F97316',
-        width: '100%',
-        paddingVertical: 18,
-        borderRadius: 30,
-        alignItems: 'center',
-        shadowColor: '#F97316',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    continueText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontFamily: 'PoppinsBold',
-        fontWeight: '700',
-    },
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#F5F5F4',
+  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+    paddingBottom: 60,
+  },
+  branding: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  icon: {
+    width: 80,
+    height: 80,
+    borderRadius: 18,
+  },
+  title: {
+    fontSize: 36,
+    color: '#1a1a1a',
+    fontFamily: 'PoppinsBold',
+    textAlign: 'center',
+  },
+  cageArea: {
+    alignItems: 'center',
+  },
+  cageWrapper: {
+    width: 220,
+    height: 280,
+    position: 'relative',
+  },
+  birdContainer: {
+    position: 'absolute',
+    left: 25,
+    top: 60,
+    width: 170,
+    height: 150,
+    zIndex: 5,
+  },
+  birdLottie: {
+    width: 170,
+    height: 150,
+  },
+  promptArea: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  promptText: {
+    fontSize: 18,
+    color: '#F97316',
+    fontFamily: 'PoppinsBold',
+    textAlign: 'center',
+  },
+  subtitleText: {
+    fontSize: 14,
+    color: '#A8A29E',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
 });
