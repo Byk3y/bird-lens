@@ -41,7 +41,7 @@ serve(async (req: Request) => {
         // Default enhancement prompt if none provided
         const enhancementPrompt = userPrompt || "Enhance this bird photograph. Maintain the exact species and colors but make it ultra-high resolution, sharp, and detailed. Professional wildlife photography style, natural lighting, crystal-clear feather textures, and bokeh background if applicable.";
 
-        console.log("LOG: Calling OpenRouter with model black-forest-labs/flux.2-klein-4b");
+        console.log("LOG: Calling OpenRouter with model google/gemini-3.1-flash-image-preview (Nano Banana 2)");
 
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -52,7 +52,7 @@ serve(async (req: Request) => {
                 "X-Title": "Bird Lens Enhancer",
             },
             body: JSON.stringify({
-                model: "black-forest-labs/flux.2-klein-4b",
+                model: "google/gemini-3.1-flash-image-preview",
                 messages: [
                     {
                         role: "user",
@@ -70,10 +70,8 @@ serve(async (req: Request) => {
                         ]
                     }
                 ],
-                modalities: ["image"],
-                image_config: {
-                    aspect_ratio: "1:1"
-                }
+                // Nano Banana models use different config for generating images compared to Flux
+                // No extra image_config required for simple enhancements unless specified in API docs.
             }),
         });
 
