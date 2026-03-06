@@ -9,7 +9,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import {
     Gesture,
@@ -116,9 +116,11 @@ export const AIEnhancerCard: React.FC = () => {
             )}
 
             {isPaywallVisible && (
-                <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
-                    <Paywall onClose={() => setIsPaywallVisible(false)} />
-                </View>
+                <Modal animationType="slide" transparent={true} visible={isPaywallVisible} onRequestClose={() => setIsPaywallVisible(false)}>
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000', zIndex: 100 }]}>
+                        <Paywall onClose={() => setIsPaywallVisible(false)} />
+                    </View>
+                </Modal>
             )}
         </View>
     );
