@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import {
     Dimensions,
     Image,
+    Modal,
     StyleSheet,
     Text,
     TouchableOpacity,
