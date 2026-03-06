@@ -39,6 +39,8 @@ supabase/functions/.env
 antigravity.md
 AGENTS.md
 .agents/
+CLAUDE.md
+.mcp.json
 
 # debug
 extensions_debug.json

@@ -127,7 +127,7 @@ Deno.test("IdentificationService.processStream - does NOT throw if interrupted a
     const stream = new ReadableStream({
         start(controller) {
             controller.enqueue(encoder.encode('{"type":"candidates","data":[{"name":"Bird 1"}]}\n'));
-            controller.error(new Error("Network glitch after results"));
+            setTimeout(() => controller.error(new Error("Network glitch after results")), 10);
         }
     });
 
