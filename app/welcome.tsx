@@ -2,13 +2,13 @@ import LottieView from 'lottie-react-native';
 import { MotiView } from 'moti';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
-  Dimensions,
   Image,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,14 +25,20 @@ import Animated, {
 import CageScene from '@/components/onboarding/CageScene';
 import FeatherParticles from '@/components/onboarding/FeatherParticles';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-type Phase = 'idle' | 'door_opening' | 'bird_flying' | 'transitioning';
+export type Phase = 'idle' | 'door_opening' | 'bird_flying' | 'transitioning';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const [phase, setPhase] = useState<Phase>('idle');
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Clear all timeouts on unmount
+  useEffect(() => {
+    return () => timers.current.forEach(clearTimeout);
+  }, []);
+
   // Animated values
   const doorRotation = useSharedValue(0);
   const birdTranslateY = useSharedValue(0);
@@ -64,7 +70,7 @@ export default function WelcomeScreen() {
     if (reducedMotion) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       AccessibilityInfo.announceForAccessibility('Bird released! Moving to next screen.');
-      setTimeout(() => navigateToOnboarding(), 300);
+      timers.current.push(setTimeout(() => navigateToOnboarding(), 300));
       return;
     }
 
@@ -78,15 +84,16 @@ export default function WelcomeScreen() {
     });
 
     // Phase 2: Bird emerges from cage, then flies away
-    setTimeout(() => {
+    timers.current.push(setTimeout(() => {
       setPhase('bird_flying');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      AccessibilityInfo.announceForAccessibility('Bird is flying free!');
 
       // Stage 1: Emerge — rise slowly out of cage with a gentle wobble
       birdTranslateY.value = withSequence(
         withTiming(-120, { duration: 900, easing: Easing.out(Easing.quad) }),
         // Stage 2: Fly away — accelerate off screen
-        withTiming(-SCREEN_HEIGHT, { duration: 1000, easing: Easing.in(Easing.cubic) })
+        withTiming(-screenHeight, { duration: 1000, easing: Easing.in(Easing.cubic) })
       );
 
       birdScale.value = withSequence(
@@ -106,14 +113,14 @@ export default function WelcomeScreen() {
       promptOpacity.value = withTiming(0, { duration: 400 });
 
       // Phase 3: Transition out (after emerge + fly = 1900ms)
-      setTimeout(() => {
+      timers.current.push(setTimeout(() => {
         setPhase('transitioning');
         screenOpacity.value = withTiming(0, { duration: 400 });
-        AccessibilityInfo.announceForAccessibility('Bird released!');
-        setTimeout(() => navigateToOnboarding(), 450);
-      }, 1900);
-    }, 600);
-  }, [phase, reducedMotion]);
+        AccessibilityInfo.announceForAccessibility('Navigating to setup.');
+        timers.current.push(setTimeout(() => navigateToOnboarding(), 450));
+      }, 1900));
+    }, 600));
+  }, [phase, reducedMotion, navigateToOnboarding]);
 
   // Animated styles
   const birdAnimatedStyle = useAnimatedStyle(() => ({

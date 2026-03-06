@@ -10,8 +10,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import type { Phase } from '@/app/welcome';
+
 interface FeatherParticlesProps {
-  phase: string;
+  phase: Phase;
   containerHeight: number;
 }
 
@@ -28,7 +30,7 @@ interface Particle {
 
 const COLORS = ['#F97316', '#FBBF24', '#D4D4D4', '#A3A3A3', '#FB923C'];
 
-function Feather({ particle, phase, containerHeight }: { particle: Particle; phase: string; containerHeight: number }) {
+function Feather({ particle, phase, containerHeight }: { particle: Particle; phase: Phase; containerHeight: number }) {
   const translateY = useSharedValue(-20);
   const translateX = useSharedValue(particle.startX);
   const opacity = useSharedValue(0);

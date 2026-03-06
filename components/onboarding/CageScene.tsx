@@ -10,6 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Ellipse, Line, Path, Rect } from 'react-native-svg';
 
+import type { Phase } from '@/app/welcome';
+
 const CAGE_WIDTH = 220;
 const CAGE_HEIGHT = 280;
 const BAR_COUNT = 8;
@@ -31,7 +33,7 @@ const BODY_WIDTH = BODY_RIGHT - BODY_LEFT;
 interface CageSceneProps {
   doorRotation: SharedValue<number>;
   onTap: () => void;
-  phase: string;
+  phase: Phase;
 }
 
 export default function CageScene({ doorRotation, onTap, phase }: CageSceneProps) {
@@ -178,9 +180,9 @@ export default function CageScene({ doorRotation, onTap, phase }: CageSceneProps
       {/* Tap target — the whole cage is tappable */}
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => {
-          if (phase === 'idle') onTap();
-        }}
+        onPress={onTap}
+        disabled={phase !== 'idle'}
+        accessibilityState={{ disabled: phase !== 'idle' }}
         style={styles.fullTapTarget}
         accessibilityRole="button"
         accessibilityLabel="Release the bird to continue"
@@ -275,6 +277,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: DOOR_WIDTH,
     height: DOOR_HEIGHT,
+    backfaceVisibility: 'hidden',
   },
   lockContainer: {
     position: 'absolute',
