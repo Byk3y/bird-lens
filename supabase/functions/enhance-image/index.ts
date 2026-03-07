@@ -70,6 +70,7 @@ serve(async (req: Request) => {
                         ]
                     }
                 ],
+                modalities: ["image"]
                 // Nano Banana models use different config for generating images compared to Flux
                 // No extra image_config required for simple enhancements unless specified in API docs.
             }),
