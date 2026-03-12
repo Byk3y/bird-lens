@@ -48,11 +48,21 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
                             <Diamond color="#fcd34d" size={12} fill="#fcd34d" />
                             <Text style={styles.premiumText}>Unlimited IDs</Text>
                         </View>
-                    ) : (
-                        <View style={styles.creditBadge}>
-                            <Text style={styles.creditText}>{remainingCredits} of 7 left</Text>
+                    ) : remainingCredits < 7 ? (
+                        <View style={[
+                            styles.creditBadge,
+                            remainingCredits <= 1 && styles.creditBadgeUrgent,
+                            remainingCredits >= 2 && remainingCredits <= 3 && styles.creditBadgeWarning,
+                        ]}>
+                            <Text style={[
+                                styles.creditText,
+                                remainingCredits <= 1 && styles.creditTextUrgent,
+                                remainingCredits >= 2 && remainingCredits <= 3 && styles.creditTextWarning,
+                            ]}>
+                                {remainingCredits === 0 ? 'No IDs left' : `${remainingCredits} of 7 left`}
+                            </Text>
                         </View>
-                    )
+                    ) : null
                 )}
             </View>
 
@@ -123,10 +133,26 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginTop: 8,
     },
+    creditBadgeWarning: {
+        backgroundColor: 'rgba(234, 179, 8, 0.25)',
+        borderWidth: 1,
+        borderColor: 'rgba(234, 179, 8, 0.4)',
+    },
+    creditBadgeUrgent: {
+        backgroundColor: 'rgba(239, 68, 68, 0.25)',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.4)',
+    },
     creditText: {
         color: Colors.white,
         fontSize: 10,
         fontWeight: '700',
         letterSpacing: 0.3,
+    },
+    creditTextWarning: {
+        color: '#fbbf24',
+    },
+    creditTextUrgent: {
+        color: '#f87171',
     },
 });

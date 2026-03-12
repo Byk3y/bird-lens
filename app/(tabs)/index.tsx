@@ -17,6 +17,7 @@ import { ActionGrid } from '@/components/home/ActionGrid';
 import { AIEnhancerCard } from '@/components/home/AIEnhancerCard';
 import { ExploreSection } from '@/components/home/ExploreSection';
 import { HomeHeader } from '@/components/home/HomeHeader';
+import { TrialBanner } from '@/components/home/TrialBanner';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -46,6 +47,8 @@ export default function HomeScreen() {
         }}
       >
         <HomeHeader />
+
+        <TrialBanner />
 
         <ActionGrid />
 
