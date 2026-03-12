@@ -24,7 +24,7 @@ export const MinimalCard: React.FC<MinimalCardProps> = ({ data }) => {
 
             <View style={styles.footer}>
                 <Image source={require('@/assets/images/icon.png')} style={styles.appIcon} />
-                <Text style={styles.footerText}>Identified with BirdMark</Text>
+                <Text style={styles.footerText}>Identified with BirdMark App</Text>
             </View>
         </View>
     );

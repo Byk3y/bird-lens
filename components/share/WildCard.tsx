@@ -45,7 +45,7 @@ export const WildCard: React.FC<WildCardProps> = ({ data }) => {
             {/* Top-left branding */}
             <View style={styles.topBrand}>
                 <Image source={require('@/assets/images/icon.png')} style={styles.appIcon} />
-                <Text style={styles.brandText}>Identified with BirdMark</Text>
+                <Text style={styles.brandText}>Identified with BirdMark App</Text>
             </View>
 
             {/* Bottom content over gradient */}

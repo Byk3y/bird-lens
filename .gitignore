@@ -39,6 +39,7 @@ supabase/functions/.env
 antigravity.md
 AGENTS.md
 .agents/
+skills-lock.json
 CLAUDE.md
 .mcp.json
 
