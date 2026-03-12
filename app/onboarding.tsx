@@ -22,14 +22,12 @@ export default function OnboardingScreen() {
         setShowLocationStep(true);
     };
 
-    const handleLocationPermission = async (enable: boolean) => {
-        if (enable) {
-            try {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                console.log('Location permission status:', status);
-            } catch (err) {
-                console.warn('Error requesting location:', err);
-            }
+    const handleLocationPermission = async () => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            console.log('Location permission status:', status);
+        } catch (err) {
+            console.warn('Error requesting location:', err);
         }
         router.push('/paywall');
     };
@@ -127,19 +125,11 @@ export default function OnboardingScreen() {
                             </Text>
 
                             <TouchableOpacity
-                                onPress={() => handleLocationPermission(true)}
+                                onPress={handleLocationPermission}
                                 style={styles.allowButton}
                                 activeOpacity={0.8}
                             >
-                                <Text style={styles.allowButtonText}>Allow Location</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                onPress={() => handleLocationPermission(false)}
-                                style={styles.skipButton}
-                                activeOpacity={0.6}
-                            >
-                                <Text style={styles.skipButtonText}>Maybe Later</Text>
+                                <Text style={styles.allowButtonText}>Continue</Text>
                             </TouchableOpacity>
                         </BlurView>
                     </View>
@@ -257,15 +247,5 @@ const styles = StyleSheet.create({
         color: '#000000',
         fontSize: 16,
         fontWeight: '600',
-    },
-    skipButton: {
-        paddingVertical: 12,
-        width: '100%',
-        alignItems: 'center',
-    },
-    skipButtonText: {
-        color: 'rgba(255, 255, 255, 0.5)',
-        fontSize: 14,
-        fontWeight: '500',
     },
 });
