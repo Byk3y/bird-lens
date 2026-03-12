@@ -84,9 +84,12 @@ function RootLayoutNav() {
     async function initializeSystem() {
       try {
         await Promise.all([
-          initAudioConfig().catch(err => console.warn('initAudioConfig error:', err)),
-          subscriptionService.initialize().catch(err => console.error('RevenueCat initialization error:', err))
+          initAudioConfig().catch((err) => console.warn('initAudioConfig error:', err)),
+          subscriptionService.initialize().catch((err) => console.error('RevenueCat initialization error:', err)),
         ]);
+
+        // Silently pre-fetch offerings in the background so the Paywall opens instantly later
+        subscriptionService.getOfferings().catch((err) => console.log('Background offering pre-fetch failed:', err));
 
         const completed = await onboardingState.isCompleted();
         setOnboardingCompleted(completed);
