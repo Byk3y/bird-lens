@@ -207,18 +207,24 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Destructive Actions */}
-                {!isGuest && (
-                    <>
-                        <SectionSeparator />
-                        <View style={styles.group}>
+                <SectionSeparator />
+                <View style={styles.group}>
+                    {!isGuest && (
+                        <>
                             <SettingRow
                                 label="Sign Out"
                                 isDestructive
                                 onPress={handleSignOut}
                             />
-                        </View>
-                    </>
-                )}
+                            <SectionSeparator />
+                        </>
+                    )}
+                    <SettingRow
+                        label="Delete Account"
+                        isDestructive
+                        onPress={handleDeleteAccount}
+                    />
+                </View>
             </ScrollView>
 
             <AuthModal

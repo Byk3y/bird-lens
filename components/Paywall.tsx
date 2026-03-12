@@ -8,7 +8,7 @@ import LottieView from 'lottie-react-native';
 import { Check } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ImageBackground, Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,6 +31,9 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const { showAlert } = useAlert();
     const { refreshSubscription } = useAuth();
     const insets = useSafeAreaInsets();
+    const { width: screenWidth } = useWindowDimensions();
+    const isTablet = screenWidth >= 768 || (Platform.OS === 'ios' && Platform.isPad);
+    const heroHeight = isTablet ? '40%' : '60%';
 
     useEffect(() => {
         loadOfferings();
@@ -115,7 +118,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     return (
         <View style={styles.container}>
             {/* Background Hero Image - Standalone Layer at the top */}
-            <View style={styles.heroWrapper}>
+            <View style={[styles.heroWrapper, { height: heroHeight }]}>
                 <ImageBackground
                     source={require('@/assets/images/paywall/hero-cardinal.webp')}
                     style={styles.heroBackground}
@@ -141,12 +144,17 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Content Area - Changed to View for non-scrollable layout */}
-                <View style={styles.mainContent}>
+                {/* Content Area - ScrollView for iPad compatibility */}
+                <ScrollView
+                    style={styles.mainContent}
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    bounces={false}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Flexible spacer pushes everything down low */}
                     <View style={{ flex: 1 }} />
 
-                    <View style={styles.innerContent}>
+                    <View style={[styles.innerContent, isTablet && styles.innerContentTablet]}>
                         <MotiView
                             from={{ opacity: 0, translateY: 15 }}
                             animate={{ opacity: 1, translateY: 0 }}
@@ -183,6 +191,11 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                 <Text style={styles.pricingMainTitle}>
                                     Try 7 days free
                                 </Text>
+                                <Text style={styles.trialSubtext}>
+                                    {activePackage
+                                        ? `Then ${activePackage.product.priceString}/${selectedPlan === 'annual' ? 'year' : 'month'}. Cancel anytime.`
+                                        : `Then ${selectedPlan === 'annual' ? '$24.99/year' : '$4.99/month'}. Cancel anytime.`}
+                                </Text>
 
                                 <View style={styles.planSelector}>
                                     {/* Annual Plan Card */}
@@ -202,10 +215,10 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                         </View>
                                         <View style={styles.priceLineContainer}>
                                             <Text style={styles.heroPriceText}>
-                                                {annualPackage ? `${annualPackage.product.priceString.replace(/[\d.,]+/, (match: string) => (parseFloat(match.replace(/,/g, '')) / 12).toFixed(2))} / month` : '$2.08 / month'}
+                                                {annualPackage ? `${annualPackage.product.priceString} / year` : '$24.99 / year'}
                                             </Text>
                                             <Text style={styles.clarificationPriceText}>
-                                                {annualPackage ? `${annualPackage.product.priceString} billed annually` : '$24.99 billed annually'}
+                                                {annualPackage ? `That's just ${annualPackage.product.priceString.replace(/[\d.,]+/, (match: string) => (parseFloat(match.replace(/,/g, '')) / 12).toFixed(2))} / month` : "That's just $2.08 / month"}
                                             </Text>
                                         </View>
                                     </TouchableOpacity>
@@ -256,13 +269,20 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                 onPress={() => activePackage && handlePurchase(activePackage)}
                                 disabled={purchasing}
                             >
-                                <Text style={styles.ctaText}>
-                                    {purchasing ? 'Processing...' : 'Continue'}
+                                <Text style={styles.ctaText} numberOfLines={1} adjustsFontSizeToFit>
+                                    {purchasing
+                                        ? 'Processing...'
+                                        : activePackage
+                                            ? `Try 7 Days Free, then ${activePackage.product.priceString}/${selectedPlan === 'annual' ? 'year' : 'month'}`
+                                            : 'Continue'}
                                 </Text>
                             </TouchableOpacity>
 
                             <Text style={styles.legalText}>
-                                Renewals are automatic unless cancelled 24 hours before the trial ends. By subscribing, you agree to our{' '}
+                                {activePackage
+                                    ? `After the 7-day free trial, you will be automatically charged ${activePackage.product.priceString}/${selectedPlan === 'annual' ? 'year' : 'month'} unless cancelled at least 24 hours before the trial ends. Subscriptions auto-renew until cancelled. `
+                                    : 'Renewals are automatic unless cancelled 24 hours before the trial ends. '}
+                                By subscribing, you agree to our{' '}
                                 <Text
                                     style={styles.legalLink}
                                     onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
@@ -278,7 +298,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                             </Text>
                         </MotiView>
                     </View>
-                </View>
+                </ScrollView>
             </View>
 
             {/* Hovering Lottie animation indicating Double Click to Pay */}
@@ -303,7 +323,6 @@ const styles = StyleSheet.create({
     },
     heroWrapper: {
         width: '100%',
-        height: '60%', // Image takes up top 60%
         position: 'absolute',
         top: 0,
         overflow: 'hidden',
@@ -330,8 +349,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     innerContent: {
-        paddingHorizontal: 16, // Reduced from 25 to maximize horizontal space for features
+        paddingHorizontal: 16,
         paddingBottom: Platform.OS === 'ios' ? 40 : 25,
+    },
+    innerContentTablet: {
+        maxWidth: 500,
+        alignSelf: 'center' as const,
+        width: '100%' as const,
     },
     title: {
         fontSize: 34,
@@ -454,6 +478,13 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
         textAlign: 'center',
+        marginBottom: 2,
+    },
+    trialSubtext: {
+        color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: 13,
+        fontWeight: '500',
+        textAlign: 'center',
         marginBottom: 8,
     },
     planCardHeaderRow: {
@@ -466,11 +497,10 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     priceLineContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'baseline',
+        flexDirection: 'column',
         width: '100%',
         marginTop: 4,
+        gap: 2,
     },
     heroPriceText: {
         color: '#FFFFFF',
@@ -520,21 +550,22 @@ const styles = StyleSheet.create({
     },
     ctaText: {
         color: '#FFFFFF',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
     },
     legalText: {
-        color: 'rgba(255, 255, 255, 0.4)',
-        fontSize: 10,
+        color: 'rgba(255, 255, 255, 0.55)',
+        fontSize: 12,
         textAlign: 'center',
-        lineHeight: 14,
+        lineHeight: 16,
         marginTop: 12,
         paddingHorizontal: 15,
     },
     legalLink: {
         color: '#F97316',
         fontWeight: '600',
+        textDecorationLine: 'underline' as const,
     },
     termsText: {
         color: 'rgba(255, 255, 255, 0.4)',
