@@ -48,7 +48,7 @@ interface ShareCardBottomSheetProps {
     imageUrl?: string;
     locationName?: string;
     dateIdentified?: string | Date;
-    onSuccess?: () => void;
+    onSuccess?: () => void | Promise<void>;
 }
 
 const TEMPLATES: { key: TemplateType; label: string }[] = [
@@ -153,8 +153,9 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     };
 
     const handleSave = async () => {
-        await saveToPhotos(() => {
+        await saveToPhotos(async () => {
             onClose();
+            await onSuccess?.();
         });
     };
 
@@ -162,7 +163,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
         const success = await shareCard();
         if (success) {
             onClose();
-            onSuccess?.();
+            await onSuccess?.();
         }
     };
 

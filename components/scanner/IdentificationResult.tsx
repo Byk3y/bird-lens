@@ -36,7 +36,7 @@ interface IdentificationResultProps {
     setActiveIndex: (index: number) => void;
     enrichCandidate: (index: number, data: Partial<BirdResult>) => void;
     updateHeroImage: (scientificName: string, url: string) => void;
-    onSave: (bird: BirdResult, capturedImage: string | null, recordingUri?: string | null) => void;
+    onSave: (bird: BirdResult, capturedImage: string | null, recordingUri?: string | null) => Promise<void>;
     onReset: () => void;
     isProcessing?: boolean;
     locationName?: string | null;
@@ -377,10 +377,10 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     bird={activeBird}
                     imageUrl={capturedImage || heroImages[activeBird.scientific_name]}
                     locationName={locationName || undefined}
-                    onSuccess={() => {
+                    onSuccess={async () => {
                         // Auto-save if not already saved
                         if (!isSavedForActive) {
-                            onSave(activeBird, capturedImage, recordingUri);
+                            await onSave(activeBird, capturedImage, recordingUri);
                         }
                         // Navigate to collection after successful share
                         router.replace('/(tabs)/collection');

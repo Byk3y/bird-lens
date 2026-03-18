@@ -475,7 +475,15 @@ export default function ScannerScreen() {
               if (success) {
                 setSavedIndices(prev => new Set(prev).add(activeIndex));
 
-                // Navigate to collection after a brief delay to show success state
+                // Reset scanner state and navigate to collection after showing success state
+                setTimeout(() => {
+                  resetResult();
+                  setCapturedImage(null);
+                  clearRecording();
+                  setSavedIndices(new Set());
+                  setActiveIndex(0);
+                  router.replace('/(tabs)/collection');
+                }, 1500);
               }
             }}
             onReset={() => {
