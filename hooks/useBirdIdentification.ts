@@ -7,8 +7,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { fetch } from 'expo/fetch';
-import { useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { useRef, useState } from 'react';
 import { getCurrentLocation } from './useLocation';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -25,28 +24,10 @@ export const useBirdIdentification = () => {
     const [error, setError] = useState<string | null>(null);
     const [progressMessage, setProgressMessage] = useState<string | null>(null);
 
-    // Use Ref for controller to access it reliably within the AppState closure
     const abortControllerRef = useRef<AbortController | null>(null);
     const [lastLocation, setLastLocation] = useState<{ locationName: string; latitude: number; longitude: number } | null>(null);
     const { user, isLoading: isAuthLoading } = useAuth();
     const { showAlert } = useAlert();
-
-    // Setup listener for app backgrounding to cleanly sever open streams
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-            if (nextAppState === 'background' || nextAppState === 'inactive') {
-                if (abortControllerRef.current) {
-                    console.log('App backgrounded, aborting current stream to prevent dangling sockets...');
-                    abortControllerRef.current.abort();
-                    abortControllerRef.current = null;
-                }
-            }
-        });
-
-        return () => {
-            subscription.remove();
-        };
-    }, []);
 
     const identifyBird = async (imageB64?: string, audioB64?: string): Promise<BirdResult | null | undefined> => {
         if (isProcessing) return;
