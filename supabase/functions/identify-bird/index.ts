@@ -95,6 +95,23 @@ async function setCachedMedia(scientificName: string, name: string, mediaData: a
     }
 }
 
+async function setCachedIdentificationData(scientificName: string, metadata: any) {
+    try {
+        const { error } = await supabase
+            .from('species_meta')
+            .upsert({
+                scientific_name: scientificName.trim(),
+                identification_data: metadata,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'scientific_name' });
+
+        if (error) console.error("[CACHE] identification_data save error:", error);
+        else console.log("[CACHE] Saved identification_data for " + scientificName);
+    } catch (e) {
+        console.error("[CACHE] identification_data error:", e);
+    }
+}
+
 
 // ---------- Main Handler ----------
 
@@ -541,6 +558,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             const meta = await generateBirdMetadata(topCandidate.scientific_name);
                             if (meta) {
                                 writeChunk(controller, { type: "metadata", index: 0, data: meta });
+                                setCachedIdentificationData(topCandidate.scientific_name, meta).catch(() => {});
                             }
 
                             if (candidates.length > 1) {

@@ -264,7 +264,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                 <View style={styles.contentContainer}>
                     {!isComparisonTab && activeBird ? (
                         <BirdProfileContent
-                            key={`profile-${activeIndex}-${activeBird.scientific_name}`}
+                            key={`profile-${activeIndex}-${activeBird.scientific_name}-${activeBird.nesting_info ? 'enriched' : 'base'}`}
                             bird={activeBird}
                             inatPhotos={activeBird.inat_photos}
                             sounds={activeBird.sounds}

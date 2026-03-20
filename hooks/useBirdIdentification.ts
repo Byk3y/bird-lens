@@ -135,11 +135,11 @@ export const useBirdIdentification = () => {
                                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 console.log(`Received ${initialBirds.length} candidates`);
 
-                                // Fix 3: Start 15s enrichment timeout
+                                // Fix 3: Start 30s enrichment timeout
                                 enrichmentTimeout = setTimeout(() => {
-                                    console.log('[Timeout] Enrichment phase exceeded 15s. Aborting stream to show partial results.');
+                                    console.log('[Timeout] Enrichment phase exceeded 30s. Aborting stream to show partial results.');
                                     currentController.abort();
-                                }, 15000);
+                                }, 30000);
                                 break;
                             }
 

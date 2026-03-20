@@ -122,10 +122,10 @@ export async function generateBirdMetadata(scientificName: string) {
 
         if (meta) {
             if (!validateBirdMetadata(meta)) {
-                console.warn(`[Enrichment] Metadata validation failed for ${scientificName}. Data was incomplete.`);
-                return null;
+                console.warn(`[Enrichment] Metadata validation partial for ${scientificName}. Some fields may be incomplete, but returning data anyway.`);
+            } else {
+                console.log('[Enrichment] Successfully generated metadata for ' + scientificName + ' via ' + (isFallback ? 'Gemini' : 'OpenRouter'));
             }
-            console.log('[Enrichment] Successfully generated metadata for ' + scientificName + ' via ' + (isFallback ? 'Gemini' : 'OpenRouter'));
         }
 
         return meta;
@@ -167,12 +167,13 @@ export async function generateBatchBirdMetadata(scientificNames: string[]) {
         const parsed = cleanAndParseJson(content, "Batch-Enrichment");
         const birds = parsed.birds || parsed.candidates || (Array.isArray(parsed) ? parsed : []);
 
-        // Filter out any that fail validation
-        return birds.filter((b: any) => {
-            const isValid = validateBirdMetadata(b);
-            if (!isValid) console.warn(`[Batch-Enrichment] Skipping bird ${b?.name || 'unknown'} due to validation failure.`);
-            return isValid;
-        });
+        // Warn about birds with incomplete validation, but don't filter them out
+        return birds.map((b: any) => {
+            if (!validateBirdMetadata(b)) {
+                console.warn(`[Batch-Enrichment] Bird ${b?.name || 'unknown'} has partial data, but returning anyway.`);
+            }
+            return b;
+        }).filter((b: any) => b?.name || b?.scientific_name);
     } catch (error) {
         console.error("Batch enrichment failed:", error);
         return [];

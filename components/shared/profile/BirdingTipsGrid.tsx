@@ -85,8 +85,8 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                         </View>
                     </View>
                     <View style={styles.halfCardMain}>
-                        <Image source={getHabitatIcon(bird)} style={[styles.habitatIcon, !bird.habitat && { opacity: 0.1 }]} cachePolicy="memory-disk" />
-                        <Text style={[styles.halfCardValue, !bird.habitat && { color: '#CCC' }]}>{bird.habitat_tags?.[0] || bird.habitat || displayLoadingOrUnknown}</Text>
+                        <Image source={getHabitatIcon(bird)} style={[styles.habitatIcon, !bird.habitat && !bird.habitat_tags?.length && { opacity: 0.1 }]} cachePolicy="memory-disk" />
+                        <Text style={[styles.halfCardValue, !bird.habitat && !bird.habitat_tags?.length && { color: '#CCC' }]}>{bird.habitat_tags?.[0] || bird.habitat || displayLoadingOrUnknown}</Text>
                     </View>
                 </TouchableOpacity>
 
@@ -100,7 +100,9 @@ export const BirdingTipsGrid: React.FC<BirdingTipsGridProps> = ({ bird, onOpenTi
                     <View style={styles.halfCardMain}>
                         <Image source={getNestingIcon(bird)} style={[styles.habitatIcon, !bird.nesting_info && { opacity: 0.1 }]} cachePolicy="memory-disk" />
                         <Text style={[styles.halfCardValue, !bird.nesting_info && { color: '#CCC' }]}>
-                            {bird.nesting_info?.location ? bird.nesting_info.location.split(' ')[0] : displayLoadingOrUnknown}
+                            {bird.nesting_info?.location && bird.nesting_info.location !== 'N/A'
+                                ? bird.nesting_info.location.split(' ')[0]
+                                : bird.nesting_info?.type || displayLoadingOrUnknown}
                         </Text>
                     </View>
                 </TouchableOpacity>
