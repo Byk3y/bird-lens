@@ -3,6 +3,7 @@ import { useTutorial } from '@/hooks/useTutorials';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
 import React from 'react';
 import {
     Dimensions,
@@ -11,9 +12,11 @@ import {
     Share,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View
 } from 'react-native';
 import Markdown, { ASTNode } from 'react-native-markdown-display';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -58,6 +61,7 @@ const SLUG_META: Record<string, { title: string; cover_image_url: string }> = {
 export default function TutorialDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     // Using TanStack Query for robust caching and loading states
     const { data: tutorial, isLoading: loading } = useTutorial(slug!);
@@ -102,9 +106,22 @@ export default function TutorialDetailScreen() {
                         transition={300}
                     />
                     <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.8)']}
+                        colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']}
+                        locations={[0, 0.35, 1]}
                         style={styles.overlay}
                     />
+
+                    {/* Back Button */}
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                        style={[styles.backBtn, { top: Math.max(insets.top, 10) + 4 }]}
+                        activeOpacity={0.7}
+                    >
+                        <View pointerEvents="none">
+                            <ChevronLeft color={Colors.white} size={26} />
+                        </View>
+                    </TouchableOpacity>
 
                     <View style={styles.heroContent}>
                         <Text style={styles.title}>{currentTitle}</Text>
@@ -191,6 +208,17 @@ const styles = StyleSheet.create({
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
+    },
+    backBtn: {
+        position: 'absolute',
+        left: 12,
+        zIndex: 10,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     heroContent: {
         position: 'absolute',
