@@ -5,8 +5,7 @@ import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { IdentificationDetailBottomSheet } from '@/components/shared/IdentificationDetailBottomSheet';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
-import { useSubscriptionGating } from '@/hooks/useSubscriptionGating';
-import { useAuth } from '@/lib/auth';
+
 import { BirdResult } from '@/types/scanner';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -79,8 +78,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
 }) => {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { isPro } = useAuth();
-    const { identificationsUsed } = useSubscriptionGating();
+
     const { showToast } = useAlert();
     const sourceMode = recordingUri ? 'sound' : 'photo';
 
@@ -179,24 +177,7 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     </View>
                 </TouchableOpacity>
 
-                {/* Credits Badge — only for free users */}
-                {!isPro && (
-                    <View style={{
-                        backgroundColor: 'rgba(0,0,0,0.45)',
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: 12,
-                    }}>
-                        <Text style={{
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: '700',
-                            letterSpacing: 0.3,
-                        }}>
-                            ID {identificationsUsed} of 7
-                        </Text>
-                    </View>
-                )}
+
 
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     style={[styles.navButton, styles.doneButton, { width: undefined }]}
