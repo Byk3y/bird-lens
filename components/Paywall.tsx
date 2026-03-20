@@ -57,11 +57,16 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
             const { success, error } = await subscriptionService.purchasePackage(pkg);
             if (success) {
                 await refreshSubscription();
-                showAlert({
-                    title: 'Welcome to BirdMark Pro!',
-                    message: 'Your purchase was successful.',
-                    actions: [{ text: 'Start Discovering', onPress: onClose }]
-                });
+                // Close the paywall FIRST to avoid alert rendering behind the modal
+                onClose();
+                // Show success alert after modal has dismissed
+                setTimeout(() => {
+                    showAlert({
+                        title: 'Welcome to BirdMark Pro! 🎉',
+                        message: 'Your purchase was successful. Enjoy unlimited identifications!',
+                        actions: [{ text: 'Start Discovering' }]
+                    });
+                }, 400);
             } else if (error && !error.userCancelled) {
                 showAlert({
                     title: 'Error',
@@ -81,11 +86,15 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
             const customerInfo = await subscriptionService.restorePurchases();
             if (customerInfo?.entitlements.active['Birdsnap Pro']) {
                 await refreshSubscription();
-                showAlert({
-                    title: 'Success',
-                    message: 'Purchases restored!',
-                    actions: [{ text: 'OK', onPress: onClose }]
-                });
+                // Close the paywall FIRST, then show confirmation
+                onClose();
+                setTimeout(() => {
+                    showAlert({
+                        title: 'Welcome Back! 🎉',
+                        message: 'Your subscription has been restored.',
+                        actions: [{ text: 'Continue' }]
+                    });
+                }, 400);
             } else {
                 showAlert({
                     title: 'Notice',
