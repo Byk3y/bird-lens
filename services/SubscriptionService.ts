@@ -1,6 +1,17 @@
 import { Platform } from 'react-native';
-import Purchases, { LOG_LEVEL } from 'react-native-purchases';
-import RevenueCatUI from 'react-native-purchases-ui';
+import Constants from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
+let Purchases: any = null;
+let RevenueCatUI: any = null;
+let LOG_LEVEL: any = {};
+
+if (!isExpoGo) {
+    Purchases = require('react-native-purchases').default;
+    LOG_LEVEL = require('react-native-purchases').LOG_LEVEL;
+    RevenueCatUI = require('react-native-purchases-ui').default;
+}
 
 const API_KEY = Platform.select({
     ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '',
@@ -27,6 +38,11 @@ export class SubscriptionService {
      * Initialize the RevenueCat SDK
      */
     public async initialize(): Promise<void> {
+        if (isExpoGo) {
+            console.log('RevenueCat skipped in Expo Go.');
+            return;
+        }
+
         if (this.isConfigured) {
             console.log('RevenueCat is already configured, skipping.');
             return;
@@ -51,6 +67,7 @@ export class SubscriptionService {
      * Fetch current offerings
      */
     public async getOfferings() {
+        if (isExpoGo) return null;
         try {
             const offerings = await Purchases.getOfferings();
             if (offerings.current !== null) {
@@ -67,6 +84,7 @@ export class SubscriptionService {
      * Check if user is subscribed
      */
     public async isSubscribed(): Promise<boolean> {
+        if (isExpoGo) return false;
         try {
             const customerInfo = await Purchases.getCustomerInfo();
             return typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
@@ -80,6 +98,7 @@ export class SubscriptionService {
      * Purchase a package
      */
     public async purchasePackage(packageToPurchase: any) {
+        if (isExpoGo) return { success: false, error: 'Not available in Expo Go' };
         try {
             const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
             if (typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== 'undefined') {
@@ -98,6 +117,7 @@ export class SubscriptionService {
      * Restore purchases
      */
     public async restorePurchases() {
+        if (isExpoGo) return null;
         try {
             const customerInfo = await Purchases.restorePurchases();
             return customerInfo;
@@ -111,6 +131,7 @@ export class SubscriptionService {
      * Launch RevenueCat Customer Center
      */
     public async showCustomerCenter() {
+        if (isExpoGo) return;
         try {
             await RevenueCatUI.presentCustomerCenter();
         } catch (error) {
@@ -122,6 +143,7 @@ export class SubscriptionService {
      * Present RevenueCat Paywall (Pre-built UI)
      */
     public async showPaywall() {
+        if (isExpoGo) return null;
         try {
             const result = await RevenueCatUI.presentPaywall();
             // result is a string in newer versions or an object depending on the SDK version
@@ -135,6 +157,7 @@ export class SubscriptionService {
      * Link RevenueCat identity to Supabase user ID
      */
     public async logIn(userId: string) {
+        if (isExpoGo) return null;
         try {
             const { customerInfo, created } = await Purchases.logIn(userId);
             console.log('RevenueCat identity logged in:', userId, 'Created:', created);
@@ -149,6 +172,7 @@ export class SubscriptionService {
      * Clear RevenueCat identity on logout
      */
     public async logOut() {
+        if (isExpoGo) return;
         try {
             await Purchases.logOut();
             console.log('RevenueCat identity logged out');

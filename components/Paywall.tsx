@@ -9,7 +9,7 @@ import { Check } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ImageBackground, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import { PurchasesPackage } from 'react-native-purchases';
+import type { PurchasesPackage } from 'react-native-purchases';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PaywallProps {
