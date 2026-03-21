@@ -183,15 +183,26 @@ export default function EnhancerScreen() {
             setIsEnhancing(true);
 
             // 1. Crop and resize the image for processing
+            // Ensure crop rectangle is within image bounds
+            const originX = Math.max(0, cropData.originX);
+            const originY = Math.max(0, cropData.originY);
+
+            // Adjust width and height if origin was clamped, and ensure they don't exceed remaining image space
+            const availableWidth = (cropData.baseImageWidth || 0) - originX;
+            const availableHeight = (cropData.baseImageHeight || 0) - originY;
+
+            const width = Math.min(cropData.width - (originX - cropData.originX), availableWidth);
+            const height = Math.min(cropData.height - (originY - cropData.originY), availableHeight);
+
             const manipResult = await manipulateAsync(
                 pickedImage,
                 [
                     {
                         crop: {
-                            originX: Math.max(0, cropData.originX),
-                            originY: Math.max(0, cropData.originY),
-                            width: cropData.width,
-                            height: cropData.height,
+                            originX: Math.floor(originX),
+                            originY: Math.floor(originY),
+                            width: Math.floor(width),
+                            height: Math.floor(height),
                         },
                     },
                     { resize: { width: 1024 } },
