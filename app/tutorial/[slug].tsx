@@ -96,6 +96,18 @@ export default function TutorialDetailScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Back Button - fixed position outside ScrollView */}
+            <TouchableOpacity
+                onPress={() => router.back()}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                style={[styles.backBtn, { top: Math.max(insets.top, 10) + 4 }]}
+                activeOpacity={0.7}
+            >
+                <View pointerEvents="none">
+                    <ChevronLeft color={Colors.white} size={26} />
+                </View>
+            </TouchableOpacity>
+
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {/* Hero Section */}
                 <View style={styles.heroContainer}>
@@ -110,18 +122,6 @@ export default function TutorialDetailScreen() {
                         locations={[0, 0.35, 1]}
                         style={styles.overlay}
                     />
-
-                    {/* Back Button */}
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                        style={[styles.backBtn, { top: Math.max(insets.top, 10) + 4 }]}
-                        activeOpacity={0.7}
-                    >
-                        <View pointerEvents="none">
-                            <ChevronLeft color={Colors.white} size={26} />
-                        </View>
-                    </TouchableOpacity>
 
                     <View style={styles.heroContent}>
                         <Text style={styles.title}>{currentTitle}</Text>
