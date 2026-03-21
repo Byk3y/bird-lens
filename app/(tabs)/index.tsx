@@ -2,7 +2,7 @@ import { Colors, Spacing, Typography } from '@/constants/theme';
 import { useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, Sparkles } from 'lucide-react-native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -15,13 +15,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Components
 import { ActionGrid } from '@/components/home/ActionGrid';
 import { AIEnhancerCard } from '@/components/home/AIEnhancerCard';
+import { DraftSightingPrompt } from '@/components/home/DraftSightingPrompt';
 import { ExploreSection } from '@/components/home/ExploreSection';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { TrialBanner } from '@/components/home/TrialBanner';
+import { useAlert } from '@/components/common/AlertProvider';
+import { useAuth } from '@/lib/auth';
+import { draftSighting, DraftSighting } from '@/lib/draftSighting';
+import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
+  const { user } = useAuth();
+  const { showAlert } = useAlert();
+  const [draftData, setDraftData] = useState<DraftSighting | null>(null);
+  const [isDraftSaving, setIsDraftSaving] = useState(false);
 
   // Proactively request permission on mount if undetermined
   useEffect(() => {
@@ -29,6 +38,37 @@ export default function HomeScreen() {
       requestPermission();
     }
   }, [permission]);
+
+  // Check for unsaved draft on mount
+  useEffect(() => {
+    draftSighting.loadDraft().then(draft => {
+      if (draft) setDraftData(draft);
+    });
+  }, []);
+
+  const handleSaveDraft = async () => {
+    if (!draftData || !user?.id) {
+      showAlert({ title: 'Error', message: 'You must be signed in to save sightings.' });
+      return;
+    }
+    setIsDraftSaving(true);
+    try {
+      await draftSighting.saveDraftToCollection(draftData, user.id);
+      await draftSighting.clearDraft();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setDraftData(null);
+    } catch (e: any) {
+      console.error('Error saving draft:', e);
+      showAlert({ title: 'Save Error', message: e.message || 'Failed to save sighting.' });
+    } finally {
+      setIsDraftSaving(false);
+    }
+  };
+
+  const handleDiscardDraft = async () => {
+    await draftSighting.clearDraft();
+    setDraftData(null);
+  };
 
   return (
     <View style={styles.container}>
@@ -95,6 +135,16 @@ export default function HomeScreen() {
 
         <ExploreSection />
       </ScrollView>
+
+      {draftData && (
+        <DraftSightingPrompt
+          visible={!!draftData}
+          draft={draftData}
+          onSave={handleSaveDraft}
+          onDiscard={handleDiscardDraft}
+          isSaving={isDraftSaving}
+        />
+      )}
     </View>
   );
 }

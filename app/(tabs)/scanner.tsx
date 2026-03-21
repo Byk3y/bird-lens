@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  AppState,
   Dimensions,
   StyleSheet,
   Text,
@@ -39,6 +40,7 @@ import { StatusBar } from 'expo-status-bar';
 
 // Types
 import { ScanMode } from '@/types/scanner';
+import { draftSighting } from '@/lib/draftSighting';
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -146,6 +148,37 @@ export default function ScannerScreen() {
       stopAndCleanup();
     };
   }, []);
+
+  // Persist draft when identification completes
+  useEffect(() => {
+    if (result && !isProcessing && enrichedCandidates.length > 0) {
+      draftSighting.saveDraftFromResult({
+        bird: result,
+        enrichedCandidates,
+        heroImages,
+        capturedImage,
+        recordingUri: recordingUri || null,
+        location: lastLocation,
+      });
+    }
+  }, [result, isProcessing, enrichedCandidates]);
+
+  // Safety net: persist draft when app backgrounds
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active' && result && enrichedCandidates.length > 0) {
+        draftSighting.saveDraftFromResult({
+          bird: result,
+          enrichedCandidates,
+          heroImages,
+          capturedImage,
+          recordingUri: recordingUri || null,
+          location: lastLocation,
+        });
+      }
+    });
+    return () => sub.remove();
+  }, [result, enrichedCandidates, heroImages, capturedImage, recordingUri, lastLocation]);
 
   const handleBack = async () => {
     if (isRecording) {
@@ -474,6 +507,7 @@ export default function ScannerScreen() {
               const success = await saveSighting(bird, image, recording);
               if (success) {
                 setSavedIndices(prev => new Set(prev).add(activeIndex));
+                draftSighting.clearDraft();
 
                 // Reset scanner state and navigate to collection after showing success state
                 setTimeout(() => {
