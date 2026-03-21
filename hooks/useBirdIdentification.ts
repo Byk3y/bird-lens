@@ -1,13 +1,15 @@
 import { useAlert } from '@/components/common/AlertProvider';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IdentificationService } from '@/services/IdentificationService';
 import { BirdResult } from '@/types/scanner';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { fetch } from 'expo/fetch';
 import { useRef, useState } from 'react';
+import { draftSighting } from '@/lib/draftSighting';
+import { uploadToStorage } from '@/lib/uploadMedia';
 import { getCurrentLocation } from './useLocation';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -31,6 +33,9 @@ export const useBirdIdentification = () => {
 
     const identifyBird = async (imageB64?: string, audioB64?: string): Promise<BirdResult | null | undefined> => {
         if (isProcessing) return;
+
+        // Clear any existing draft — new identification replaces it
+        draftSighting.clearDraft();
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
@@ -316,76 +321,23 @@ export const useBirdIdentification = () => {
                 let imageUrl: string | null = null;
                 let audioUrl: string | null = null;
 
-                const { Buffer } = require('buffer');
-
-                // Define upload tasks
+                // Upload media in parallel using stream uploads (no base64/Buffer)
                 const uploadTasks = [];
 
-                // Task 1: Image Upload
-                if (capturedImage) {
-                    uploadTasks.push((async () => {
-                        const fileName = `images/${user?.id}/${Date.now()}.webp`;
-
-                        // Handle both base64 and file URIs
-                        let base64Data;
-                        if (capturedImage.startsWith('file://')) {
-                            base64Data = await FileSystem.readAsStringAsync(capturedImage, {
-                                encoding: FileSystem.EncodingType.Base64,
-                            });
-                        } else {
-                            // If it's already base64 (e.g. from a legacy flow or enhancer), 
-                            // strip the prefix if it exists
-                            base64Data = capturedImage.replace(/^data:image\/[a-z]+;base64,/, '');
-                        }
-
-                        const bytes = Buffer.from(base64Data, 'base64');
-
-                        const { error: uploadError } = await supabase.storage
-                            .from('sightings')
-                            .upload(fileName, bytes, {
-                                contentType: 'image/webp',
-                                upsert: true
-                            });
-
-                        if (uploadError) throw uploadError;
-
-                        const { data: { publicUrl } } = supabase.storage
-                            .from('sightings')
-                            .getPublicUrl(fileName);
-
-                        imageUrl = publicUrl;
-                    })());
+                if (capturedImage?.startsWith('file://')) {
+                    uploadTasks.push(
+                        uploadToStorage(capturedImage, `images/${user?.id}/${Date.now()}.webp`, 'image/webp')
+                            .then(url => { imageUrl = url; })
+                    );
                 }
 
-                // Task 2: Audio Upload
                 if (recordingUri) {
-                    uploadTasks.push((async () => {
-                        const fileName = `audio/${user?.id}/${Date.now()}.wav`;
-
-                        // Read file as base64 using legacy file system and direct buffer conversion
-                        const base64 = await FileSystem.readAsStringAsync(recordingUri, {
-                            encoding: FileSystem.EncodingType.Base64,
-                        });
-                        const audioBytes = Buffer.from(base64, 'base64');
-
-                        const { error: audioUploadError } = await supabase.storage
-                            .from('sightings')
-                            .upload(fileName, audioBytes, {
-                                contentType: 'audio/wav',
-                                upsert: true
-                            });
-
-                        if (audioUploadError) throw audioUploadError;
-
-                        const { data: { publicUrl } } = supabase.storage
-                            .from('sightings')
-                            .getPublicUrl(fileName);
-
-                        audioUrl = publicUrl;
-                    })());
+                    uploadTasks.push(
+                        uploadToStorage(recordingUri, `audio/${user?.id}/${Date.now()}.wav`, 'audio/wav')
+                            .then(url => { audioUrl = url; })
+                    );
                 }
 
-                // Run uploads in parallel
                 if (uploadTasks.length > 0) {
                     await Promise.all(uploadTasks);
                 }
@@ -407,9 +359,27 @@ export const useBirdIdentification = () => {
                     sightingData.image_url = imageUrl;
                 }
 
-                const { error } = await supabase.from('sightings').insert(sightingData);
+                const { data: insertedRow, error } = await supabase
+                    .from('sightings')
+                    .insert(sightingData)
+                    .select('id, species_name, created_at, image_url, audio_url, scientific_name, rarity, confidence, location_name, metadata')
+                    .single();
 
                 if (error) throw error;
+
+                // Optimistically update the collection cache so it's instant on navigate
+                if (insertedRow && user?.id) {
+                    const cacheKey = `bird_lens_collection_${user.id}`;
+                    try {
+                        const cachedJson = await AsyncStorage.getItem(cacheKey);
+                        const cached = cachedJson ? JSON.parse(cachedJson) : { data: [] };
+                        cached.data = [insertedRow, ...(cached.data || [])];
+                        cached.timestamp = Date.now();
+                        await AsyncStorage.setItem(cacheKey, JSON.stringify(cached));
+                    } catch (e) {
+                        // Cache update failed — collection will still refresh from network
+                    }
+                }
 
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 return true;
