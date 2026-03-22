@@ -36,14 +36,37 @@ export default function HomeScreen() {
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [showAttribution, setShowAttribution] = useState(false);
 
-  // Show attribution survey once for new users
+  // Show Pro welcome alert if user just completed a purchase
   useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>;
-    AsyncStorage.getItem('@attribution_survey_completed').then(val => {
-      if (val !== 'true') {
-        timeout = setTimeout(() => setShowAttribution(true), 1000);
+    AsyncStorage.getItem('@show_pro_welcome').then(val => {
+      if (val === 'true') {
+        AsyncStorage.removeItem('@show_pro_welcome');
+        setTimeout(() => {
+          showAlert({
+            title: 'Welcome to BirdMark Pro! 🎉',
+            message: 'Your purchase was successful. Enjoy unlimited identifications!',
+            actions: [{ text: 'Start Discovering' }]
+          });
+        }, 500);
       }
     });
+  }, []);
+
+  // Show attribution survey on second app open, not immediately after onboarding
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    (async () => {
+      const surveyDone = await AsyncStorage.getItem('@attribution_survey_completed');
+      if (surveyDone === 'true') return;
+
+      // Track home screen visits — only show survey from the second visit onward
+      const visitCount = parseInt(await AsyncStorage.getItem('@home_visit_count') ?? '0', 10) + 1;
+      await AsyncStorage.setItem('@home_visit_count', String(visitCount));
+
+      if (visitCount >= 2) {
+        timeout = setTimeout(() => setShowAttribution(true), 2000);
+      }
+    })();
     return () => clearTimeout(timeout);
   }, []);
 
@@ -264,7 +287,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#334155',
+    color: Colors.text,
   },
   betaBadge: {
     backgroundColor: '#f1f5f9',
@@ -274,8 +297,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   betaText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '900',
-    color: '#94a3b8',
+    color: Colors.textSecondary,
   },
 });

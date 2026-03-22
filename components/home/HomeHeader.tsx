@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     headerSubtitle: {
         fontSize: 16,
         fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#FFFFFF',
         marginTop: 4,
     },
     searchContainer: {

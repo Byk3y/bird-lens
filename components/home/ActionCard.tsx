@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     },
     cardTitle: {
         fontSize: 17,
-        fontWeight: '700',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#1e293b',
         letterSpacing: 0.1,
         lineHeight: 21,

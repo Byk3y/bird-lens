@@ -246,6 +246,6 @@ const styles = StyleSheet.create({
     },
     discardButtonText: {
         ...Typography.body,
-        color: Colors.textTertiary,
+        color: Colors.textSecondary,
     },
 });

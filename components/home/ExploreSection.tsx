@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     tagText: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#4b5563',
+        color: Colors.text,
     },
     tagTextSelected: {
         color: Colors.white,
