@@ -1,140 +1,190 @@
-import { Ionicons } from '@expo/vector-icons';
-import { ResizeMode, Video } from 'expo-av';
-import { BlurView } from 'expo-blur';
-import * as Location from 'expo-location';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
+    ViewToken,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const SLIDES = [
+    {
+        id: '1',
+        headline: 'See a bird?\nSnap a photo.',
+        image: require('@/assets/images/onboarding/carousel-slide-1-photo-id.png'),
+    },
+    {
+        id: '2',
+        headline: 'Hear a bird?\nHit record.',
+        image: require('@/assets/images/onboarding/carousel-slide-2-sound-id.png'),
+    },
+    {
+        id: '3',
+        headline: 'Build your personal\nbird collection.',
+        image: require('@/assets/images/onboarding/carousel-slide-3-collection.png'),
+    },
+];
+
+const AUTO_ADVANCE_MS = 2500;
+const RESUME_DELAY_MS = 2500;
 
 export default function OnboardingScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const video = useRef<Video>(null);
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const progressAnim = useRef(new Animated.Value(0)).current;
-    const [isLoading, setIsLoading] = useState(true);
-    const [isFinished, setIsFinished] = useState(false);
-    const [showLocationStep, setShowLocationStep] = useState(false);
+    const { width: screenWidth } = useWindowDimensions();
+    const flatListRef = useRef<FlatList>(null);
+    const [activeIndex, setActiveIndex] = useState(0);
 
-    const handleGetStarted = () => {
-        setIsFinished(true); // Ensure video is marked as finished if they skip or finish
-        setShowLocationStep(true);
-    };
+    // Auto-advance timer ref
+    const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isUserSwiping = useRef(false);
+    const currentIndex = useRef(0);
 
-    const handleLocationPermission = async () => {
-        try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            console.log('Location permission status:', status);
-        } catch (err) {
-            console.warn('Error requesting location:', err);
-        }
-        router.push('/paywall');
-    };
-
-    const handleFinish = () => {
-        router.push('/paywall');
-    };
-
-    const onPlaybackStatusUpdate = (status: any) => {
-        if (status.isLoaded && status.durationMillis) {
-            const progress = status.positionMillis / status.durationMillis;
-            Animated.timing(progressAnim, {
-                toValue: progress,
-                duration: 100,
-                useNativeDriver: false, // width is not supported by native driver
-            }).start();
-
-            // Show button early at 20 seconds mark
-            if (status.positionMillis >= 20000 && !isFinished) {
-                setIsFinished(true);
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: true,
-                }).start();
+    // Track viewable items
+    const onViewableItemsChanged = useRef(
+        ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+            if (viewableItems.length > 0 && viewableItems[0].index != null) {
+                const newIndex = viewableItems[0].index;
+                setActiveIndex(newIndex);
+                currentIndex.current = newIndex;
             }
         }
+    ).current;
 
-        if (status.didJustFinish && !isFinished) {
-            setIsFinished(true);
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-            }).start();
+    const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+
+    const goToPaywall = useCallback(() => {
+        router.push('/paywall');
+    }, [router]);
+
+    // Clear all timers
+    const clearTimers = useCallback(() => {
+        if (autoAdvanceTimer.current) {
+            clearTimeout(autoAdvanceTimer.current);
+            autoAdvanceTimer.current = null;
         }
-    };
+        if (resumeTimer.current) {
+            clearTimeout(resumeTimer.current);
+            resumeTimer.current = null;
+        }
+    }, []);
+
+    // Auto-advance logic — only slides 1 and 2; slide 3 stops
+    const scheduleAutoAdvance = useCallback(() => {
+        clearTimers();
+        // Don't auto-advance from the last slide
+        if (currentIndex.current >= SLIDES.length - 1) return;
+
+        autoAdvanceTimer.current = setTimeout(() => {
+            if (isUserSwiping.current) return;
+
+            const nextIndex = currentIndex.current + 1;
+            if (nextIndex < SLIDES.length) {
+                flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+            }
+        }, AUTO_ADVANCE_MS);
+    }, [clearTimers]);
+
+    // Start auto-advance on mount and when index changes
+    useEffect(() => {
+        scheduleAutoAdvance();
+        return clearTimers;
+    }, [activeIndex, scheduleAutoAdvance, clearTimers]);
+
+    // Handle manual scroll start
+    const onScrollBeginDrag = useCallback(() => {
+        isUserSwiping.current = true;
+        clearTimers();
+    }, [clearTimers]);
+
+    // Handle manual scroll end
+    const onScrollEndDrag = useCallback(() => {
+        isUserSwiping.current = false;
+        resumeTimer.current = setTimeout(() => {
+            scheduleAutoAdvance();
+        }, RESUME_DELAY_MS);
+    }, [scheduleAutoAdvance]);
+
+    // "Get Started" button on slide 3
+    const handleGetStarted = useCallback(() => {
+        clearTimers();
+        goToPaywall();
+    }, [clearTimers, goToPaywall]);
+
+    // Render a single slide
+    const renderSlide = useCallback(
+        ({ item }: { item: (typeof SLIDES)[number] }) => (
+            <View style={[styles.slide, { width: screenWidth }]}>
+                <View style={styles.headlineContainer}>
+                    <Text style={styles.headline}>{item.headline}</Text>
+                </View>
+                <View style={styles.imageContainer}>
+                    <Image
+                        source={item.image}
+                        style={[styles.slideImage, { width: screenWidth * 0.75 }]}
+                        contentFit="contain"
+                        transition={200}
+                    />
+                </View>
+            </View>
+        ),
+        [screenWidth]
+    );
 
     return (
         <View style={styles.container}>
-            {/* Progress Bar */}
-            <View style={[styles.progressContainer, { top: insets.top + 10 }]}>
-                <Animated.View
-                    style={[
-                        styles.progressBar,
-                        {
-                            width: progressAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: ['0%', '100%']
-                            })
-                        }
-                    ]}
-                />
-            </View>
-
-            {isLoading && (
-                <View style={styles.loaderContainer}>
-                    <ActivityIndicator size="large" color="#F97316" />
-                </View>
-            )}
-
-            <Video
-                ref={video}
-                style={styles.video}
-                source={require('../assets/videos/onboarding.mp4')}
-                useNativeControls={false}
-                resizeMode={ResizeMode.COVER}
-                isLooping={false}
-                onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-                onLoadStart={() => setIsLoading(true)}
-                onLoad={() => setIsLoading(false)}
-                shouldPlay
+            {/* Carousel */}
+            <FlatList
+                ref={flatListRef}
+                data={SLIDES}
+                renderItem={renderSlide}
+                keyExtractor={(item) => item.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                bounces={false}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
+                onScrollBeginDrag={onScrollBeginDrag}
+                onScrollEndDrag={onScrollEndDrag}
+                getItemLayout={(_, index) => ({
+                    length: screenWidth,
+                    offset: screenWidth * index,
+                    index,
+                })}
+                style={styles.carousel}
             />
 
-            <Animated.View style={[styles.overlay, { bottom: insets.bottom + 40, opacity: fadeAnim }]}>
-                {!showLocationStep ? (
+            {/* Bottom area: dots + Get Started button on last slide */}
+            <View style={[styles.bottomArea, { paddingBottom: insets.bottom + 24 }]}>
+                <View style={styles.dotsContainer}>
+                    {SLIDES.map((_, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.dot,
+                                index === activeIndex ? styles.dotActive : styles.dotInactive,
+                            ]}
+                        />
+                    ))}
+                </View>
+
+                {activeIndex === SLIDES.length - 1 && (
                     <TouchableOpacity
                         onPress={handleGetStarted}
                         style={styles.getStartedButton}
                         activeOpacity={0.8}
-                        disabled={!isFinished}
                     >
-                        <Text style={styles.getStartedText}>Get Started</Text>
+                        <Text style={styles.getStartedButtonText}>Get Started</Text>
                     </TouchableOpacity>
-                ) : (
-                    <View style={styles.locationStepContainer}>
-                        <BlurView intensity={30} tint="dark" style={styles.locationCard}>
-                            <View style={[styles.iconContainer, { backgroundColor: '#F97316' }]}>
-                                <Ionicons name="location" size={32} color="#FFF" />
-                            </View>
-
-                            <Text style={styles.locationTitle}>Identify Local Birds</Text>
-                            <Text style={styles.locationDescription}>
-                                Enable location to see which species are common in your current region and seasonal patterns.
-                            </Text>
-
-                            <TouchableOpacity
-                                onPress={handleLocationPermission}
-                                style={styles.allowButton}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.allowButtonText}>Continue</Text>
-                            </TouchableOpacity>
-                        </BlurView>
-                    </View>
                 )}
-            </Animated.View>
+            </View>
         </View>
     );
 }
@@ -142,110 +192,75 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: '#F5F5F4',
     },
-    progressContainer: {
+    bottomArea: {
         position: 'absolute',
-        left: 20,
-        right: 20,
-        height: 6,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 3,
-        zIndex: 10,
-        overflow: 'hidden',
-    },
-    progressBar: {
-        height: '100%',
-        backgroundColor: '#F97316',
-    },
-    loaderContainer: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
+        bottom: 0,
+        left: 0,
+        right: 0,
         alignItems: 'center',
-        zIndex: 1,
-    },
-    video: {
-        flex: 1,
-        width: '100%',
-        height: '100%',
-    },
-    overlay: {
-        position: 'absolute',
-        left: 25,
-        right: 25,
-        alignItems: 'center',
+        paddingHorizontal: 28,
+        gap: 20,
     },
     getStartedButton: {
-        backgroundColor: '#F97316',
-        width: '100%',
-        paddingVertical: 18,
-        borderRadius: 30,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
-        elevation: 8,
-    },
-    getStartedText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontFamily: 'PoppinsBold',
-        fontWeight: '700',
-    },
-    locationStepContainer: {
-        width: '100%',
-        alignItems: 'center',
-    },
-    locationCard: {
-        width: '100%',
-        padding: 24,
-        borderRadius: 32,
-        overflow: 'hidden',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    iconContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-        // Premium shadow
-        shadowColor: '#F97316',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-    },
-    locationTitle: {
-        color: '#FFFFFF',
-        fontSize: 24,
-        fontFamily: 'PoppinsBold',
-        textAlign: 'center',
-        marginBottom: 12,
-    },
-    locationDescription: {
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 15,
-        textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 32,
-        paddingHorizontal: 10,
-    },
-    allowButton: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1a1a1a',
         width: '100%',
         paddingVertical: 16,
         borderRadius: 25,
         alignItems: 'center',
-        marginBottom: 12,
     },
-    allowButtonText: {
-        color: '#000000',
+    getStartedButtonText: {
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    carousel: {
+        flex: 1,
+    },
+    slide: {
+        flex: 1,
+        justifyContent: 'flex-start',
+    },
+    headlineContainer: {
+        paddingTop: '18%',
+        paddingHorizontal: 28,
+        paddingBottom: 24,
+    },
+    headline: {
+        fontSize: 32,
+        fontFamily: 'PoppinsBold',
+        fontWeight: '700',
+        color: '#1a1a1a',
+        lineHeight: 40,
+        letterSpacing: -0.5,
+    },
+    imageContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        paddingBottom: 80,
+    },
+    slideImage: {
+        height: '100%',
+        borderRadius: 24,
+        borderWidth: 2,
+        borderColor: '#F97316',
+    },
+    dotsContainer: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    dotActive: {
+        backgroundColor: '#1a1a1a',
+        width: 24,
+    },
+    dotInactive: {
+        backgroundColor: '#D6D3D1',
     },
 });

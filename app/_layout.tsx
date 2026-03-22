@@ -115,10 +115,10 @@ function RootLayoutNav() {
   useEffect(() => {
     if (!isReady || onboardingCompleted === null) return;
 
-    const isIntroFlow = segments[0] === 'welcome' || segments[0] === 'onboarding' || segments[0] === 'paywall';
+    const isIntroFlow = segments[0] === 'onboarding' || segments[0] === 'paywall';
 
     if (!onboardingCompleted && !isIntroFlow) {
-      router.replace('/welcome');
+      router.replace('/onboarding');
     }
   }, [segments, isReady, onboardingCompleted]);
 
@@ -144,7 +144,6 @@ function RootLayoutNav() {
               <AlertProvider>
                 <ThemeProvider value={DefaultTheme}>
                   <Stack>
-                    <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
                     <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
                     <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
