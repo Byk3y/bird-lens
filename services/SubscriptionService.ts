@@ -169,6 +169,23 @@ export class SubscriptionService {
     }
 
     /**
+     * Check if user is eligible for a free trial / introductory price
+     * Returns a map of productId -> INTRO_ELIGIBILITY_STATUS (0=unknown, 1=ineligible, 2=eligible, 3=no intro offer)
+     */
+    public async checkTrialEligibility(productIds: string[]): Promise<{ [productId: string]: number }> {
+        if (isExpoGo || productIds.length === 0) return {};
+        try {
+            const eligibility = await Purchases.checkTrialOrIntroductoryPriceEligibility(productIds);
+            return Object.fromEntries(
+                Object.entries(eligibility).map(([id, e]: [string, any]) => [id, e.status])
+            );
+        } catch (error) {
+            console.error('Error checking trial eligibility:', error);
+            return {};
+        }
+    }
+
+    /**
      * Clear RevenueCat identity on logout
      */
     public async logOut() {

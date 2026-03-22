@@ -31,6 +31,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const [reminderEnabled, setReminderEnabled] = useState(false);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
+    const [trialEligible, setTrialEligible] = useState(true);
     const { showAlert } = useAlert();
     const { refreshSubscription } = useAuth();
     const insets = useSafeAreaInsets();
@@ -46,6 +47,26 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         try {
             const currentOffering = await subscriptionService.getOfferings();
             setOfferings(currentOffering);
+
+            // Check trial eligibility from RevenueCat
+            if (currentOffering?.availablePackages?.length) {
+                const productIds = currentOffering.availablePackages.map(
+                    (p: PurchasesPackage) => p.product.identifier
+                );
+                const eligibility = await subscriptionService.checkTrialEligibility(productIds);
+                const statuses = Object.values(eligibility);
+                // ELIGIBLE = 2: at least one product offers a trial
+                // Default to false (safe) unless we confirm eligibility
+                if (statuses.length > 0) {
+                    setTrialEligible(statuses.some(s => s === 2));
+                } else {
+                    // Fallback: check if products have introPrice set
+                    const hasIntro = currentOffering.availablePackages.some(
+                        (p: PurchasesPackage) => p.product.introPrice != null
+                    );
+                    setTrialEligible(hasIntro);
+                }
+            }
         } catch (error) {
             console.error('Error loading offerings:', error);
         } finally {
@@ -175,7 +196,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                             animate={{ opacity: 1, translateY: 0 }}
                             transition={{ type: 'timing', duration: 900, delay: 200 }}
                         >
-                            <Text style={styles.title}>Design Your Trial</Text>
+                            <Text style={styles.title}>{trialEligible ? 'Design Your Trial' : 'Go Pro'}</Text>
                         </MotiView>
 
                         <MotiView
@@ -210,7 +231,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                     >
                                         <View>
                                             <Text style={[styles.toggleCardTitle, selectedPlan === 'annual' && styles.toggleCardTitleSelected]}>Annual</Text>
-                                            <Text style={[styles.toggleCardSub, selectedPlan === 'annual' && styles.toggleCardSubSelected]}>7 days free</Text>
+                                            {trialEligible && <Text style={[styles.toggleCardSub, selectedPlan === 'annual' && styles.toggleCardSubSelected]}>7 days free</Text>}
                                         </View>
                                         <View style={[styles.toggleRadio, selectedPlan === 'annual' && styles.toggleRadioSelected]}>
                                             {selectedPlan === 'annual' && <Check color="#fff" size={14} strokeWidth={3} />}
@@ -225,7 +246,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                     >
                                         <View>
                                             <Text style={[styles.toggleCardTitle, selectedPlan === 'monthly' && styles.toggleCardTitleSelected]}>Monthly</Text>
-                                            <Text style={[styles.toggleCardSub, selectedPlan === 'monthly' && styles.toggleCardSubSelected]}>7 days free</Text>
+                                            {trialEligible && <Text style={[styles.toggleCardSub, selectedPlan === 'monthly' && styles.toggleCardSubSelected]}>7 days free</Text>}
                                         </View>
                                         <View style={[styles.toggleRadio, selectedPlan === 'monthly' && styles.toggleRadioSelected]}>
                                             {selectedPlan === 'monthly' && <Check color="#fff" size={14} strokeWidth={3} />}
@@ -235,10 +256,10 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
 
                                 <Text style={styles.priceAfterTrial}>
                                     {selectedPlan === 'annual'
-                                        ? <>7 days free, then just <Text style={styles.priceAmount}>{annualPackage?.product.priceString ?? '$24.99'}</Text>/yr{'\n'}(~{annualPackage?.product.price
+                                        ? <>{trialEligible ? '7 days free, then just ' : 'Just '}<Text style={styles.priceAmount}>{annualPackage?.product.priceString ?? '$24.99'}</Text>/yr{'\n'}(~{annualPackage?.product.price
                                             ? new Intl.NumberFormat(undefined, { style: 'currency', currency: annualPackage.product.currencyCode }).format(annualPackage.product.price / 12)
                                             : '$2.08'}/mo)</>
-                                        : <>7 days free, then just <Text style={styles.priceAmount}>{monthlyPackage?.product.priceString ?? '$4.99'}</Text>/mo</>}
+                                        : <>{trialEligible ? '7 days free, then just ' : 'Just '}<Text style={styles.priceAmount}>{monthlyPackage?.product.priceString ?? '$4.99'}</Text>/mo</>}
                                 </Text>
                             </MotiView>
                         )}
@@ -257,31 +278,33 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                 disabled={purchasing || !activePackage}
                             >
                                 <Text style={styles.ctaText}>
-                                    {purchasing ? 'Processing...' : 'Continue'}
+                                    {purchasing ? 'Processing...' : trialEligible ? 'Continue' : 'Subscribe'}
                                 </Text>
                             </TouchableOpacity>
 
-                            <View style={styles.reminderToggleContainer}>
-                                <Text style={styles.reminderText}>
-                                    Remind me before the trial ends
-                                </Text>
-                                <Switch
-                                    value={reminderEnabled}
-                                    onValueChange={async (value) => {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        if (value) {
-                                            const granted = await requestNotificationPermission();
-                                            if (!granted) return;
-                                        } else {
-                                            await cancelTrialReminder();
-                                        }
-                                        setReminderEnabled(value);
-                                    }}
-                                    trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#D35400' }}
-                                    thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (reminderEnabled ? '#FFFFFF' : '#f4f3f4')}
-                                    ios_backgroundColor="rgba(255,255,255,0.2)"
-                                />
-                            </View>
+                            {trialEligible && (
+                                <View style={styles.reminderToggleContainer}>
+                                    <Text style={styles.reminderText}>
+                                        Remind me before the trial ends
+                                    </Text>
+                                    <Switch
+                                        value={reminderEnabled}
+                                        onValueChange={async (value) => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            if (value) {
+                                                const granted = await requestNotificationPermission();
+                                                if (!granted) return;
+                                            } else {
+                                                await cancelTrialReminder();
+                                            }
+                                            setReminderEnabled(value);
+                                        }}
+                                        trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#D35400' }}
+                                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (reminderEnabled ? '#FFFFFF' : '#f4f3f4')}
+                                        ios_backgroundColor="rgba(255,255,255,0.2)"
+                                    />
+                                </View>
+                            )}
 
                             <View style={styles.footerLinks}>
                                 <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}>
