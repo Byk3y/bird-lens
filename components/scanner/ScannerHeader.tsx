@@ -48,18 +48,18 @@ export const ScannerHeader: React.FC<ScannerHeaderProps> = ({
                             <Diamond color="#fcd34d" size={12} fill="#fcd34d" />
                             <Text style={styles.premiumText}>Unlimited IDs</Text>
                         </View>
-                    ) : remainingCredits < 7 ? (
+                    ) : remainingCredits < 3 ? (
                         <View style={[
                             styles.creditBadge,
                             remainingCredits <= 1 && styles.creditBadgeUrgent,
-                            remainingCredits >= 2 && remainingCredits <= 3 && styles.creditBadgeWarning,
+                            remainingCredits === 2 && styles.creditBadgeWarning,
                         ]}>
                             <Text style={[
                                 styles.creditText,
                                 remainingCredits <= 1 && styles.creditTextUrgent,
-                                remainingCredits >= 2 && remainingCredits <= 3 && styles.creditTextWarning,
+                                remainingCredits === 2 && styles.creditTextWarning,
                             ]}>
-                                {remainingCredits === 0 ? 'No IDs left' : `${remainingCredits} of 7 left`}
+                                {remainingCredits === 0 ? 'No IDs left' : `${remainingCredits} of 3 left`}
                             </Text>
                         </View>
                     ) : null

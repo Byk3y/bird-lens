@@ -7,6 +7,7 @@ interface AuthContextType {
     session: Session | null;
     user: User | null;
     isLoading: boolean;
+    isSubscriptionLoading: boolean;
     isGuest: boolean;
     isPro: boolean;
     refreshSubscription: () => Promise<void>;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
     session: null,
     user: null,
     isLoading: true,
+    isSubscriptionLoading: true,
     isGuest: true,
     isPro: false,
     refreshSubscription: async () => { },
@@ -40,6 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isPro, setIsPro] = useState(false);
+    const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true);
 
     const refreshSubscription = async () => {
         const subscribed = await subscriptionService.isSubscribed();
@@ -66,6 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 // Initial subscription check
                 subscriptionService.isSubscribed().then((subscribed) => {
                     setIsPro(subscribed);
+                    setIsSubscriptionLoading(false);
                 });
                 setIsLoading(false);
             }
@@ -83,6 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setSession(null);
                 setUser(null);
                 setIsPro(false);
+                setIsSubscriptionLoading(true);
                 subscriptionService.logOut();
                 handleAnonymousSignIn();
             } else if (session) {
@@ -91,6 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 subscriptionService.logIn(session.user.id);
                 subscriptionService.isSubscribed().then((subscribed) => {
                     setIsPro(subscribed);
+                    setIsSubscriptionLoading(false);
                 });
                 setIsLoading(false);
             }
@@ -111,6 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.error('Anonymous sign-in failed:', error);
         } finally {
             setIsLoading(false);
+            setIsSubscriptionLoading(false);
         }
     };
 
@@ -204,6 +211,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             session,
             user,
             isLoading,
+            isSubscriptionLoading,
             isGuest,
             isPro,
             refreshSubscription,

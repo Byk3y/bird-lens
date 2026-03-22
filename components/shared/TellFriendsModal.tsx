@@ -21,7 +21,7 @@ interface TellFriendsModalProps {
     onClose: () => void;
 }
 
-const SHARE_MESSAGE = "Check out BirdMark! It's an amazing app for identifying birds. Download it here: https://birdmarkapp.com";
+const SHARE_MESSAGE = "Check out BirdMark! It's an amazing app for identifying birds. Download it here: https://apps.apple.com/app/id6759407820";
 
 export const TellFriendsModal: React.FC<TellFriendsModalProps> = ({ visible, onClose }) => {
 
@@ -41,7 +41,7 @@ export const TellFriendsModal: React.FC<TellFriendsModalProps> = ({ visible, onC
                 case 'more':
                     const isAvailable = await Sharing.isAvailableAsync();
                     if (isAvailable) {
-                        await Sharing.shareAsync('https://birdmarkapp.com', {
+                        await Sharing.shareAsync('https://apps.apple.com/app/id6759407820', {
                             dialogTitle: 'Tell friends about BirdMark',
                         });
                     }

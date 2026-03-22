@@ -2,7 +2,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useCallback, useEffect, useState } from 'react';
 
-const FREE_IDENTIFICATION_LIMIT = 7;
+const FREE_IDENTIFICATION_LIMIT = 3;
 
 interface SubscriptionGating {
     /** True if the user cannot use premium features (not Pro AND out of credits) */
