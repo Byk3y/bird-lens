@@ -3,6 +3,7 @@ import { Links } from '@/constants/Links';
 import { useAuth } from '@/lib/auth';
 import { cancelTrialReminder, requestNotificationPermission, scheduleTrialReminder } from '@/lib/notifications';
 import { subscriptionService } from '@/services/SubscriptionService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
@@ -61,16 +62,9 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                     await scheduleTrialReminder();
                 }
                 await refreshSubscription();
-                // Close the paywall FIRST to avoid alert rendering behind the modal
+                // Flag for the home screen to show the welcome alert after navigation
+                await AsyncStorage.setItem('@show_pro_welcome', 'true');
                 onClose();
-                // Show success alert after modal has dismissed
-                setTimeout(() => {
-                    showAlert({
-                        title: 'Welcome to BirdMark Pro! 🎉',
-                        message: 'Your purchase was successful. Enjoy unlimited identifications!',
-                        actions: [{ text: 'Start Discovering' }]
-                    });
-                }, 400);
             } else if (error && !error.userCancelled) {
                 showAlert({
                     title: 'Error',
@@ -90,7 +84,6 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
             const customerInfo = await subscriptionService.restorePurchases();
             if (customerInfo?.entitlements.active['Birdsnap Pro']) {
                 await refreshSubscription();
-                // Close the paywall FIRST, then show confirmation
                 onClose();
                 setTimeout(() => {
                     showAlert({
@@ -100,13 +93,24 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                     });
                 }, 400);
             } else {
-                showAlert({
-                    title: 'Notice',
-                    message: 'No active subscriptions found.'
-                });
+                // Close paywall first so the alert Modal isn't nested inside it
+                onClose();
+                setTimeout(() => {
+                    showAlert({
+                        title: 'Notice',
+                        message: 'No active subscriptions found.'
+                    });
+                }, 400);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Restore error:', error);
+            onClose();
+            setTimeout(() => {
+                showAlert({
+                    title: 'Restore Failed',
+                    message: error?.message || 'Something went wrong while restoring purchases. Please try again.'
+                });
+            }, 400);
         } finally {
             setLoading(false);
         }

@@ -52,13 +52,6 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error, loaded]);
 
-  useEffect(() => {
-    if (loaded) {
-      console.log('[RootLayout] Hiding Splash Screen');
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
   if (!loaded) {
     return null;
   }
@@ -67,15 +60,12 @@ export default function RootLayout() {
 }
 
 import { subscriptionService } from '@/services/SubscriptionService';
-import { useRouter, useSegments } from 'expo-router';
 import { useState } from 'react';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const segments = useSegments();
-  const router = useRouter();
   const [isReady, setIsReady] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
@@ -111,18 +101,13 @@ function RootLayoutNav() {
     return unsubscribe;
   }, []);
 
-  // 2. Routing logic (Guards)
+  // 2. Hide splash once state is resolved and the correct screen group will render
   useEffect(() => {
     if (!isReady || onboardingCompleted === null) return;
+    SplashScreen.hideAsync();
+  }, [isReady, onboardingCompleted]);
 
-    const isIntroFlow = segments[0] === 'onboarding' || segments[0] === 'paywall';
-
-    if (!onboardingCompleted && !isIntroFlow) {
-      router.replace('/onboarding');
-    }
-  }, [segments, isReady, onboardingCompleted]);
-
-  if (!isReady) {
+  if (!isReady || onboardingCompleted === null) {
     return null;
   }
 
@@ -144,20 +129,29 @@ function RootLayoutNav() {
               <AlertProvider>
                 <ThemeProvider value={DefaultTheme}>
                   <Stack>
-                    <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-                    <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
-                    <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
-                    <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+                    {/* Onboarding flow — only accessible when onboarding is NOT complete */}
+                    <Stack.Protected guard={!onboardingCompleted}>
+                      <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+                      <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+                    </Stack.Protected>
 
-                    <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-                    <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
-                    <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
-                    <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
-                    <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
-                    <Stack.Screen name="(enhancer)" options={{ headerShown: false, animation: 'none' }} />
-                    <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                    {/* Paywall — accessible in both states (shown after onboarding + from settings) */}
+                    <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+
+                    {/* Main app — only accessible when onboarding IS complete */}
+                    <Stack.Protected guard={!!onboardingCompleted}>
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
+                      <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
+                      <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+                      <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+                      <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
+                      <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
+                      <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
+                      <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
+                      <Stack.Screen name="(enhancer)" options={{ headerShown: false, animation: 'none' }} />
+                      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                    </Stack.Protected>
                   </Stack>
                 </ThemeProvider>
               </AlertProvider>

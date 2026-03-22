@@ -123,7 +123,7 @@ export class SubscriptionService {
             return customerInfo;
         } catch (error) {
             console.error('Restore failed:', error);
-            return null;
+            throw error;
         }
     }
 

@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { onboardingState } from '@/lib/onboardingState';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     FlatList,
@@ -59,7 +60,8 @@ export default function OnboardingScreen() {
 
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-    const goToPaywall = useCallback(() => {
+    const goToPaywall = useCallback(async () => {
+        await onboardingState.markAsCompleted();
         router.push('/paywall');
     }, [router]);
 

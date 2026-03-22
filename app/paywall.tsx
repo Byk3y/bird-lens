@@ -1,5 +1,4 @@
 import { Paywall } from '@/components/Paywall';
-import { onboardingState } from '@/lib/onboardingState';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
@@ -7,8 +6,7 @@ import { StatusBar, StyleSheet, View } from 'react-native';
 export default function PaywallScreen() {
     const router = useRouter();
 
-    const handleFinishOnboarding = async () => {
-        await onboardingState.markAsCompleted();
+    const handleFinishOnboarding = () => {
         if (router.canDismiss()) {
             router.dismissAll();
         }
