@@ -16,17 +16,17 @@ const SLIDES = [
     {
         id: '1',
         headline: 'See a bird?\nSnap a photo.',
-        image: require('@/assets/images/onboarding/carousel-slide-1-photo-id.png'),
+        image: require('@/assets/images/onboarding/carousel-slide-1-photo-id.jpg'),
     },
     {
         id: '2',
         headline: 'Hear a bird?\nHit record.',
-        image: require('@/assets/images/onboarding/carousel-slide-2-sound-id.png'),
+        image: require('@/assets/images/onboarding/carousel-slide-2-sound-id.jpg'),
     },
     {
         id: '3',
         headline: 'Build your personal\nbird collection.',
-        image: require('@/assets/images/onboarding/carousel-slide-3-collection.png'),
+        image: require('@/assets/images/onboarding/carousel-slide-3-collection.jpg'),
     },
 ];
 
