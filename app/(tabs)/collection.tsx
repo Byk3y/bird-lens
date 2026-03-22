@@ -143,6 +143,20 @@ export default function MeScreen() {
         }, [userId])
     );
 
+    // Show "Tell friends" modal once after user saves their first bird
+    useFocusEffect(
+        useCallback(() => {
+            if (!userId || loading || sightings.length === 0) return;
+
+            AsyncStorage.getItem('@tell_friends_shown').then(val => {
+                if (val !== 'true') {
+                    AsyncStorage.setItem('@tell_friends_shown', 'true').catch(() => { });
+                    setTimeout(() => setIsTellFriendsVisible(true), 800);
+                }
+            });
+        }, [userId, loading, sightings.length])
+    );
+
 
     const handleBirdPress = (sighting: any) => {
         const birdData: BirdResult = {

@@ -1,13 +1,13 @@
 import { Colors } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import * as Sharing from 'expo-sharing';
 import { AnimatePresence, MotiView } from 'moti';
 import React from 'react';
 import {
     Dimensions,
     Modal,
     Pressable,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -39,12 +39,9 @@ export const TellFriendsModal: React.FC<TellFriendsModalProps> = ({ visible, onC
                     await Linking.openURL(`mailto:?subject=Check out this bird app!&body=${encodeURIComponent(SHARE_MESSAGE)}`);
                     break;
                 case 'more':
-                    const isAvailable = await Sharing.isAvailableAsync();
-                    if (isAvailable) {
-                        await Sharing.shareAsync('https://apps.apple.com/app/id6759407820', {
-                            dialogTitle: 'Tell friends about BirdMark',
-                        });
-                    }
+                    await Share.share({
+                        message: SHARE_MESSAGE,
+                    });
                     break;
             }
         } catch (error) {
