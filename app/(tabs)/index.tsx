@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -34,13 +35,6 @@ export default function HomeScreen() {
   const [draftData, setDraftData] = useState<DraftSighting | null>(null);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [showAttribution, setShowAttribution] = useState(false);
-
-  // Proactively request permission on mount if undetermined
-  useEffect(() => {
-    if (permission && permission.status === 'undetermined' && permission.canAskAgain) {
-      requestPermission();
-    }
-  }, [permission]);
 
   // Show attribution survey once for new users
   useEffect(() => {
@@ -123,10 +117,18 @@ export default function HomeScreen() {
               </View>
               <TouchableOpacity
                 style={styles.overlayButton}
-                onPress={requestPermission}
+                onPress={() => {
+                  if (permission?.canAskAgain) {
+                    requestPermission();
+                  } else {
+                    Linking.openSettings();
+                  }
+                }}
                 activeOpacity={0.8}
               >
-                <Text style={styles.overlayButtonText}>Enable Camera</Text>
+                <Text style={styles.overlayButtonText}>
+                  {permission?.canAskAgain ? 'Enable Camera' : 'Open Settings'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

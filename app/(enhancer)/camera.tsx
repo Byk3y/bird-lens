@@ -18,6 +18,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     Image,
+    Linking,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -337,6 +338,13 @@ export default function EnhancerScreen() {
         }
     };
 
+    // Auto-request camera permission on first visit
+    useEffect(() => {
+        if (permission && permission.status === 'undetermined' && permission.canAskAgain) {
+            requestPermission();
+        }
+    }, [permission]);
+
     // --- Permission States ---
     if (!permission || permission.status === 'undetermined') {
         return <View style={[styles.container, { backgroundColor: '#000' }]} />;
@@ -352,8 +360,16 @@ export default function EnhancerScreen() {
                 <Text style={styles.permissionText}>
                     We need camera access to capture bird photos for AI enhancement.
                 </Text>
-                <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-                    <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
+                <TouchableOpacity style={styles.permissionButton} onPress={() => {
+                    if (permission?.canAskAgain) {
+                        requestPermission();
+                    } else {
+                        Linking.openSettings();
+                    }
+                }}>
+                    <Text style={styles.permissionButtonText}>
+                        {permission?.canAskAgain ? 'Grant Camera Access' : 'Open Settings'}
+                    </Text>
                 </TouchableOpacity>
             </View>
         );

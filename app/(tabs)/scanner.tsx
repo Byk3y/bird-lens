@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   AppState,
   Dimensions,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -382,6 +383,13 @@ export default function ScannerScreen() {
 
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+  // Auto-request camera permission on first visit
+  useEffect(() => {
+    if (permission && permission.status === 'undetermined' && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission]);
+
   if (!permission || permission.status === 'undetermined') {
     return <View style={[styles.container, { backgroundColor: '#000' }]} />;
   }
@@ -398,8 +406,16 @@ export default function ScannerScreen() {
         <Text style={styles.permissionText}>
           We need your camera to identify bird species. Enable access to start your bird lens.
         </Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={() => {
+          if (permission?.canAskAgain) {
+            requestPermission();
+          } else {
+            Linking.openSettings();
+          }
+        }}>
+          <Text style={styles.permissionButtonText}>
+            {permission?.canAskAgain ? 'Grant Camera Access' : 'Open Settings'}
+          </Text>
         </TouchableOpacity>
       </View>
     );
