@@ -41,12 +41,15 @@ export const AttributionSurveySheet: React.FC<AttributionSurveySheetProps> = ({
     const [selected, setSelected] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+    const wasVisible = React.useRef(false);
 
     React.useEffect(() => {
-        if (!visible) {
+        if (wasVisible.current && !visible) {
             setIsAnimatingOut(true);
-            setTimeout(() => setIsAnimatingOut(false), 350);
+            const timer = setTimeout(() => setIsAnimatingOut(false), 350);
+            return () => clearTimeout(timer);
         }
+        wasVisible.current = visible;
     }, [visible]);
 
     const dismiss = async () => {

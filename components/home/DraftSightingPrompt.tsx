@@ -31,12 +31,15 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
     isSaving,
 }) => {
     const [isAnimatingOut, setIsAnimatingOut] = React.useState(false);
+    const wasVisible = React.useRef(false);
 
     React.useEffect(() => {
-        if (!visible) {
+        if (wasVisible.current && !visible) {
             setIsAnimatingOut(true);
-            setTimeout(() => setIsAnimatingOut(false), 350);
+            const timer = setTimeout(() => setIsAnimatingOut(false), 350);
+            return () => clearTimeout(timer);
         }
+        wasVisible.current = visible;
     }, [visible]);
 
     const heroImage = (() => {

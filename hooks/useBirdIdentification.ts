@@ -35,7 +35,7 @@ export const useBirdIdentification = () => {
         if (isProcessing) return;
 
         // Clear any existing draft — new identification replaces it
-        draftSighting.clearDraft();
+        await draftSighting.clearDraft();
 
         const controller = new AbortController();
         abortControllerRef.current = controller;

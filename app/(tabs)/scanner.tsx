@@ -162,7 +162,7 @@ export default function ScannerScreen() {
         location: lastLocation,
       });
     }
-  }, [result, isProcessing, enrichedCandidates]);
+  }, [result, isProcessing, enrichedCandidates, heroImages, capturedImage, recordingUri, lastLocation]);
 
   // Safety net: persist draft when app backgrounds
   useEffect(() => {
