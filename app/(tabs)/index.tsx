@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Components
 import { ActionGrid } from '@/components/home/ActionGrid';
 import { AIEnhancerCard } from '@/components/home/AIEnhancerCard';
+import { AttributionSurveySheet } from '@/components/home/AttributionSurveySheet';
 import { DraftSightingPrompt } from '@/components/home/DraftSightingPrompt';
 import { ExploreSection } from '@/components/home/ExploreSection';
 import { HomeHeader } from '@/components/home/HomeHeader';
@@ -23,6 +24,7 @@ import { useAlert } from '@/components/common/AlertProvider';
 import { useAuth } from '@/lib/auth';
 import { draftSighting, DraftSighting } from '@/lib/draftSighting';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -31,6 +33,7 @@ export default function HomeScreen() {
   const { showAlert } = useAlert();
   const [draftData, setDraftData] = useState<DraftSighting | null>(null);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
+  const [showAttribution, setShowAttribution] = useState(false);
 
   // Proactively request permission on mount if undetermined
   useEffect(() => {
@@ -38,6 +41,17 @@ export default function HomeScreen() {
       requestPermission();
     }
   }, [permission]);
+
+  // Show attribution survey once for new users
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    AsyncStorage.getItem('@attribution_survey_completed').then(val => {
+      if (val !== 'true') {
+        timeout = setTimeout(() => setShowAttribution(true), 1000);
+      }
+    });
+    return () => clearTimeout(timeout);
+  }, []);
 
   // Check for unsaved draft on mount
   useEffect(() => {
@@ -134,6 +148,8 @@ export default function HomeScreen() {
         </View>
 
         <ExploreSection />
+
+
       </ScrollView>
 
       {draftData && (
@@ -145,6 +161,11 @@ export default function HomeScreen() {
           isSaving={isDraftSaving}
         />
       )}
+
+      <AttributionSurveySheet
+        visible={showAttribution}
+        onDismiss={() => setShowAttribution(false)}
+      />
     </View>
   );
 }

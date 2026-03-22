@@ -1,7 +1,9 @@
 import { useAlert } from '@/components/common/AlertProvider';
 import { Links } from '@/constants/Links';
 import { useAuth } from '@/lib/auth';
+import { cancelTrialReminder, requestNotificationPermission, scheduleTrialReminder } from '@/lib/notifications';
 import { subscriptionService } from '@/services/SubscriptionService';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import LottieView from 'lottie-react-native';
@@ -17,7 +19,7 @@ interface PaywallProps {
 }
 
 const FEATURES = [
-    'Never wonder what bird that was again',
+    'Unlimited bird identifications',
     'Identify any species by photo or sound, instantly',
     'Build a life list that tells your story',
     '10,000+ species with calls, songs and habitat info'
@@ -25,7 +27,7 @@ const FEATURES = [
 
 export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const [offerings, setOfferings] = useState<any>(null);
-    const [reminderEnabled, setReminderEnabled] = useState(true);
+    const [reminderEnabled, setReminderEnabled] = useState(false);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
     const { showAlert } = useAlert();
@@ -34,7 +36,6 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const { width: screenWidth } = useWindowDimensions();
     const isTablet = screenWidth >= 768 || (Platform.OS === 'ios' && Platform.isPad);
     const heroHeight = isTablet ? '40%' : '60%';
-
     useEffect(() => {
         loadOfferings();
     }, []);
@@ -56,6 +57,9 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         try {
             const { success, error } = await subscriptionService.purchasePackage(pkg);
             if (success) {
+                if (reminderEnabled) {
+                    await scheduleTrialReminder();
+                }
                 await refreshSubscription();
                 // Close the paywall FIRST to avoid alert rendering behind the modal
                 onClose();
@@ -145,11 +149,9 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
             <View style={[StyleSheet.absoluteFill, { paddingTop: Math.max(insets.top, 10) }]}>
                 {/* Top Bar */}
                 <View style={styles.topBar}>
-                    <TouchableOpacity onPress={handleRestore} style={styles.topButton}>
-                        <Text style={styles.topButtonText}>Restore</Text>
-                    </TouchableOpacity>
+                    <View />
                     <TouchableOpacity onPress={onClose} style={styles.topButton}>
-                        <Text style={[styles.topButtonText, { fontSize: 13, color: 'rgba(255, 255, 255, 0.4)' }]}>Maybe Later</Text>
+                        <Text style={styles.topButtonText}>Cancel</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -167,22 +169,20 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                         <MotiView
                             from={{ opacity: 0, translateY: 15 }}
                             animate={{ opacity: 1, translateY: 0 }}
-                            transition={{ type: 'timing', duration: 600, delay: 100 }}
+                            transition={{ type: 'timing', duration: 900, delay: 200 }}
                         >
-                            <Text style={styles.title}>BirdMark</Text>
+                            <Text style={styles.title}>Design Your Trial</Text>
                         </MotiView>
 
                         <MotiView
                             from={{ opacity: 0, translateY: 15 }}
                             animate={{ opacity: 1, translateY: 0 }}
-                            transition={{ type: 'timing', duration: 600, delay: 200 }}
+                            transition={{ type: 'timing', duration: 900, delay: 500 }}
                             style={styles.featuresList}
                         >
                             {FEATURES.map((feature, index) => (
                                 <View key={index} style={styles.featureRow}>
-                                    <View style={styles.checkBadge}>
-                                        <Check color="#fff" size={12} strokeWidth={3} />
-                                    </View>
+                                    <Check color="#F97316" size={20} strokeWidth={3} style={styles.checkIcon} />
                                     <Text style={styles.featureText}>{feature}</Text>
                                 </View>
                             ))}
@@ -194,60 +194,48 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                             <MotiView
                                 from={{ opacity: 0, translateY: 15 }}
                                 animate={{ opacity: 1, translateY: 0 }}
-                                transition={{ type: 'timing', duration: 600, delay: 300 }}
+                                transition={{ type: 'timing', duration: 900, delay: 800 }}
                                 style={styles.pricingSection}
                             >
-                                <Text style={styles.pricingMainTitle}>
-                                    Try 7 days free
-                                </Text>
-                                <Text style={styles.trialSubtext}>
-                                    {activePackage
-                                        ? `Then ${activePackage.product.priceString}/${selectedPlan === 'annual' ? 'year' : 'month'}. Cancel anytime.`
-                                        : `Then ${selectedPlan === 'annual' ? '$24.99/year' : '$4.99/month'}. Cancel anytime.`}
-                                </Text>
-
-                                <View style={styles.planSelector}>
-                                    {/* Annual Plan Card */}
+                                <View style={styles.planToggle}>
+                                    {/* Annual card — left */}
                                     <TouchableOpacity
-                                        style={[
-                                            styles.planCard,
-                                            selectedPlan === 'annual' ? styles.planCardSelected : styles.planCardUnselected
-                                        ]}
+                                        style={[styles.toggleCard, selectedPlan === 'annual' ? styles.toggleCardSelected : styles.toggleCardUnselected]}
                                         activeOpacity={0.8}
                                         onPress={() => setSelectedPlan('annual')}
                                     >
-                                        <View style={styles.planCardHeaderRow}>
-                                            <Text style={styles.planCardTitle}>Annual</Text>
-                                            <View style={styles.badgeContainer}>
-                                                <Text style={styles.badgeText}>BEST VALUE</Text>
-                                            </View>
+                                        <View>
+                                            <Text style={[styles.toggleCardTitle, selectedPlan === 'annual' && styles.toggleCardTitleSelected]}>Annual</Text>
+                                            <Text style={[styles.toggleCardSub, selectedPlan === 'annual' && styles.toggleCardSubSelected]}>7 days free</Text>
                                         </View>
-                                        <View style={styles.priceLineContainer}>
-                                            <Text style={styles.heroPriceText}>
-                                                {annualPackage ? `${annualPackage.product.priceString} / year` : '$24.99 / year'}
-                                            </Text>
-                                            <Text style={styles.clarificationPriceText}>
-                                                {annualPackage ? `That's just ${annualPackage.product.priceString.replace(/[\d.,]+/, (match: string) => (parseFloat(match.replace(/,/g, '')) / 12).toFixed(2))} / month` : "That's just $2.08 / month"}
-                                            </Text>
+                                        <View style={[styles.toggleRadio, selectedPlan === 'annual' && styles.toggleRadioSelected]}>
+                                            {selectedPlan === 'annual' && <Check color="#fff" size={14} strokeWidth={3} />}
                                         </View>
                                     </TouchableOpacity>
 
-                                    {/* Monthly Plan Card */}
+                                    {/* Monthly card — right */}
                                     <TouchableOpacity
-                                        style={[
-                                            styles.planCard,
-                                            styles.planCardMonthly,
-                                            selectedPlan === 'monthly' ? styles.planCardSelected : styles.planCardUnselected
-                                        ]}
+                                        style={[styles.toggleCard, selectedPlan === 'monthly' ? styles.toggleCardSelected : styles.toggleCardUnselected]}
                                         activeOpacity={0.8}
                                         onPress={() => setSelectedPlan('monthly')}
                                     >
-                                        <View style={styles.planCardHeaderMonthly}>
-                                            <Text style={styles.planCardTitle}>Monthly</Text>
+                                        <View>
+                                            <Text style={[styles.toggleCardTitle, selectedPlan === 'monthly' && styles.toggleCardTitleSelected]}>Monthly</Text>
+                                            <Text style={[styles.toggleCardSub, selectedPlan === 'monthly' && styles.toggleCardSubSelected]}>7 days free</Text>
                                         </View>
-                                        <Text style={styles.planCardPrice}>{monthlyPackage ? `${monthlyPackage.product.priceString} billed monthly` : '$4.99 billed monthly'}</Text>
+                                        <View style={[styles.toggleRadio, selectedPlan === 'monthly' && styles.toggleRadioSelected]}>
+                                            {selectedPlan === 'monthly' && <Check color="#fff" size={14} strokeWidth={3} />}
+                                        </View>
                                     </TouchableOpacity>
                                 </View>
+
+                                <Text style={styles.priceAfterTrial}>
+                                    {selectedPlan === 'annual'
+                                        ? <>7 days free, then just <Text style={styles.priceAmount}>{annualPackage?.product.priceString ?? '$24.99'}</Text>/yr{'\n'}(~{annualPackage?.product.price
+                                            ? new Intl.NumberFormat(undefined, { style: 'currency', currency: annualPackage.product.currencyCode }).format(annualPackage.product.price / 12)
+                                            : '$2.08'}/mo)</>
+                                        : <>7 days free, then just <Text style={styles.priceAmount}>{monthlyPackage?.product.priceString ?? '$4.99'}</Text>/mo</>}
+                                </Text>
                             </MotiView>
                         )}
 
@@ -255,56 +243,59 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                         <MotiView
                             from={{ opacity: 0, translateY: 15 }}
                             animate={{ opacity: 1, translateY: 0 }}
-                            transition={{ type: 'timing', duration: 600, delay: 400 }}
+                            transition={{ type: 'timing', duration: 900, delay: 1100 }}
                             style={styles.bottomContainer}
                         >
+                            <TouchableOpacity
+                                style={[styles.ctaButton, (purchasing || !activePackage) && styles.ctaButtonDisabled]}
+                                activeOpacity={0.9}
+                                onPress={() => activePackage && handlePurchase(activePackage)}
+                                disabled={purchasing || !activePackage}
+                            >
+                                <Text style={styles.ctaText}>
+                                    {purchasing ? 'Processing...' : 'Continue'}
+                                </Text>
+                            </TouchableOpacity>
+
                             <View style={styles.reminderToggleContainer}>
-                                <Text style={styles.pricingSubText}>
+                                <Text style={styles.reminderText}>
                                     Remind me before the trial ends
                                 </Text>
                                 <Switch
                                     value={reminderEnabled}
-                                    onValueChange={setReminderEnabled}
+                                    onValueChange={async (value) => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        if (value) {
+                                            const granted = await requestNotificationPermission();
+                                            if (!granted) return;
+                                        } else {
+                                            await cancelTrialReminder();
+                                        }
+                                        setReminderEnabled(value);
+                                    }}
                                     trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#D35400' }}
                                     thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : (reminderEnabled ? '#FFFFFF' : '#f4f3f4')}
                                     ios_backgroundColor="rgba(255,255,255,0.2)"
-                                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                                 />
                             </View>
 
-                            <TouchableOpacity
-                                style={[styles.ctaButton, purchasing && styles.ctaButtonDisabled]}
-                                activeOpacity={0.9}
-                                onPress={() => activePackage && handlePurchase(activePackage)}
-                                disabled={purchasing}
-                            >
-                                <Text style={styles.ctaText} numberOfLines={1} adjustsFontSizeToFit>
-                                    {purchasing
-                                        ? 'Processing...'
-                                        : activePackage
-                                            ? `Try 7 Days Free, then ${activePackage.product.priceString}/${selectedPlan === 'annual' ? 'year' : 'month'}`
-                                            : 'Continue'}
-                                </Text>
-                            </TouchableOpacity>
-
-                            <Text style={styles.legalText}>
-                                {activePackage
-                                    ? `After the 7-day free trial, you will be automatically charged ${activePackage.product.priceString}/${selectedPlan === 'annual' ? 'year' : 'month'} unless cancelled at least 24 hours before the trial ends. Subscriptions auto-renew until cancelled. `
-                                    : 'Renewals are automatic unless cancelled 24 hours before the trial ends. '}
-                                By subscribing, you agree to our{' '}
-                                <Text
-                                    style={styles.legalLink}
-                                    onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}
-                                >
-                                    Terms of Use
-                                </Text> and{' '}
-                                <Text
-                                    style={styles.legalLink}
-                                    onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}
-                                >
-                                    Privacy Policy
-                                </Text>.
-                            </Text>
+                            <View style={styles.footerLinks}>
+                                <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(Links.TERMS_OF_USE)}>
+                                    <Text style={styles.footerLinkText}>Terms of Use</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.footerSeparator}>|</Text>
+                                <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(Links.PRIVACY_POLICY)}>
+                                    <Text style={styles.footerLinkText}>Privacy Policy</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.footerSeparator}>|</Text>
+                                <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(Links.SUBSCRIPTION_TERMS)}>
+                                    <Text style={styles.footerLinkText}>Subscription Terms</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.footerSeparator}>|</Text>
+                                <TouchableOpacity onPress={handleRestore}>
+                                    <Text style={styles.footerLinkText}>Restore</Text>
+                                </TouchableOpacity>
+                            </View>
                         </MotiView>
                     </View>
                 </ScrollView>
@@ -372,25 +363,19 @@ const styles = StyleSheet.create({
         fontWeight: '700', // Explicitly keep bold weight
         color: '#FFFFFF',
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
         letterSpacing: 0.5,
     },
     featuresList: {
         gap: 10,
-        marginBottom: 36,
+        marginBottom: 28,
     },
     featureRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    checkBadge: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: '#D35400',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 10, // Reduced from 14 for more text space
+    checkIcon: {
+        marginRight: 10,
     },
     featureText: {
         color: '#E5E5E5',
@@ -413,140 +398,100 @@ const styles = StyleSheet.create({
     },
     bottomContainer: {
         width: '100%',
-        marginTop: 4, // Reduced gap between cards and text
+        marginTop: 8,
     },
     pricingSection: {
         width: '100%',
         alignItems: 'center',
     },
-    planSelector: {
+    planToggle: {
+        flexDirection: 'row',
+        gap: 12,
         width: '100%',
-        gap: 8,
-        marginBottom: 4, // Reduced gap below cards
-        marginTop: 6,
+        marginBottom: 16,
     },
-    planCard: {
-        width: '100%',
-        borderRadius: 12,
-        padding: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderWidth: 2,
-    },
-    planCardMonthly: {
-        paddingVertical: 10,
-    },
-    planCardSelected: {
-        borderColor: '#F97316',
-        backgroundColor: 'rgba(249, 115, 22, 0.05)',
-    },
-    planCardUnselected: {
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    planCardHeader: {
+    toggleCard: {
+        flex: 1,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 2,
-    },
-    planCardHeaderMonthly: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    planCardTitle: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    badgeContainer: {
-        backgroundColor: '#F97316',
-        paddingHorizontal: 6,
-        paddingVertical: 3,
+        paddingVertical: 24,
+        paddingHorizontal: 16,
         borderRadius: 10,
+        borderWidth: 1.5,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
     },
-    badgeText: {
-        color: '#FFFFFF',
-        fontSize: 9,
-        fontWeight: '800',
-        letterSpacing: 0.5,
+    toggleCardSelected: {
+        borderColor: '#F97316',
+        backgroundColor: 'rgba(249, 115, 22, 0.08)',
     },
-    planCardSubtext: {
-        color: '#F97316',
-        fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 2,
+    toggleCardUnselected: {
+        borderColor: 'rgba(255, 255, 255, 0.15)',
     },
-    planCardPrice: {
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    pricingMainTitle: {
+    toggleCardTitle: {
         color: '#FFFFFF',
         fontSize: 18,
-        fontWeight: '800',
-        textAlign: 'center',
-        marginBottom: 2,
+        fontWeight: '700',
     },
-    trialSubtext: {
-        color: 'rgba(255, 255, 255, 0.6)',
+    toggleCardTitleSelected: {
+        color: '#F97316',
+    },
+    toggleCardSub: {
+        color: 'rgba(255, 255, 255, 0.5)',
         fontSize: 13,
         fontWeight: '500',
+        marginTop: 2,
+    },
+    toggleCardSubSelected: {
+        color: '#F97316',
+    },
+    toggleRadio: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    toggleRadioSelected: {
+        backgroundColor: '#F97316',
+        borderColor: '#F97316',
+    },
+    priceAfterTrial: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '300',
         textAlign: 'center',
         marginBottom: 8,
+        minHeight: 50,
     },
-    planCardHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        width: '100%',
+    priceAmount: {
+        fontWeight: '800',
+        fontSize: 22,
     },
-    planCardRightSide: {
-        alignItems: 'flex-end',
-    },
-    priceLineContainer: {
-        flexDirection: 'column',
-        width: '100%',
-        marginTop: 4,
-        gap: 2,
-    },
-    heroPriceText: {
-        color: '#FFFFFF',
-        fontSize: 19,
-        fontWeight: '700',
-    },
-    clarificationPriceText: {
-        color: 'rgba(255, 255, 255, 0.6)',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    pricingMainText: {
-        color: '#FFFFFF',
-        fontSize: 15,
-        textAlign: 'center',
-        marginBottom: 2,
-    },
-    boldText: {
-        fontWeight: '700',
-    },
-    pricingSubText: {
+    reminderText: {
         color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 12,
+        fontSize: 15,
         fontWeight: '500',
+        flex: 1,
     },
     reminderToggleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 12,
-        gap: 8,
+        justifyContent: 'space-between',
+        marginTop: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     ctaButton: {
         backgroundColor: '#D35400',
         width: '100%',
-        paddingVertical: 14,
-        borderRadius: 25,
+        paddingVertical: 18,
+        borderRadius: 30,
         alignItems: 'center',
         shadowColor: '#D35400',
         shadowOffset: { width: 0, height: 4 },
@@ -559,34 +504,26 @@ const styles = StyleSheet.create({
     },
     ctaText: {
         color: '#FFFFFF',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '800',
         letterSpacing: 0.3,
     },
-    legalText: {
+    footerLinks: {
+        flexDirection: 'row' as const,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 14,
+        flexWrap: 'wrap' as const,
+        gap: 6,
+    },
+    footerLinkText: {
         color: 'rgba(255, 255, 255, 0.55)',
-        fontSize: 12,
-        textAlign: 'center',
-        lineHeight: 16,
-        marginTop: 12,
-        paddingHorizontal: 15,
+        fontSize: 13,
+        fontWeight: '500' as const,
     },
-    legalLink: {
-        color: '#F97316',
-        fontWeight: '600',
-        textDecorationLine: 'underline' as const,
+    footerSeparator: {
+        color: 'rgba(255, 255, 255, 0.3)',
+        fontSize: 13,
     },
-    termsText: {
-        color: 'rgba(255, 255, 255, 0.4)',
-        fontSize: 10,
-        textAlign: 'center',
-        lineHeight: 14,
-        marginTop: 5,
-    },
-    errorText: {
-        color: '#FF453A',
-        textAlign: 'center',
-        padding: 20,
-    }
 });
 

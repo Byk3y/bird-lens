@@ -1,10 +1,9 @@
 import { Paywall } from '@/components/Paywall';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight, MailCheck } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     Modal,
     StyleSheet,
@@ -13,30 +12,9 @@ import {
     View,
 } from 'react-native';
 
-const TRIAL_BANNER_DISMISSED_KEY = '@trial_banner_dismissed';
-
 export const TrialBanner: React.FC = () => {
-    const { isPro, refreshSubscription } = useAuth();
-    const [dismissed, setDismissed] = useState(true); // Start hidden until loaded
+    const { isPro, isSubscriptionLoading, refreshSubscription } = useAuth();
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
-
-    useEffect(() => {
-        checkDismissed();
-    }, []);
-
-    const checkDismissed = async () => {
-        try {
-            const value = await AsyncStorage.getItem(TRIAL_BANNER_DISMISSED_KEY);
-            setDismissed(value === 'true');
-        } catch {
-            setDismissed(false);
-        }
-    };
-
-    const handleDismiss = async () => {
-        setDismissed(true);
-        await AsyncStorage.setItem(TRIAL_BANNER_DISMISSED_KEY, 'true');
-    };
 
     const handlePress = () => {
         setIsPaywallVisible(true);
@@ -47,8 +25,8 @@ export const TrialBanner: React.FC = () => {
         refreshSubscription();
     };
 
-    // Don't show if user is Pro or has dismissed
-    if (isPro || dismissed) return null;
+    // Only hide when user is Pro or subscription status is still loading
+    if (isPro || isSubscriptionLoading) return null;
 
     return (
         <>
@@ -56,7 +34,6 @@ export const TrialBanner: React.FC = () => {
                 <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={handlePress}
-                    onLongPress={handleDismiss}
                 >
                     <LinearGradient
                         colors={['#2c3e50', '#1a252f']}
