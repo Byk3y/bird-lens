@@ -78,7 +78,8 @@
           "locationWhenInUsePermission": "BirdMark uses your location to improve bird identification accuracy for your region."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
