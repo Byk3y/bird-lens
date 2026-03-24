@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { onboardingState } from '@/lib/onboardingState';
+import { supabase } from '@/lib/supabase';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     FlatList,
@@ -62,6 +63,14 @@ export default function OnboardingScreen() {
 
     const goToPaywall = useCallback(async () => {
         await onboardingState.markAsCompleted();
+        // Record onboarding completion server-side for analytics
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            supabase.from('profiles')
+                .update({ onboarding_completed_at: new Date().toISOString() })
+                .eq('id', user.id)
+                .then(); // fire-and-forget — don't block navigation
+        }
         router.push('/paywall');
     }, [router]);
 
