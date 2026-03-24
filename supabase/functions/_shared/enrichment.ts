@@ -105,10 +105,16 @@ async function fetchTaxonInfo(scientificName: string): Promise<{ id: number; ran
 
         if (exactMatch) return exactMatch;
 
-        // Fallback to first result if it seems related
+        // Fallback to first result if it seems related (substring match)
         const first = matches[0];
         if (first && (first.name.toLowerCase().includes(scientificName.toLowerCase()) ||
             scientificName.toLowerCase().includes(first.name.toLowerCase()))) {
+            return first;
+        }
+
+        // Accept the top species-rank result — handles genus reclassifications
+        // (e.g. AI says "Bubulcus ibis" but iNat has it as "Ardea ibis")
+        if (first && (first.rank === 'species' || first.rank === 'subspecies')) {
             return first;
         }
 
@@ -349,7 +355,9 @@ export async function enrichSpecies(scientificName: string, xenoCantoApiKey: str
     const isSpecies = taxonInfo && (taxonInfo.rank === "species" || taxonInfo.rank === "subspecies");
 
     if (!taxonInfo) {
-        return { inat_photos: [], male_image_url: null, female_image_url: null, juvenile_image_url: null, sounds: [], wikipedia_image: null };
+        // Taxon lookup failed — still try Wikipedia/Wikimedia as a last resort
+        const wikipediaFallback = await fetchWikimediaImage(scientificName);
+        return { inat_photos: [], male_image_url: null, female_image_url: null, juvenile_image_url: null, sounds: [], wikipedia_image: wikipediaFallback };
     }
 
     // 2. Fetch basic photos and sounds in parallel
