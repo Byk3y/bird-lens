@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const [draftData, setDraftData] = useState<DraftSighting | null>(null);
+  const [isDraftVisible, setIsDraftVisible] = useState(false);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [showAttribution, setShowAttribution] = useState(false);
 
@@ -73,7 +74,10 @@ export default function HomeScreen() {
   // Check for unsaved draft on mount
   useEffect(() => {
     draftSighting.loadDraft().then(draft => {
-      if (draft) setDraftData(draft);
+      if (draft) {
+        setDraftData(draft);
+        setIsDraftVisible(true);
+      }
     });
   }, []);
 
@@ -87,7 +91,7 @@ export default function HomeScreen() {
       await draftSighting.saveDraftToCollection(draftData, user.id);
       await draftSighting.clearDraft();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setDraftData(null);
+      setIsDraftVisible(false);
     } catch (e: any) {
       console.error('Error saving draft:', e);
       showAlert({ title: 'Save Error', message: e.message || 'Failed to save sighting.' });
@@ -98,6 +102,11 @@ export default function HomeScreen() {
 
   const handleDiscardDraft = async () => {
     await draftSighting.clearDraft();
+    setIsDraftVisible(false);
+  };
+
+  // Clear draft data after modal has fully closed
+  const handleDraftModalClosed = () => {
     setDraftData(null);
   };
 
@@ -179,11 +188,12 @@ export default function HomeScreen() {
 
       {draftData && (
         <DraftSightingPrompt
-          visible={!!draftData}
+          visible={isDraftVisible}
           draft={draftData}
           onSave={handleSaveDraft}
           onDiscard={handleDiscardDraft}
           isSaving={isDraftSaving}
+          onModalClosed={handleDraftModalClosed}
         />
       )}
 

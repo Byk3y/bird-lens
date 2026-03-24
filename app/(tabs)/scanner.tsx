@@ -298,7 +298,8 @@ export default function ScannerScreen() {
             // We store the URI for direct display and share sheet compatibility
             setCapturedImage(manipResult.uri);
             if (manipResult.base64) {
-              await identifyBird(manipResult.base64);
+              const bird = await identifyBird(manipResult.base64);
+              if (bird) incrementCount();
             }
           }
         }

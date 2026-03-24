@@ -84,7 +84,7 @@ export const AttributionSurveySheet: React.FC<AttributionSurveySheetProps> = ({
             onRequestClose={dismiss}
         >
             <AnimatePresence>
-                {visible && (
+                {(visible || isAnimatingOut) && (
                     <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents="box-none">
                         {/* Backdrop */}
                         <MotiView

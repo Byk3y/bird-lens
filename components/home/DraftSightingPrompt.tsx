@@ -21,6 +21,7 @@ interface DraftSightingPromptProps {
     onSave: () => void;
     onDiscard: () => void;
     isSaving: boolean;
+    onModalClosed?: () => void;
 }
 
 export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
@@ -29,6 +30,7 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
     onSave,
     onDiscard,
     isSaving,
+    onModalClosed,
 }) => {
     const [isAnimatingOut, setIsAnimatingOut] = React.useState(false);
     const wasVisible = React.useRef(false);
@@ -36,7 +38,10 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
     React.useEffect(() => {
         if (wasVisible.current && !visible) {
             setIsAnimatingOut(true);
-            const timer = setTimeout(() => setIsAnimatingOut(false), 350);
+            const timer = setTimeout(() => {
+                setIsAnimatingOut(false);
+                onModalClosed?.();
+            }, 350);
             return () => clearTimeout(timer);
         }
         wasVisible.current = visible;
@@ -62,7 +67,7 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
             onRequestClose={onDiscard}
         >
             <AnimatePresence>
-                {visible && (
+                {(visible || isAnimatingOut) && (
                     <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents="box-none">
                         {/* Backdrop */}
                         <MotiView
