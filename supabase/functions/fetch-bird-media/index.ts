@@ -38,8 +38,8 @@ serve(async (req: Request) => {
             .single();
 
         let identificationData = cached?.identification_data;
-        // Check if cache is stale (14 days)
-        const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 14 * 24 * 60 * 60 * 1000);
+        // Check if cache is stale (30 days)
+        const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 30 * 24 * 60 * 60 * 1000);
 
         // Check for missing new fields in metadata (also_known_as, genus_description)
         const isMetadataIncomplete = identificationData && (

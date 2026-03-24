@@ -52,7 +52,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 // ---------- Helper: Search Cache (using species_meta table) ----------
 
-const CACHE_TTL_DAYS = 14;
+const CACHE_TTL_DAYS = 30;
 
 async function getCachedMedia(scientificName: string) {
     try {
@@ -594,8 +594,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             if (!scientific_name) return;
                             try {
                                 const cached = await getCachedMedia(scientific_name);
-                                // Implementation Plan: 14-day TTL check
-                                const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > 14 * 24 * 60 * 60 * 1000);
+                                const isStale = cached && (Date.now() - new Date(cached.updated_at).getTime() > CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
 
                                 if (cached && !isStale) {
                                     writeChunk(controller, { type: "media", index, data: cached });
