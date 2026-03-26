@@ -48,6 +48,7 @@ interface ShareCardBottomSheetProps {
     imageUrl?: string;
     locationName?: string;
     dateIdentified?: string | Date;
+    onPersist?: () => void | Promise<void>;
     onSuccess?: () => void | Promise<void>;
 }
 
@@ -65,6 +66,7 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     imageUrl,
     locationName,
     dateIdentified,
+    onPersist,
     onSuccess,
 }) => {
     const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('wild');
@@ -153,17 +155,21 @@ export const ShareCardBottomSheet: React.FC<ShareCardBottomSheetProps> = ({
     };
 
     const handleSave = async () => {
-        await saveToPhotos(async () => {
+        const saved = await saveToPhotos(() => {
             onClose();
-            await onSuccess?.();
+            onSuccess?.();
         });
+        if (saved) {
+            await onPersist?.();
+        }
     };
 
     const handleShare = async () => {
         const success = await shareCard();
         if (success) {
+            await onPersist?.();
             onClose();
-            await onSuccess?.();
+            onSuccess?.();
         }
     };
 

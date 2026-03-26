@@ -358,12 +358,14 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
                     bird={activeBird}
                     imageUrl={capturedImage || heroImages[activeBird.scientific_name]}
                     locationName={locationName || undefined}
-                    onSuccess={async () => {
-                        // Auto-save if not already saved
+                    onPersist={async () => {
+                        // Persist immediately so data is safe even if app closes
                         if (!isSavedForActive) {
                             await onSave(activeBird, capturedImage, recordingUri);
                         }
-                        // Navigate to collection after successful share
+                    }}
+                    onSuccess={() => {
+                        // Navigate on alert dismiss
                         router.replace('/(tabs)/collection');
                     }}
                 />

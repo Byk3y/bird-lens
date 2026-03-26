@@ -28,9 +28,9 @@ export function useShareCard() {
         }
     }, [showAlert]);
 
-    const saveToPhotos = useCallback(async (onSuccess?: () => void) => {
+    const saveToPhotos = useCallback(async (onDismiss?: () => void): Promise<boolean> => {
         const uri = await captureCard();
-        if (!uri) return;
+        if (!uri) return false;
 
         try {
             const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -39,7 +39,7 @@ export function useShareCard() {
                     title: 'Permission Required',
                     message: 'Please allow access to your photo library to save share cards.'
                 });
-                return;
+                return false;
             }
             await MediaLibrary.saveToLibraryAsync(uri);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -50,17 +50,19 @@ export function useShareCard() {
                     {
                         text: 'OK',
                         onPress: () => {
-                            if (onSuccess) onSuccess();
+                            if (onDismiss) onDismiss();
                         }
                     }
                 ]
             });
+            return true;
         } catch (err) {
             console.error('Failed to save to photos:', err);
             showAlert({
                 title: 'Error',
                 message: 'Failed to save to your photo library.'
             });
+            return false;
         }
     }, [captureCard, showAlert]);
 
