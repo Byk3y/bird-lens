@@ -1,4 +1,5 @@
 import { useAlert } from '@/components/common/AlertProvider';
+import { analytics, Events } from '@/lib/analytics';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
@@ -42,6 +43,7 @@ export function useShareCard() {
                 return false;
             }
             await MediaLibrary.saveToLibraryAsync(uri);
+            analytics.capture(Events.SHARE_CARD_SAVED);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             showAlert({
                 title: 'Saved!',
@@ -83,6 +85,7 @@ export function useShareCard() {
                 mimeType: 'image/png',
                 dialogTitle: 'Share your bird sighting',
             });
+            analytics.capture(Events.SHARE_CARD_SHARED);
             return true;
         } catch (err) {
             console.error('Failed to share:', err);

@@ -1,4 +1,5 @@
 import { useAlert } from '@/components/common/AlertProvider';
+import { analytics, Events } from '@/lib/analytics';
 import { PhotoFramingView } from '@/components/scanner/PhotoFramingView';
 import { ScannerHeader } from '@/components/scanner/ScannerHeader';
 import { ScannerViewfinder } from '@/components/scanner/ScannerViewfinder';
@@ -219,6 +220,7 @@ export default function EnhancerScreen() {
 
                 setEnhancedImage(result);
                 setPhase('result');
+                analytics.capture(Events.ENHANCER_USED);
             }
         } catch (error: any) {
             console.error('Enhancement failed:', error);

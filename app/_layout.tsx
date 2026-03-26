@@ -3,9 +3,9 @@ import { Outfit_300Light, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBol
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { PostHogProvider } from 'posthog-react-native';
+import { PostHogProvider, usePostHog } from 'posthog-react-native';
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
@@ -13,8 +13,9 @@ import 'react-native-url-polyfill/auto';
 
 import { AlertProvider } from '@/components/common/AlertProvider';
 import { useColorScheme } from '@/components/useColorScheme';
+import { analytics } from '@/lib/analytics';
 import { initAudioConfig } from '@/lib/audioConfig';
-import { AuthProvider } from '@/lib/auth';
+import { AuthProvider, useAuth } from '@/lib/auth';
 import { onboardingState } from '@/lib/onboardingState';
 import { asyncStoragePersister, queryClient } from '@/lib/queryClient';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -118,47 +119,90 @@ function RootLayoutNav() {
         options={{
           host: 'https://us.i.posthog.com',
           enableSessionReplay: false,
+          captureAppLifecycleEvents: true,
         }}
       >
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{ persister: asyncStoragePersister }}
-        >
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <AuthProvider>
-              <AlertProvider>
-                <ThemeProvider value={DefaultTheme}>
-                  <Stack>
-                    {/* Onboarding flow — only accessible when onboarding is NOT complete */}
-                    <Stack.Protected guard={!onboardingCompleted}>
-                      <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
-                      <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-                    </Stack.Protected>
-
-                    {/* Paywall — accessible in both states (shown after onboarding + from settings) */}
-                    <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-
-                    {/* Main app — only accessible when onboarding IS complete */}
-                    <Stack.Protected guard={!!onboardingCompleted}>
-                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                      <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
-                      <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
-                      <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
-                      <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
-                      <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
-                      <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
-                      <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
-                      <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
-                      <Stack.Screen name="(enhancer)" options={{ headerShown: false, animation: 'none' }} />
-                      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                    </Stack.Protected>
-                  </Stack>
-                </ThemeProvider>
-              </AlertProvider>
-            </AuthProvider>
-          </GestureHandlerRootView>
-        </PersistQueryClientProvider>
+        <AppContent onboardingCompleted={onboardingCompleted} />
       </PostHogProvider>
     </View>
   );
+}
+
+// Separate component so we can successfully call usePostHog() *after* the Provider wraps it
+function AppContent({ onboardingCompleted }: { onboardingCompleted: boolean }) {
+  const posthog = usePostHog();
+  const segments = useSegments();
+  const pathname = usePathname();
+
+  // Initialize the analytics singleton so non-React code can fire events
+  useEffect(() => {
+    if (posthog) analytics.init(posthog);
+  }, [posthog]);
+
+  // TestFlight Force Ping
+  useEffect(() => {
+    posthog.capture('TestFlight_App_Open', { source: 'forced_manual_ping' });
+  }, []);
+
+  // Screen Auto-Tracking
+  useEffect(() => {
+    if (pathname && posthog) {
+      posthog.screen(pathname, { segments: segments });
+    }
+  }, [pathname, segments]);
+
+  return (
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: asyncStoragePersister }}
+    >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AuthProvider>
+          <AnalyticsIdentify />
+          <AlertProvider>
+            <ThemeProvider value={DefaultTheme}>
+              <Stack>
+                {/* Onboarding flow — only accessible when onboarding is NOT complete */}
+                <Stack.Protected guard={!onboardingCompleted}>
+                  <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+                </Stack.Protected>
+
+                {/* Paywall — accessible in both states (shown after onboarding + from settings) */}
+                <Stack.Screen name="paywall" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+
+                {/* Main app — only accessible when onboarding IS complete */}
+                <Stack.Protected guard={!!onboardingCompleted}>
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="settings" options={{ presentation: 'card', headerShown: false }} />
+                  <Stack.Screen name="edit-profile" options={{ presentation: 'card', headerShown: false }} />
+                  <Stack.Screen name="bird-detail" options={{ presentation: 'card', headerShown: false }} />
+                  <Stack.Screen name="search" options={{ presentation: 'transparentModal', headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="tutorial/[slug]" options={{ presentation: 'card', headerShown: false }} />
+                  <Stack.Screen name="manage-account" options={{ presentation: 'card', headerShown: false }} />
+                  <Stack.Screen name="knowledge-level" options={{ presentation: 'card', headerShown: false }} />
+                  <Stack.Screen name="delete-account-confirm" options={{ presentation: 'card', headerShown: false }} />
+                  <Stack.Screen name="(enhancer)" options={{ headerShown: false, animation: 'none' }} />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                </Stack.Protected>
+              </Stack>
+            </ThemeProvider>
+          </AlertProvider>
+        </AuthProvider>
+      </GestureHandlerRootView>
+    </PersistQueryClientProvider>
+  );
+}
+
+function AnalyticsIdentify() {
+  const { user, isPro, isGuest } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!user.is_anonymous) {
+      analytics.identify(user.id, { is_pro: isPro, is_guest: isGuest });
+    }
+  }, [user?.id, user?.is_anonymous, isPro, isGuest]);
+
+  return null;
 }

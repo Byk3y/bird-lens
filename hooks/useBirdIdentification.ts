@@ -1,4 +1,5 @@
 import { useAlert } from '@/components/common/AlertProvider';
+import { analytics, Events } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -45,6 +46,7 @@ export const useBirdIdentification = () => {
 
             setIsProcessing(true);
             setError(null);
+            analytics.capture(Events.IDENTIFICATION_STARTED, { mode: imageB64 ? 'photo' : 'audio' });
 
             // Check permission silently first to decide if we show the "Determining..." message
             const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
@@ -199,6 +201,13 @@ export const useBirdIdentification = () => {
                                     clearTimeout(enrichmentTimeout);
                                     enrichmentTimeout = null;
                                 }
+                                analytics.capture(Events.IDENTIFICATION_COMPLETED, {
+                                    mode: imageB64 ? 'photo' : 'audio',
+                                    candidates_count: finalBirds.length,
+                                    top_species: finalBirds[0]?.name,
+                                    top_confidence: finalBirds[0]?.confidence,
+                                    duration_ms: chunk.duration,
+                                });
                                 console.log(`Stream complete in ${chunk.duration}ms`);
                                 break;
 
@@ -269,6 +278,11 @@ export const useBirdIdentification = () => {
                     }
 
                     // FINAL ERROR HANDLING (If not retrying)
+                    analytics.capture(Events.IDENTIFICATION_FAILED, {
+                        mode: imageB64 ? 'photo' : 'audio',
+                        error: message,
+                        is_quota_error: isQuotaError,
+                    });
                     if (isQuotaError) {
                         showAlert({
                             title: 'Servers are Busy',
@@ -381,6 +395,12 @@ export const useBirdIdentification = () => {
                     }
                 }
 
+                analytics.capture(Events.SIGHTING_SAVED, {
+                    species: bird.name,
+                    has_image: !!capturedImage,
+                    has_audio: !!recordingUri,
+                    has_location: !!lastLocation,
+                });
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 return true;
             } catch (error: any) {

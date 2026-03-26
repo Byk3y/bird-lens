@@ -1,6 +1,7 @@
 import { subscriptionService } from '@/services/SubscriptionService';
 import { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { analytics, Events } from './analytics';
 import { supabase } from './supabase';
 
 interface AuthContextType {
@@ -141,6 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }, { onConflict: 'id' });
         }
 
+        if (!error) analytics.capture(Events.SIGNUP_COMPLETED);
         return { error };
     };
 
@@ -162,10 +164,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         }
 
+        if (!error) analytics.capture(Events.SIGNIN_COMPLETED);
         return { error };
     };
 
     const signOut = async () => {
+        analytics.capture(Events.SIGNOUT_COMPLETED);
+        analytics.reset();
         await supabase.auth.signOut();
         // After logout, create a new anonymous session
         handleAnonymousSignIn();
@@ -193,6 +198,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (error) throw error;
 
             // On success, sign out and clear subscription
+            analytics.capture(Events.ACCOUNT_DELETED);
+            analytics.reset();
             await supabase.auth.signOut();
             subscriptionService.logOut();
             handleAnonymousSignIn();

@@ -1,5 +1,6 @@
 import { useAlert } from '@/components/common/AlertProvider';
 import { Links } from '@/constants/Links';
+import { analytics, Events } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { cancelTrialReminder, requestNotificationPermission, scheduleTrialReminder } from '@/lib/notifications';
 import { subscriptionService } from '@/services/SubscriptionService';
@@ -71,6 +72,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
             console.error('Error loading offerings:', error);
         } finally {
             setLoading(false);
+            analytics.capture(Events.PAYWALL_SHOWN);
         }
     };
 
@@ -79,6 +81,10 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         try {
             const { success, error } = await subscriptionService.purchasePackage(pkg);
             if (success) {
+                analytics.capture(Events.PURCHASE_COMPLETED, {
+                    plan: pkg.identifier,
+                    price: pkg.product.priceString,
+                });
                 if (reminderEnabled) {
                     await scheduleTrialReminder();
                 }
@@ -86,6 +92,8 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                 // Flag for the home screen to show the welcome alert after navigation
                 await AsyncStorage.setItem('@show_pro_welcome', 'true');
                 onClose();
+            } else if (error?.userCancelled) {
+                analytics.capture(Events.PURCHASE_CANCELLED);
             } else if (error && !error.userCancelled) {
                 showAlert({
                     title: 'Error',
@@ -104,6 +112,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         try {
             const customerInfo = await subscriptionService.restorePurchases();
             if (customerInfo?.entitlements.active['Birdsnap Pro']) {
+                analytics.capture(Events.PURCHASE_RESTORED);
                 await refreshSubscription();
                 onClose();
                 setTimeout(() => {

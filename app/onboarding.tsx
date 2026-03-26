@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { analytics, Events } from '@/lib/analytics';
 import { onboardingState } from '@/lib/onboardingState';
 import { supabase } from '@/lib/supabase';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -63,6 +64,7 @@ export default function OnboardingScreen() {
 
     const goToPaywall = useCallback(async () => {
         await onboardingState.markAsCompleted();
+        analytics.capture(Events.ONBOARDING_COMPLETED);
         // Record onboarding completion server-side for analytics
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
