@@ -164,7 +164,6 @@ function AppContent({ onboardingCompleted }: { onboardingCompleted: boolean }) {
               <Stack>
                 {/* Onboarding flow — only accessible when onboarding is NOT complete */}
                 <Stack.Protected guard={!onboardingCompleted}>
-                  <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
                   <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
                 </Stack.Protected>
 
