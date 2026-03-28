@@ -16,6 +16,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { analytics } from '@/lib/analytics';
 import { initAudioConfig } from '@/lib/audioConfig';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { cleanupLegacyReminders } from '@/lib/notifications';
 import { onboardingState } from '@/lib/onboardingState';
 import { asyncStoragePersister, queryClient } from '@/lib/queryClient';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -81,6 +82,9 @@ function RootLayoutNav() {
 
         // Silently pre-fetch offerings in the background so the Paywall opens instantly later
         subscriptionService.getOfferings().catch((err) => console.log('Background offering pre-fetch failed:', err));
+
+        // One-time cleanup: cancel any lingering trial reminder notifications from previous app versions
+        cleanupLegacyReminders().catch((err) => console.warn('Legacy reminder cleanup failed:', err));
 
         const completed = await onboardingState.isCompleted();
         setOnboardingCompleted(completed);

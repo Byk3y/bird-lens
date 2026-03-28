@@ -1,9 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
-const TRIAL_REMINDER_ID_KEY = '@trial_reminder_notification_id';
-const TRIAL_DAYS = 7;
-const REMIND_DAYS_BEFORE_END = 1;
+const MORNING_ACTIVATION_KEY = '@has_scheduled_morning_activation';
+const TRIAL_CLEANUP_KEY = '@trial_reminder_cleanup_done';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -23,35 +22,63 @@ export async function requestNotificationPermission(): Promise<boolean> {
     return status === 'granted';
 }
 
-export async function scheduleTrialReminder(): Promise<void> {
-    // Cancel any existing reminder first
-    await cancelTrialReminder();
+/**
+ * Schedule a local notification for 8:00 AM to nudge the user to try the app.
+ * Only schedules once per user (guarded by AsyncStorage flag).
+ */
+export async function scheduleMorningActivation(): Promise<void> {
+    try {
+        const already = await AsyncStorage.getItem(MORNING_ACTIVATION_KEY);
+        if (already) return;
 
-    const triggerSeconds = (TRIAL_DAYS - REMIND_DAYS_BEFORE_END) * 24 * 60 * 60;
+        const now = new Date();
+        const hour = now.getHours();
 
-    const id = await Notifications.scheduleNotificationAsync({
-        content: {
-            title: 'Your BirdMark Pro trial ends tomorrow',
-            body: 'Enjoy unlimited bird identifications — your free trial expires in 24 hours.',
-        },
-        trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: triggerSeconds,
-            repeats: false,
-        },
-    });
+        // Determine target date: if currently 6-9 AM (peak bird hours) or after 9 AM,
+        // schedule for tomorrow. If before 6 AM, schedule for today.
+        const target = new Date(now);
+        if (hour >= 6) {
+            target.setDate(target.getDate() + 1);
+        }
+        target.setHours(8, 0, 0, 0);
 
-    await AsyncStorage.setItem(TRIAL_REMINDER_ID_KEY, id);
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: 'The morning birds are out! 🌅',
+                body: 'Step outside and tap the microphone to discover who\u2019s singing near you.',
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+                year: target.getFullYear(),
+                month: target.getMonth() + 1, // expo-notifications uses 1-indexed months
+                day: target.getDate(),
+                hour: 8,
+                minute: 0,
+                repeats: false,
+            },
+        });
+
+        await AsyncStorage.setItem(MORNING_ACTIVATION_KEY, 'true');
+    } catch (e) {
+        console.warn('Failed to schedule morning activation:', e);
+    }
 }
 
-export async function cancelTrialReminder(): Promise<void> {
+/**
+ * One-time cleanup: cancel any lingering trial reminder notifications
+ * from the previous version of the app. Safe to call on every launch.
+ */
+export async function cleanupLegacyReminders(): Promise<void> {
     try {
-        const id = await AsyncStorage.getItem(TRIAL_REMINDER_ID_KEY);
-        if (id) {
-            await Notifications.cancelScheduledNotificationAsync(id);
-            await AsyncStorage.removeItem(TRIAL_REMINDER_ID_KEY);
-        }
+        const done = await AsyncStorage.getItem(TRIAL_CLEANUP_KEY);
+        if (done) return;
+
+        // Cancel all previously scheduled notifications (only the trial reminder existed)
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        // Clean up the old AsyncStorage key
+        await AsyncStorage.removeItem('@trial_reminder_notification_id');
+        await AsyncStorage.setItem(TRIAL_CLEANUP_KEY, 'true');
     } catch (e) {
-        console.warn('Failed to cancel trial reminder:', e);
+        console.warn('Failed to cleanup legacy reminders:', e);
     }
 }

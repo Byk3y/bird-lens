@@ -2,7 +2,7 @@ import { useAlert } from '@/components/common/AlertProvider';
 import { Links } from '@/constants/Links';
 import { analytics, Events } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { cancelTrialReminder, requestNotificationPermission, scheduleTrialReminder } from '@/lib/notifications';
+import { requestNotificationPermission, scheduleMorningActivation } from '@/lib/notifications';
 import { subscriptionService } from '@/services/SubscriptionService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -86,7 +86,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                     price: pkg.product.priceString,
                 });
                 if (reminderEnabled) {
-                    await scheduleTrialReminder();
+                    await scheduleMorningActivation();
                 }
                 await refreshSubscription();
                 // Flag for the home screen to show the welcome alert after navigation
@@ -294,7 +294,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                             {trialEligible && (
                                 <View style={styles.reminderToggleContainer}>
                                     <Text style={styles.reminderText}>
-                                        Remind me before the trial ends
+                                        Send me birding tips and reminders
                                     </Text>
                                     <Switch
                                         value={reminderEnabled}
@@ -303,8 +303,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                             if (value) {
                                                 const granted = await requestNotificationPermission();
                                                 if (!granted) return;
-                                            } else {
-                                                await cancelTrialReminder();
+                                                await scheduleMorningActivation();
                                             }
                                             setReminderEnabled(value);
                                         }}

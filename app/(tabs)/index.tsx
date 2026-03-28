@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Linking,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,8 @@ import { TrialBanner } from '@/components/home/TrialBanner';
 import { useAlert } from '@/components/common/AlertProvider';
 import { useAuth } from '@/lib/auth';
 import { draftSighting, DraftSighting } from '@/lib/draftSighting';
+import { requestNotificationPermission, scheduleMorningActivation } from '@/lib/notifications';
+import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -79,6 +82,43 @@ export default function HomeScreen() {
         setIsDraftVisible(true);
       }
     });
+  }, []);
+
+  // In-app notification prompt for users who skipped the paywall toggle
+  useEffect(() => {
+    (async () => {
+      const alreadyScheduled = await AsyncStorage.getItem('@has_scheduled_morning_activation');
+      if (alreadyScheduled) return;
+
+      const alreadyAsked = await AsyncStorage.getItem('@has_seen_notification_prompt');
+      if (alreadyAsked) return;
+
+      // If permission already granted (e.g. from paywall toggle), schedule silently
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === 'granted') {
+        await scheduleMorningActivation();
+        return;
+      }
+
+      // Show soft prompt after a short delay so it doesn't compete with other alerts
+      await AsyncStorage.setItem('@has_seen_notification_prompt', 'true');
+      setTimeout(() => {
+        Alert.alert(
+          'Morning birding alerts',
+          'Get a nudge at 8 AM when birds are most active near you.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            {
+              text: 'Enable',
+              onPress: async () => {
+                const granted = await requestNotificationPermission();
+                if (granted) await scheduleMorningActivation();
+              },
+            },
+          ]
+        );
+      }, 1500);
+    })();
   }, []);
 
   const handleSaveDraft = async () => {
