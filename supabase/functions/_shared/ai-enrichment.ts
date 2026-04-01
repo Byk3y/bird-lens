@@ -38,7 +38,7 @@ Return a JSON object with a "birds" array. Each bird must include:
   }
 - "identification_tips": { "male": "Visual markers for males", "female": "Visual markers for females", "juvenile": "Visual markers for juveniles" }
 - "behavior": "One unique behavioral trait or interesting fact."
-- "also_known_as": Array of strings (alternative names).
+- "also_known_as": Array of strings (alternative common names or regional synonyms for this exact species only. Never include the common name of a different species.)
 - "taxonomy": {
     "family": "Common name of family",
     "family_scientific": "Scientific name of family",
