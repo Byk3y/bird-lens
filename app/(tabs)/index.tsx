@@ -22,6 +22,7 @@ import { DraftSightingPrompt } from '@/components/home/DraftSightingPrompt';
 import { ExploreSection } from '@/components/home/ExploreSection';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { TrialBanner } from '@/components/home/TrialBanner';
+import { FloatingAssistantButton } from '@/components/chat/FloatingAssistantButton';
 import { useAlert } from '@/components/common/AlertProvider';
 import { useAuth } from '@/lib/auth';
 import { draftSighting, DraftSighting } from '@/lib/draftSighting';
@@ -241,6 +242,8 @@ export default function HomeScreen() {
         visible={showAttribution}
         onDismiss={() => setShowAttribution(false)}
       />
+
+      <FloatingAssistantButton />
     </View>
   );
 }
