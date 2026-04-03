@@ -183,7 +183,7 @@ Return a JSON object with a "candidates" array. Each object in the array must in
 - "name": Common name
 - "scientific_name": Scientific name
 - "confidence": A number from 0-1
-- "also_known_as": Array of strings (2-4 alternative common names for this exact species. These must be synonyms or regional names for the same species — never include the common name of a different species. E.g., for Willow Warbler do NOT list "Wood Warbler" which is Phylloscopus sibilatrix.)
+- "also_known_as": Array of strings (exactly 2 alternative common names for this exact species. These must be synonyms or regional names for the same species — never include the common name of a different species. E.g., for Willow Warbler do NOT list "Wood Warbler" which is Phylloscopus sibilatrix.)
 - "diet_tags": Array of 1-3 simple keywords (e.g. ["Insects", "Seeds"])
 - "habitat_tags": Array of 1-2 short keywords (e.g. ["Forest", "Shrubland"])
 - "taxonomy": {
