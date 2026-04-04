@@ -358,7 +358,12 @@ export const PhotoFramingView: React.FC<PhotoFramingViewProps> = ({
         });
     };
 
-    if (!imageLayout) return <View style={styles.container} />;
+    if (!imageLayout) return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator size="large" color={Colors.accent} />
+            <Text style={{ color: Colors.white, marginTop: 12, fontSize: 14 }}>Loading image...</Text>
+        </View>
+    );
 
     return (
         <View style={styles.container}>
