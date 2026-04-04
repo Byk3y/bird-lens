@@ -4,6 +4,7 @@ import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
 import { BirdingTipsBottomSheet } from '@/components/shared/BirdingTipsBottomSheet';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { IdentificationDetailBottomSheet } from '@/components/shared/IdentificationDetailBottomSheet';
+import { OwlAvatar } from '@/components/chat/OwlAvatar';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
 import { BirdMedia, MediaService } from '@/services/MediaService';
@@ -320,6 +321,15 @@ export default function BirdDetailScreen() {
                 <View style={{ height: 120 }} />
             </ScrollView>
 
+            {/* Owlbert FAB */}
+            <TouchableOpacity
+                style={[styles.owlbertFab, { bottom: 65 + Math.max(insets.bottom, 16) + 12 }]}
+                onPress={() => router.push('/bird-assistant')}
+                activeOpacity={0.85}
+            >
+                <OwlAvatar size={42} />
+            </TouchableOpacity>
+
             {/* Sticky Bottom Bar */}
             <View style={[styles.bottomBar, { height: 65 + Math.max(insets.bottom, 16), paddingBottom: Math.max(insets.bottom, 16), backgroundColor: '#fff' }]}>
                 <TouchableOpacity hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
@@ -497,5 +507,23 @@ const styles = StyleSheet.create({
         width: 1,
         height: 30,
         backgroundColor: '#f1f5f9',
+    },
+    owlbertFab: {
+        position: 'absolute',
+        right: 16,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#F97316',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 8,
+        borderWidth: 2,
+        borderColor: '#FED7AA',
+        zIndex: 100,
     },
 });

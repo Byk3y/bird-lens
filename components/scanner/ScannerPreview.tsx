@@ -1,8 +1,8 @@
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
-import { X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { RefreshCw, X } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
     Easing,
@@ -75,6 +75,21 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
 
     const displayMessage = progressMessage || messages[statusIndex];
 
+    const isNoBirdError = useMemo(() => {
+        if (!error) return false;
+        const lower = error.toLowerCase();
+        return lower.includes("couldn't spot") || lower.includes('no bird') ||
+               lower.includes('bird sounds') || lower.includes("couldn't identify");
+    }, [error]);
+
+    const errorTitle = useMemo(() => {
+        if (!error) return '';
+        const lower = error.toLowerCase();
+        if (lower.includes("couldn't spot") || lower.includes('no bird') || lower.includes("couldn't identify")) return 'No Bird Detected';
+        if (lower.includes('bird sounds')) return 'No Bird Heard';
+        return 'Something Went Wrong';
+    }, [error]);
+
     useEffect(() => {
         scanLineY.value = withRepeat(
             withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
@@ -146,17 +161,19 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
                             </View>
                         )}
 
-                        {/* Grid Overlay */}
-                        <View style={styles.gridOverlay}>
-                            {/* Horizontal grid lines */}
-                            {[...Array(8)].map((_, i) => (
-                                <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 12.5}%` }]} />
-                            ))}
-                            {/* Vertical grid lines */}
-                            {[...Array(6)].map((_, i) => (
-                                <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 16.6}%` }]} />
-                            ))}
-                        </View>
+                        {/* Grid Overlay — hidden on error */}
+                        {!error && (
+                            <View style={styles.gridOverlay}>
+                                {/* Horizontal grid lines */}
+                                {[...Array(8)].map((_, i) => (
+                                    <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 12.5}%` }]} />
+                                ))}
+                                {/* Vertical grid lines */}
+                                {[...Array(6)].map((_, i) => (
+                                    <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 16.6}%` }]} />
+                                ))}
+                            </View>
+                        )}
 
                         {/* Lens Flare / Vignette Effect */}
                         <View style={styles.lensOverlay} pointerEvents="none">
@@ -168,45 +185,51 @@ export const ScannerPreview: React.FC<ScannerPreviewProps> = ({
                             />
                         </View>
 
-                        {/* Scanning Laser */}
-                        <Animated.View style={[styles.scanLine, scanLineStyle]}>
-                            <LinearGradient
-                                colors={
-                                    error
-                                        ? ['rgba(239, 68, 68, 0)', 'rgba(239, 68, 68, 0.4)', 'rgba(239, 68, 68, 0)'] // Red if error
-                                        : ['rgba(249, 115, 22, 0)', 'rgba(249, 115, 22, 0.8)', 'rgba(249, 115, 22, 0)'] // Orange if scanning
-                                }
-                                style={styles.gradient}
-                            />
-                        </Animated.View>
+                        {/* Scanning Laser — hidden on error */}
+                        {!error && (
+                            <Animated.View style={[styles.scanLine, scanLineStyle]}>
+                                <LinearGradient
+                                    colors={['rgba(249, 115, 22, 0)', 'rgba(249, 115, 22, 0.8)', 'rgba(249, 115, 22, 0)']}
+                                    style={styles.gradient}
+                                />
+                            </Animated.View>
+                        )}
                     </View>
                 </View>
             </View>
 
             {/* Scanning Indicator Section */}
             <View style={styles.bottomSection}>
-                <View style={styles.scannerCircleContainer}>
-                    <View style={styles.birdLensBorder}>
-                        <View style={styles.birdLensInner}>
-                            <LottieView
-                                source={require('@/assets/animations/bird-loading.lottie')}
-                                autoPlay
-                                loop
-                                style={{ width: 180, height: 180 }}
-                            />
-                            {/* Glass Highlight Overlay */}
-                            <View style={styles.lensGlassHighlight} pointerEvents="none" />
+                {!error && (
+                    <View style={styles.scannerCircleContainer}>
+                        <View style={styles.birdLensBorder}>
+                            <View style={styles.birdLensInner}>
+                                <LottieView
+                                    source={require('@/assets/animations/bird-loading.lottie')}
+                                    autoPlay
+                                    loop
+                                    style={{ width: 180, height: 180 }}
+                                />
+                                {/* Glass Highlight Overlay */}
+                                <View style={styles.lensGlassHighlight} pointerEvents="none" />
+                            </View>
                         </View>
                     </View>
-                </View>
+                )}
                 <View style={styles.textContainer}>
-                    <Text style={[styles.analyzingText, error ? styles.errorTitle : null]}>
-                        {error ? "Service Unavailable" : displayMessage}
+                    <Text style={[styles.analyzingText, error ? (isNoBirdError ? styles.errorTitleWarning : styles.errorTitle) : null]}>
+                        {error ? errorTitle : displayMessage}
                     </Text>
                     {error && (
-                        <Text style={styles.errorMessage}>
-                            {error}
-                        </Text>
+                        <>
+                            <Text style={styles.errorMessage}>
+                                {error}
+                            </Text>
+                            <TouchableOpacity style={styles.retryButton} onPress={onReset} activeOpacity={0.8}>
+                                <RefreshCw size={16} color={Colors.white} />
+                                <Text style={styles.retryButtonText}>Try Again</Text>
+                            </TouchableOpacity>
+                        </>
                     )}
                 </View>
             </View>
@@ -376,11 +399,30 @@ const styles = StyleSheet.create({
     errorTitle: {
         color: '#EF4444',
     },
+    errorTitleWarning: {
+        color: '#D97706',
+    },
     errorMessage: {
         ...Typography.body,
         color: Colors.textSecondary,
         textAlign: 'center',
         fontSize: 14,
+    },
+    retryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 16,
+        backgroundColor: Colors.accent,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 24,
+    },
+    retryButtonText: {
+        color: Colors.white,
+        fontSize: 15,
+        fontWeight: '700',
     },
     lensOverlay: {
         ...StyleSheet.absoluteFillObject,

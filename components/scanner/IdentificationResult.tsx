@@ -3,6 +3,7 @@ import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
 import { BirdingTipsBottomSheet } from '@/components/shared/BirdingTipsBottomSheet';
 import { BirdProfileContent } from '@/components/shared/BirdProfileContent';
 import { IdentificationDetailBottomSheet } from '@/components/shared/IdentificationDetailBottomSheet';
+import { OwlAvatar } from '@/components/chat/OwlAvatar';
 import { ImageViewer } from '@/components/shared/profile/ImageViewer';
 import { Colors } from '@/constants/theme';
 
@@ -278,6 +279,17 @@ export const IdentificationResult: React.FC<IdentificationResultProps> = ({
 
                 <View style={{ height: 120 }} />
             </ScrollView>
+
+            {/* Owlbert FAB */}
+            {!isComparisonTab && activeBird && (
+                <TouchableOpacity
+                    style={[styles.owlbertFab, { bottom: 75 + Math.max(insets.bottom, 16) + 12 }]}
+                    onPress={() => router.push('/bird-assistant')}
+                    activeOpacity={0.85}
+                >
+                    <OwlAvatar size={42} />
+                </TouchableOpacity>
+            )}
 
             {/* Bottom Action Bar */}
             {!isComparisonTab && activeBird && (

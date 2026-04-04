@@ -17,7 +17,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface DraftSightingPromptProps {
     visible: boolean;
-    draft: DraftSighting;
+    draft: DraftSighting | null;
     onSave: () => void;
     onDiscard: () => void;
     isSaving: boolean;
@@ -34,13 +34,23 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
 }) => {
     const [isAnimatingOut, setIsAnimatingOut] = React.useState(false);
     const wasVisible = React.useRef(false);
+    // Cache the last non-null draft so content doesn't vanish during exit animation
+    const lastDraftRef = React.useRef<DraftSighting | null>(draft);
+    if (draft) lastDraftRef.current = draft;
+    const displayDraft = draft ?? lastDraftRef.current;
 
     React.useEffect(() => {
         if (wasVisible.current && !visible) {
             setIsAnimatingOut(true);
             const timer = setTimeout(() => {
                 setIsAnimatingOut(false);
-                onModalClosed?.();
+                // Use requestAnimationFrame to break React 18 automatic batching.
+                // This ensures Modal renders with visible={false} before onModalClosed
+                // triggers parent state changes — preventing the native iOS modal from
+                // being orphaned as an invisible touch-blocking layer.
+                requestAnimationFrame(() => {
+                    onModalClosed?.();
+                });
             }, 350);
             return () => clearTimeout(timer);
         }
@@ -48,8 +58,9 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
     }, [visible]);
 
     const heroImage = (() => {
-        const bird = draft.bird;
-        const heroFromMap = draft.heroImages[bird.scientific_name];
+        if (!displayDraft) return null;
+        const bird = displayDraft.bird;
+        const heroFromMap = displayDraft.heroImages[bird.scientific_name];
         return heroFromMap
             || bird.inat_photos?.[0]?.url
             || bird.male_image_url
@@ -57,7 +68,7 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
             || null;
     })();
 
-    const confidence = Math.round((draft.bird.confidence || 0) * 100);
+    const confidence = Math.round((displayDraft?.bird.confidence || 0) * 100);
 
     return (
         <Modal
@@ -114,7 +125,7 @@ export const DraftSightingPrompt: React.FC<DraftSightingPromptProps> = ({
                                         <View style={styles.birdInfo}>
                                             <Text style={styles.title}>Unsaved Identification</Text>
                                             <Text style={styles.species} numberOfLines={1}>
-                                                {draft.bird.name}
+                                                {displayDraft?.bird.name}
                                             </Text>
                                             {confidence > 0 && (
                                                 <Text style={styles.confidence}>{confidence}% match</Text>

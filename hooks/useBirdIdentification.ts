@@ -16,6 +16,11 @@ import { getCurrentLocation } from './useLocation';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
+/** Enrichment should never overwrite identification-authoritative fields */
+function stripIdentityFields(metadata: Record<string, any>): Record<string, any> {
+    const { name, scientific_name, confidence, taxonomy, also_known_as, diet_tags, habitat_tags, ...supplementary } = metadata;
+    return supplementary;
+}
 
 export const useBirdIdentification = () => {
     const [isProcessing, setIsProcessing] = useState(false);
@@ -181,16 +186,17 @@ export const useBirdIdentification = () => {
 
                             case 'metadata': {
                                 const { index, data: metadata } = chunk;
+                                const safeMetadata = stripIdentityFields(metadata);
                                 setEnrichedCandidates(prev => {
                                     const next = [...prev];
                                     if (next[index]) {
-                                        next[index] = { ...next[index], ...metadata };
+                                        next[index] = { ...next[index], ...safeMetadata };
                                     }
                                     return next;
                                 });
 
                                 if (index === 0) {
-                                    setResult(prev => prev ? { ...prev, ...metadata } : null);
+                                    setResult(prev => prev ? { ...prev, ...safeMetadata } : null);
                                 }
                                 console.log(`Received metadata enrichment for candidate ${index}`);
                                 break;

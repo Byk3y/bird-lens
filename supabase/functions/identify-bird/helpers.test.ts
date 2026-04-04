@@ -79,14 +79,12 @@ Deno.test("mapBirdNetToCandidates - maps BirdNET keys", () => {
 
 Deno.test("validateBirdMetadata - identifies incomplete data", () => {
     const validData = {
-        name: "Robin",
         scientific_name: "Turdus migratorius",
         habitat: "Gardens",
         description: "Red breast.",
         diet: "Worms",
         conservation_status: "LC",
         behavior: "Hops",
-        taxonomy: { family: "Turdidae", genus: "Turdus" }
     };
     assertEquals(validateBirdMetadata(validData), true);
 

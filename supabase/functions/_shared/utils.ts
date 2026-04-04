@@ -257,28 +257,19 @@ export function mapMediaToResponse(params: {
 export function validateBirdMetadata(data: any): boolean {
     if (!data || typeof data !== 'object') return false;
 
-    const requiredFields = [
-        'name', 'scientific_metadata', 'habitat', 'description',
-        'diet', 'conservation_status', 'behavior'
-    ];
-
-    // Some fields like scientific_metadata might be scientific_name depending on the prompt/model quirk
+    // Enrichment only returns supplementary fields (identity fields like name, taxonomy
+    // are authoritative from the identification model and are not included here)
     const nameKeys = ['scientific_name', 'scientific_metadata'];
     const hasScientific = nameKeys.some(k => data[k] && data[k] !== 'Unknown');
     if (!hasScientific) return false;
 
-    const basicFields = ['name', 'habitat', 'description', 'diet', 'conservation_status', 'behavior'];
+    const basicFields = ['habitat', 'description', 'diet', 'conservation_status', 'behavior'];
     for (const field of basicFields) {
         const val = data[field];
         if (!val || val === 'Unknown' || val === 'N/A' || val === 'unknown') {
             return false;
         }
     }
-
-    // Check taxonomy
-    if (!data.taxonomy || typeof data.taxonomy !== 'object') return false;
-    if (!data.taxonomy.family || data.taxonomy.family === 'Unknown') return false;
-    if (!data.taxonomy.genus || data.taxonomy.genus === 'Unknown') return false;
 
     return true;
 }

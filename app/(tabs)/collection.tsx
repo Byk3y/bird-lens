@@ -4,6 +4,7 @@ import { CustomActionSheet } from '@/components/common/CustomActionSheet';
 import { SkeletonScreen } from '@/components/common/SkeletonScreen';
 import { Paywall } from '@/components/Paywall';
 import { ShareCardBottomSheet } from '@/components/share/ShareCardBottomSheet';
+import { FloatingAssistantButton } from '@/components/chat/FloatingAssistantButton';
 import { GuestNudge } from '@/components/shared/GuestNudge';
 import { TellFriendsModal } from '@/components/shared/TellFriendsModal';
 import { Colors, Spacing, Typography } from '@/constants/theme';
@@ -455,6 +456,8 @@ export default function MeScreen() {
                     onClose={() => setIsPaywallVisible(false)}
                 />
             </Modal>
+
+            <FloatingAssistantButton />
         </View>
     );
 }

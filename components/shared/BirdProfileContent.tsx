@@ -13,10 +13,10 @@ import {
     MoreHorizontal,
     Notebook
 } from 'lucide-react-native';
-import { MotiView } from 'moti';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
     ScrollView,
     StyleSheet,
@@ -36,6 +36,58 @@ import { ScientificClassification } from './profile/ScientificClassification';
 import { ResultActionBottomSheet } from './ResultActionBottomSheet';
 
 const { width } = Dimensions.get('window');
+
+/** Sweep shimmer placeholder for loading images */
+function ShimmerBox({ style }: { style?: any }) {
+    const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const loop = Animated.loop(
+            Animated.timing(shimmerAnim, {
+                toValue: 1,
+                duration: 1200,
+                useNativeDriver: true,
+            })
+        );
+        loop.start();
+        return () => loop.stop();
+    }, [shimmerAnim]);
+
+    const translateX = shimmerAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-150, 150],
+    });
+
+    return (
+        <View style={[{ backgroundColor: '#E8E8E8', overflow: 'hidden' }, style]}>
+            <Animated.View style={{ ...StyleSheet.absoluteFillObject, transform: [{ translateX }] }}>
+                <LinearGradient
+                    colors={['transparent', 'rgba(255,255,255,0.5)', 'transparent']}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={StyleSheet.absoluteFillObject}
+                />
+            </Animated.View>
+        </View>
+    );
+}
+
+/** Gallery image with shimmer while downloading */
+function GalleryImage({ uri, style, onPress }: { uri: string; style: any; onPress?: () => void }) {
+    const [loaded, setLoaded] = useState(false);
+
+    return (
+        <TouchableOpacity style={style} onPress={onPress}>
+            {!loaded && <ShimmerBox style={StyleSheet.absoluteFillObject} />}
+            <Image
+                source={{ uri }}
+                style={styles.galleryImage}
+                cachePolicy="memory-disk"
+                onLoad={() => setLoaded(true)}
+            />
+        </TouchableOpacity>
+    );
+}
 
 interface BirdProfileContentProps {
     bird: BirdResult;
@@ -236,39 +288,22 @@ export const BirdProfileContent: React.FC<BirdProfileContentProps> = ({
                         showsHorizontalScrollIndicator={false}
                         style={styles.galleryScroll}
                     >
-                        {/* Render existing photos */}
+                        {/* Render existing photos with per-image shimmer */}
                         {displayPhotos.map((photo, idx) => {
                             const photoUrl = typeof photo === 'string' ? photo : (photo as INaturalistPhoto).url;
                             return (
-                                <TouchableOpacity
+                                <GalleryImage
                                     key={`photo-${photoUrl}-${idx}`}
+                                    uri={photoUrl}
                                     style={styles.galleryItem}
                                     onPress={() => onImagePress?.(idx)}
-                                >
-                                    <Image
-                                        source={{ uri: photoUrl }}
-                                        style={styles.galleryImage}
-                                        cachePolicy="memory-disk"
-                                    />
-                                </TouchableOpacity>
+                                />
                             );
                         })}
 
-                        {/* Append pulse skeletons if loading and we have fewer than 6 items */}
+                        {/* Shimmer skeletons while fetching image data */}
                         {isLoadingImages && [...Array(Math.max(0, 6 - displayPhotos.length))].map((_, idx) => (
-                            <View key={`skeleton-${idx}`} style={[styles.galleryItem, { backgroundColor: '#F3F3F3', overflow: 'hidden' }]}>
-                                <MotiView
-                                    from={{ opacity: 1 }}
-                                    animate={{ opacity: 0.5 }}
-                                    transition={{
-                                        type: 'timing',
-                                        duration: 800,
-                                        loop: true,
-                                        repeatReverse: true,
-                                    }}
-                                    style={{ flex: 1, backgroundColor: '#E0E0E0' }}
-                                />
-                            </View>
+                            <ShimmerBox key={`skeleton-${idx}`} style={styles.galleryItem} />
                         ))}
                     </ScrollView>
                 </View>
