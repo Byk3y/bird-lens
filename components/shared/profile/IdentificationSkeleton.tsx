@@ -1,39 +1,49 @@
-import { MotiView } from 'moti';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
+
+/** Vertical sweep shimmer */
+function VerticalShimmer({ style }: { style?: any }) {
+    const anim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const loop = Animated.loop(
+            Animated.timing(anim, {
+                toValue: 1,
+                duration: 1400,
+                useNativeDriver: true,
+            })
+        );
+        loop.start();
+        return () => loop.stop();
+    }, [anim]);
+
+    const translateY = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-250, 250],
+    });
+
+    return (
+        <View style={[{ backgroundColor: '#E8E8E8', overflow: 'hidden' }, style]}>
+            <Animated.View style={{ ...StyleSheet.absoluteFillObject, transform: [{ translateY }] }}>
+                <LinearGradient
+                    colors={['transparent', 'rgba(255,255,255,0.5)', 'transparent']}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                />
+            </Animated.View>
+        </View>
+    );
+}
 
 export const IdentificationSkeleton: React.FC = () => {
     return (
         <View style={styles.container}>
             {[1, 2].map((i) => (
                 <View key={i} style={styles.idItem}>
-                    {/* Title Shimmer */}
-                    <MotiView
-                        from={{ opacity: 0.3 }}
-                        animate={{ opacity: 0.6 }}
-                        transition={{
-                            type: 'timing',
-                            duration: 1000,
-                            loop: true,
-                            repeatReverse: true,
-                        }}
-                        style={styles.idItemTitle}
-                    />
-
-                    {/* Image Area Shimmer */}
-                    <View style={styles.idImageWrapper}>
-                        <MotiView
-                            from={{ opacity: 0.4 }}
-                            animate={{ opacity: 0.7 }}
-                            transition={{
-                                type: 'timing',
-                                duration: 1000,
-                                loop: true,
-                                repeatReverse: true,
-                            }}
-                            style={styles.shimmer}
-                        />
-                    </View>
+                    <VerticalShimmer style={styles.idItemTitle} />
+                    <VerticalShimmer style={styles.idImageWrapper} />
                 </View>
             ))}
         </View>
@@ -52,7 +62,6 @@ const styles = StyleSheet.create({
     idItemTitle: {
         width: '30%',
         height: 20,
-        backgroundColor: '#E2E8F0',
         borderRadius: 4,
         marginBottom: 8,
     },
@@ -60,11 +69,5 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 220,
         borderRadius: 16,
-        overflow: 'hidden',
-        backgroundColor: '#F8F8F8',
-    },
-    shimmer: {
-        flex: 1,
-        backgroundColor: '#E2E8F0',
     },
 });

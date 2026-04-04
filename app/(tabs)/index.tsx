@@ -227,16 +227,14 @@ export default function HomeScreen() {
 
       </ScrollView>
 
-      {draftData && (
-        <DraftSightingPrompt
-          visible={isDraftVisible}
-          draft={draftData}
-          onSave={handleSaveDraft}
-          onDiscard={handleDiscardDraft}
-          isSaving={isDraftSaving}
-          onModalClosed={handleDraftModalClosed}
-        />
-      )}
+      <DraftSightingPrompt
+        visible={isDraftVisible}
+        draft={draftData}
+        onSave={handleSaveDraft}
+        onDiscard={handleDiscardDraft}
+        isSaving={isDraftSaving}
+        onModalClosed={handleDraftModalClosed}
+      />
 
       <AttributionSurveySheet
         visible={showAttribution}
