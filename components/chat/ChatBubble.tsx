@@ -4,6 +4,7 @@ import { ThumbsDown, ThumbsUp } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { OwlAvatar } from './OwlAvatar';
 
 interface ChatBubbleProps {
@@ -104,8 +105,14 @@ export function ChatBubble({ message, onFeedback }: ChatBubbleProps) {
                         <TypingIndicator />
                     ) : (
                         <>
-                            {renderFormattedText(message.content, isUser)}
-                            {/* Timestamp inside bubble, bottom-right */}
+                            {message.imageUri && (
+                                <Image
+                                    source={{ uri: message.imageUri }}
+                                    style={styles.messageImage}
+                                    contentFit="cover"
+                                />
+                            )}
+                            {message.content ? renderFormattedText(message.content, isUser) : null}
                             <Text style={[styles.timestamp, isUser && styles.timestampUser]}>
                                 {formatTime(message.timestamp)}
                             </Text>
@@ -183,6 +190,12 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 4,
         borderWidth: 1,
         borderColor: Colors.border,
+    },
+    messageImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: 12,
+        marginBottom: 6,
     },
     messageText: {
         ...Typography.body,

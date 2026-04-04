@@ -7,7 +7,7 @@ import { useBirdAssistant } from '@/hooks/useBirdAssistant';
 import { useChatGating } from '@/hooks/useChatGating';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Sparkles, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useMemo, useRef } from 'react';
 import {
     Alert,
@@ -58,16 +58,15 @@ export default function BirdAssistantScreen() {
         useChatGating();
 
     const handleSend = useCallback(
-        async (text: string) => {
+        async (text: string, imageUri?: string) => {
             if (isGated) {
                 router.push('/paywall');
                 return;
             }
-            // Increment count for free users BEFORE sending (reserves the credit)
             if (!isPro) {
                 await incrementCount();
             }
-            await sendMessage(text);
+            await sendMessage(text, imageUri);
         },
         [isGated, sendMessage, isPro, incrementCount, router]
     );
@@ -147,18 +146,31 @@ export default function BirdAssistantScreen() {
                 )}
             </View>
 
-            {/* Credit badge for free users */}
+            {/* Credit badge + Go Pro for free users */}
             {!isPro && !isGatingLoading && (
                 <View style={styles.creditBadge}>
-                    <Text style={[
-                        styles.creditText,
-                        remainingCredits <= 3 && styles.creditTextWarning,
-                        remainingCredits === 0 && styles.creditTextDanger,
-                    ]}>
-                        {isGated
-                            ? 'No messages left'
-                            : `${remainingCredits} of 10 messages left`}
-                    </Text>
+                    {isGated ? (
+                        <TouchableOpacity
+                            style={styles.goProCenter}
+                            onPress={() => router.push('/paywall')}
+                            activeOpacity={0.8}
+                        >
+                            <Sparkles size={12} color={Colors.primary} />
+                            <Text style={styles.goProCenterText}>Unlock Unlimited — Go Pro</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.creditRow}>
+                            <Text style={[
+                                styles.creditText,
+                                remainingCredits <= 3 && styles.creditTextWarning,
+                            ]}>
+                                {`${remainingCredits} of 10 messages left`}
+                            </Text>
+                            <TouchableOpacity onPress={() => router.push('/paywall')} activeOpacity={0.7}>
+                                <Text style={styles.goProLink}>Go Pro</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             )}
 
@@ -236,8 +248,16 @@ const styles = StyleSheet.create({
     },
     creditBadge: {
         alignItems: 'center',
+        justifyContent: 'center',
         paddingVertical: 6,
+        paddingHorizontal: 16,
         backgroundColor: Colors.surfaceLight,
+    },
+    creditRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
     },
     creditText: {
         ...Typography.caption,
@@ -247,8 +267,22 @@ const styles = StyleSheet.create({
     creditTextWarning: {
         color: '#d97706',
     },
-    creditTextDanger: {
-        color: Colors.error,
+    goProLink: {
+        ...Typography.caption,
+        fontSize: 12,
+        color: Colors.primary,
+        fontWeight: '700',
+    },
+    goProCenter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    goProCenterText: {
+        ...Typography.caption,
+        fontSize: 12,
+        color: Colors.primary,
+        fontWeight: '700',
     },
     messageList: {
         paddingTop: 16,
