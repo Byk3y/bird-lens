@@ -1,7 +1,7 @@
 import { cleanAndParseJson, validateBirdMetadata } from "./utils.ts";
 
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-const GEMINI_MODEL = "google/gemini-2.0-flash-001";
+const GEMINI_MODEL = "google/gemini-2.5-flash";
 
 /**
  * Helper to perform a fetch with a timeout
@@ -23,35 +23,26 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 }
 
 const enrichmentPromptInstructions = `
-For the following bird species, provide comprehensive field-guide quality metadata.
+For the following bird species, provide comprehensive field-guide quality supplementary metadata.
 Species: [[SPECIES_NAMES]]
 
+IMPORTANT: Do NOT return the bird's common name, taxonomy, diet_tags, or habitat_tags — those are already provided by the identification model. Only return the supplementary fields listed below.
+
 Return a JSON object with a "birds" array. Each bird must include:
-- "name": Common name
-- "scientific_name": Scientific name (for mapping)
-- "habitat": Detailed ecological habitat description (vegetation, elevation, etc).
-- "habitat_tags": Array of 1-3 short keywords (e.g., ["Forest", "Shrubland"]).
-- "nesting_info": { 
-    "description": "Materials, clutch size, and incubation info", 
-    "location": "A single-word identifier for the specific nesting site (e.g., 'Tree', 'Ground', 'Cavity', 'Shrub', 'Cliff', 'Building')", 
-    "type": "Nest structure (e.g., 'Cup', 'Platform', 'Scrape')" 
+- "scientific_name": Echo back the exact species name provided (for result mapping only)
+- "habitat": Detailed ecological habitat description (vegetation, elevation, climate, geographic range).
+- "nesting_info": {
+    "description": "Materials, clutch size, and incubation info",
+    "location": "A single-word identifier for the specific nesting site (e.g., 'Tree', 'Ground', 'Cavity', 'Shrub', 'Cliff', 'Building')",
+    "type": "Nest structure (e.g., 'Cup', 'Platform', 'Scrape')"
   }
 - "identification_tips": { "male": "Visual markers for males", "female": "Visual markers for females", "juvenile": "Visual markers for juveniles" }
 - "behavior": "One unique behavioral trait or interesting fact."
-- "taxonomy": {
-    "family": "Common name of family",
-    "family_scientific": "Scientific name of family",
-    "genus": "Scientific name of genus",
-    "genus_description": "Commonly called [Common Name]",
-    "order": "Scientific name of order",
-    "order_description": "Common name of order"
-  },
 - "description": 2-3 sentence engaging overview.
 - "diet": Primary diet description.
-- "diet_tags": Array of simple keywords: ["Insects", "Seeds", "Fruit", "Nectar", "Small fish", "Small mammals", "Invertebrates", "Grains", "Carrion"].
 - "conservation_status": "Global status (e.g., Least Concern, Vulnerable)."
-- "key_facts": { 
-    "size": "Length range in inches", 
+- "key_facts": {
+    "size": "Length range in inches",
     "wingspan": "Wingspan range in inches",
     "wing_shape": "e.g., Rounded, Pointed",
     "tail_shape": "e.g., Square, Forked",
@@ -117,7 +108,7 @@ export async function generateBirdMetadata(scientificName: string) {
         const parsed = cleanAndParseJson(content, "Enrichment");
 
         // Handle array or single object return
-        const meta = parsed.birds?.[0] || parsed.candidates?.[0] || (Array.isArray(parsed) ? parsed[0] : (parsed.name ? parsed : null));
+        const meta = parsed.birds?.[0] || parsed.candidates?.[0] || (Array.isArray(parsed) ? parsed[0] : (parsed.scientific_name ? parsed : null));
 
         if (meta) {
             if (!validateBirdMetadata(meta)) {
@@ -125,6 +116,15 @@ export async function generateBirdMetadata(scientificName: string) {
             } else {
                 console.log('[Enrichment] Successfully generated metadata for ' + scientificName + ' via ' + (isFallback ? 'Gemini' : 'OpenRouter'));
             }
+
+            // Strip identity fields — enrichment must not override identification
+            delete meta.name;
+            delete meta.confidence;
+            delete meta.also_known_as;
+            delete meta.taxonomy;
+            delete meta.diet_tags;
+            delete meta.habitat_tags;
+            delete meta.scientific_name;
         }
 
         return meta;
@@ -166,13 +166,20 @@ export async function generateBatchBirdMetadata(scientificNames: string[]) {
         const parsed = cleanAndParseJson(content, "Batch-Enrichment");
         const birds = parsed.birds || parsed.candidates || (Array.isArray(parsed) ? parsed : []);
 
-        // Warn about birds with incomplete validation, but don't filter them out
+        // Validate, strip identity fields, and filter
         return birds.map((b: any) => {
             if (!validateBirdMetadata(b)) {
-                console.warn(`[Batch-Enrichment] Bird ${b?.name || 'unknown'} has partial data, but returning anyway.`);
+                console.warn(`[Batch-Enrichment] Bird ${b?.scientific_name || 'unknown'} has partial data, but returning anyway.`);
             }
+            // Strip identity fields — keep scientific_name for batch matching
+            delete b.name;
+            delete b.confidence;
+            delete b.also_known_as;
+            delete b.taxonomy;
+            delete b.diet_tags;
+            delete b.habitat_tags;
             return b;
-        }).filter((b: any) => b?.name || b?.scientific_name);
+        }).filter((b: any) => b?.scientific_name);
     } catch (error) {
         console.error("Batch enrichment failed:", error);
         return [];
