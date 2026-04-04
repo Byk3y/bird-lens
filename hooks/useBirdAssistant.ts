@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { analytics, Events } from '@/lib/analytics';
 import { parseNDJSONLine } from '@/lib/utils';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { fetch } from 'expo/fetch';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -17,6 +19,7 @@ export interface ChatMessage {
     timestamp: number;
     feedback?: 'up' | 'down' | null;
     suggestions?: string[];
+    imageUri?: string; // Local file:// URI for display (not base64)
 }
 
 /** Parse the SUGGESTIONS: line from the end of Owlbert's response */
@@ -41,7 +44,7 @@ interface UseBirdAssistantReturn {
     messages: ChatMessage[];
     isStreaming: boolean;
     error: string | null;
-    sendMessage: (text: string) => Promise<void>;
+    sendMessage: (text: string, imageUri?: string) => Promise<void>;
     clearHistory: () => Promise<void>;
     submitFeedback: (messageId: string, feedback: 'up' | 'down') => void;
 }
@@ -84,16 +87,32 @@ export function useBirdAssistant(): UseBirdAssistantReturn {
         }
     }, []);
 
-    const sendMessage = useCallback(async (text: string) => {
-        if (!text.trim() || isStreaming) return;
+    const sendMessage = useCallback(async (text: string, imageUri?: string) => {
+        if ((!text.trim() && !imageUri) || isStreaming) return;
 
         setError(null);
+
+        // Resize and compress image to base64 if provided
+        let imageBase64: string | undefined;
+        if (imageUri) {
+            try {
+                const result = await manipulateAsync(
+                    imageUri,
+                    [{ resize: { width: 800 } }],
+                    { compress: 0.6, format: SaveFormat.WEBP, base64: true }
+                );
+                imageBase64 = result.base64 ?? undefined;
+            } catch (err) {
+                console.error('[useBirdAssistant] Image processing failed:', err);
+            }
+        }
 
         const userMessage: ChatMessage = {
             id: `user_${Date.now()}`,
             role: 'user',
-            content: text.trim(),
+            content: text.trim() || (imageUri ? 'What bird is this?' : ''),
             timestamp: Date.now(),
+            imageUri,
         };
 
         const assistantPlaceholder: ChatMessage = {
@@ -129,7 +148,10 @@ export function useBirdAssistant(): UseBirdAssistantReturn {
                     'x-client-info': 'supabase-js-expo',
                 },
                 signal: controller.signal,
-                body: JSON.stringify({ messages: contextMessages }),
+                body: JSON.stringify({
+                    messages: contextMessages,
+                    ...(imageBase64 ? { image: imageBase64 } : {}),
+                }),
             });
 
             if (!response.ok) {
@@ -253,9 +275,24 @@ export function useBirdAssistant(): UseBirdAssistantReturn {
 
     const submitFeedback = useCallback((messageId: string, feedback: 'up' | 'down') => {
         setMessages((prev) => {
+            const targetMsg = prev.find((m) => m.id === messageId);
+            const newFeedback = targetMsg?.feedback === feedback ? null : feedback;
+
+            // Fire analytics event (null = user un-toggled, so only track actual ratings)
+            if (newFeedback && targetMsg) {
+                const questionIdx = prev.findIndex((m) => m.id === messageId) - 1;
+                const question = questionIdx >= 0 ? prev[questionIdx]?.content : '';
+                analytics.capture(Events.OWLBERT_FEEDBACK, {
+                    feedback: newFeedback,
+                    message_id: messageId,
+                    question: question?.slice(0, 200),
+                    answer_preview: targetMsg.content?.slice(0, 200),
+                });
+            }
+
             const updated = prev.map((m) =>
                 m.id === messageId
-                    ? { ...m, feedback: m.feedback === feedback ? null : feedback }
+                    ? { ...m, feedback: newFeedback }
                     : m
             );
             persistMessages(updated);

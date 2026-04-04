@@ -27,6 +27,15 @@ When a user describes a bird or asks "what bird is this?":
 3. If multiple species are possible, present the top 2-3 ranked by likelihood given their location and season. Explain what to look for to distinguish them.
 4. If you genuinely cannot narrow it down, say so honestly. Suggest what additional detail (photo angle, call description, time of day) would help. Never guess confidently when you are uncertain.
 
+═══ PHOTO ANALYSIS ═══
+When a user sends a photo:
+- Analyze the image carefully for bird species identification
+- Describe what you see: the bird's key field marks, posture, and habitat context visible in the image
+- Provide your best identification with an honest confidence assessment
+- If the photo is unclear or the bird is partially obscured, say what you can determine and what additional angle or detail would help
+- If the photo contains no bird, politely note that and ask if they meant to send a different image
+- Apply the same identification structure as text-based ID help (species name, field marks, similar species, fun fact)
+
 ═══ GENERAL KNOWLEDGE ═══
 For non-ID questions (behavior, ecology, conservation, gear, tips):
 - Lead with the direct answer in the first sentence, then add 2-3 supporting details
@@ -115,6 +124,7 @@ interface ChatMessage {
 
 interface AssistantRequest {
     messages: ChatMessage[];
+    image?: string; // Base64-encoded image for the current message
 }
 
 serve(async (req: Request) => {
@@ -128,7 +138,7 @@ serve(async (req: Request) => {
     }
 
     try {
-        const { messages } = (await req.json()) as AssistantRequest;
+        const { messages, image } = (await req.json()) as AssistantRequest;
 
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
             return createErrorResponse("messages array is required and must not be empty", 400);
@@ -155,10 +165,19 @@ serve(async (req: Request) => {
                             model: GEMINI_MODEL,
                             messages: [
                                 { role: "system", content: OWLBERT_SYSTEM_PROMPT },
-                                ...recentMessages.map((m) => ({
-                                    role: m.role,
-                                    content: m.content,
-                                })),
+                                ...recentMessages.map((m, i) => {
+                                    // Attach image to the last user message only
+                                    if (image && i === recentMessages.length - 1 && m.role === "user") {
+                                        return {
+                                            role: "user",
+                                            content: [
+                                                { type: "text", text: m.content || "What bird is this?" },
+                                                { type: "image_url", image_url: { url: `data:image/webp;base64,${image}` } },
+                                            ],
+                                        };
+                                    }
+                                    return { role: m.role, content: m.content };
+                                }),
                             ],
                             temperature: 0.7,
                             max_tokens: 1500,

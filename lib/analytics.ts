@@ -17,6 +17,7 @@ export const Events = {
   SHARE_CARD_SAVED: 'share_card_saved',
   SHARE_CARD_SHARED: 'share_card_shared',
   ENHANCER_USED: 'enhancer_used',
+  OWLBERT_FEEDBACK: 'owlbert_feedback',
 } as const;
 
 class Analytics {
