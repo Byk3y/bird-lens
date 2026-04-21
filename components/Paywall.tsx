@@ -184,7 +184,13 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                 {/* Top Bar */}
                 <View style={styles.topBar}>
                     <View />
-                    <TouchableOpacity onPress={onClose} style={styles.topButton}>
+                    <TouchableOpacity
+                        onPress={() => {
+                            analytics.capture(Events.PAYWALL_DISMISSED);
+                            onClose();
+                        }}
+                        style={styles.topButton}
+                    >
                         <Text style={styles.topButtonText}>Cancel</Text>
                     </TouchableOpacity>
                 </View>

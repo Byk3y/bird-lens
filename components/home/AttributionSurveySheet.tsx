@@ -1,4 +1,5 @@
 import { Colors, Spacing, Typography } from '@/constants/theme';
+import { analytics, Events } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -44,6 +45,9 @@ export const AttributionSurveySheet: React.FC<AttributionSurveySheetProps> = ({
     const wasVisible = React.useRef(false);
 
     React.useEffect(() => {
+        if (visible && !wasVisible.current) {
+            analytics.capture(Events.ATTRIBUTION_SURVEY_SHOWN);
+        }
         if (wasVisible.current && !visible) {
             setIsAnimatingOut(true);
             const timer = setTimeout(() => setIsAnimatingOut(false), 350);
@@ -53,6 +57,7 @@ export const AttributionSurveySheet: React.FC<AttributionSurveySheetProps> = ({
     }, [visible]);
 
     const dismiss = async () => {
+        analytics.capture(Events.ATTRIBUTION_SURVEY_SKIPPED);
         await AsyncStorage.setItem(ATTRIBUTION_KEY, 'true');
         onDismiss();
     };
@@ -65,6 +70,7 @@ export const AttributionSurveySheet: React.FC<AttributionSurveySheetProps> = ({
                 user_id: user.id,
                 source: selected,
             });
+            analytics.capture(Events.ATTRIBUTION_SURVEY_SUBMITTED, { source: selected });
             await AsyncStorage.setItem(ATTRIBUTION_KEY, 'true');
             onDismiss();
         } catch {

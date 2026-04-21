@@ -6,6 +6,7 @@ export const Events = {
   IDENTIFICATION_FAILED: 'identification_failed',
   SIGHTING_SAVED: 'sighting_saved',
   PAYWALL_SHOWN: 'paywall_shown',
+  PAYWALL_DISMISSED: 'paywall_dismissed',
   PURCHASE_COMPLETED: 'purchase_completed',
   PURCHASE_CANCELLED: 'purchase_cancelled',
   PURCHASE_RESTORED: 'purchase_restored',
@@ -18,6 +19,9 @@ export const Events = {
   SHARE_CARD_SHARED: 'share_card_shared',
   ENHANCER_USED: 'enhancer_used',
   OWLBERT_FEEDBACK: 'owlbert_feedback',
+  ATTRIBUTION_SURVEY_SHOWN: 'attribution_survey_shown',
+  ATTRIBUTION_SURVEY_SUBMITTED: 'attribution_survey_submitted',
+  ATTRIBUTION_SURVEY_SKIPPED: 'attribution_survey_skipped',
 } as const;
 
 class Analytics {

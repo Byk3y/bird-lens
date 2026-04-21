@@ -203,9 +203,7 @@ function AnalyticsIdentify() {
 
   useEffect(() => {
     if (!user?.id) return;
-    if (!user.is_anonymous) {
-      analytics.identify(user.id, { is_pro: isPro, is_guest: isGuest });
-    }
+    analytics.identify(user.id, { is_pro: isPro, is_guest: isGuest });
   }, [user?.id, user?.is_anonymous, isPro, isGuest]);
 
   return null;
