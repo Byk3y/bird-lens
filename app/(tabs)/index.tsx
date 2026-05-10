@@ -38,22 +38,6 @@ export default function HomeScreen() {
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [showAttribution, setShowAttribution] = useState(false);
 
-  // Show Pro welcome alert if user just completed a purchase
-  useEffect(() => {
-    AsyncStorage.getItem('@show_pro_welcome').then(val => {
-      if (val === 'true') {
-        AsyncStorage.removeItem('@show_pro_welcome');
-        setTimeout(() => {
-          showAlert({
-            title: 'Welcome to BirdMark Pro! 🎉',
-            message: 'Your purchase was successful. Enjoy unlimited identifications!',
-            actions: [{ text: 'Start Discovering' }]
-          });
-        }, 500);
-      }
-    });
-  }, []);
-
   // Show attribution survey on second app open, not immediately after onboarding
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;

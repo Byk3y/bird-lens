@@ -4,7 +4,6 @@ import { analytics, Events } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { requestNotificationPermission, registerPushToken } from '@/lib/notifications';
 import { subscriptionService } from '@/services/SubscriptionService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
@@ -78,20 +77,28 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
 
     const handlePurchase = async (pkg: PurchasesPackage) => {
         setPurchasing(true);
+        let purchaseCompleted = false;
         try {
-            const { success, error } = await subscriptionService.purchasePackage(pkg);
+            const { success, error, customerInfo } = await subscriptionService.purchasePackage(pkg);
             if (success) {
                 analytics.capture(Events.PURCHASE_COMPLETED, {
                     plan: pkg.identifier,
                     price: pkg.product.priceString,
                 });
                 if (reminderEnabled && user?.id) {
-                    await registerPushToken(user.id);
+                    registerPushToken(user.id).catch(() => { });
                 }
-                await refreshSubscription();
-                // Flag for the home screen to show the welcome alert after navigation
-                await AsyncStorage.setItem('@show_pro_welcome', 'true');
+                await refreshSubscription(customerInfo);
+                purchaseCompleted = true;
+                setPurchasing(false);
                 onClose();
+                setTimeout(() => {
+                    showAlert({
+                        title: 'Welcome to BirdMark Pro! 🎉',
+                        message: 'Your purchase was successful. Enjoy unlimited identifications!',
+                        actions: [{ text: 'Start Discovering' }]
+                    });
+                }, 400);
             } else if (error?.userCancelled) {
                 analytics.capture(Events.PURCHASE_CANCELLED);
             } else if (error && !error.userCancelled) {
@@ -103,7 +110,9 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         } catch (error) {
             console.error('Purchase error:', error);
         } finally {
-            setPurchasing(false);
+            if (!purchaseCompleted) {
+                setPurchasing(false);
+            }
         }
     };
 
@@ -111,9 +120,9 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
         setLoading(true);
         try {
             const customerInfo = await subscriptionService.restorePurchases();
-            if (customerInfo?.entitlements.active['Birdsnap Pro']) {
+            if (subscriptionService.hasActiveProEntitlement(customerInfo)) {
                 analytics.capture(Events.PURCHASE_RESTORED);
-                await refreshSubscription();
+                await refreshSubscription(customerInfo);
                 onClose();
                 setTimeout(() => {
                     showAlert({
@@ -567,4 +576,3 @@ const styles = StyleSheet.create({
         fontSize: 13,
     },
 });
-

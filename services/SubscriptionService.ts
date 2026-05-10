@@ -34,6 +34,10 @@ export class SubscriptionService {
         return SubscriptionService.instance;
     }
 
+    public hasActiveProEntitlement(customerInfo: any): boolean {
+        return typeof customerInfo?.entitlements?.active?.[ENTITLEMENT_ID] !== 'undefined';
+    }
+
     /**
      * Initialize the RevenueCat SDK
      */
@@ -87,7 +91,7 @@ export class SubscriptionService {
         if (isExpoGo) return false;
         try {
             const customerInfo = await Purchases.getCustomerInfo();
-            return typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
+            return this.hasActiveProEntitlement(customerInfo);
         } catch (error) {
             console.error('Error checking subscription status:', error);
             return false;
@@ -101,7 +105,7 @@ export class SubscriptionService {
         if (isExpoGo) return { success: false, error: 'Not available in Expo Go' };
         try {
             const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-            if (typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== 'undefined') {
+            if (this.hasActiveProEntitlement(customerInfo)) {
                 return { success: true, customerInfo };
             }
             return { success: false, customerInfo };
