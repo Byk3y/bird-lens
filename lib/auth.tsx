@@ -12,7 +12,7 @@ interface AuthContextType {
     isSubscriptionLoading: boolean;
     isGuest: boolean;
     isPro: boolean;
-    refreshSubscription: () => Promise<void>;
+    refreshSubscription: (customerInfo?: unknown) => Promise<void>;
     signInAnonymously: () => Promise<void>;
     signUp: (email: string, password: string) => Promise<{ error: any }>;
     signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -46,9 +46,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isPro, setIsPro] = useState(false);
     const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true);
 
-    const refreshSubscription = async () => {
-        const subscribed = await subscriptionService.isSubscribed();
+    const refreshSubscription = async (customerInfo?: unknown) => {
+        const subscribed = customerInfo
+            ? subscriptionService.hasActiveProEntitlement(customerInfo)
+            : await subscriptionService.isSubscribed();
         setIsPro(subscribed);
+        setIsSubscriptionLoading(false);
     };
 
     useEffect(() => {
