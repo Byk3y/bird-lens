@@ -1,7 +1,5 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { analytics, Events } from '@/lib/analytics';
-import { onboardingState } from '@/lib/onboardingState';
 import { supabase } from '@/lib/supabase';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -62,9 +60,7 @@ export default function OnboardingScreen() {
 
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-    const goToPaywall = useCallback(async () => {
-        await onboardingState.markAsCompleted();
-        analytics.capture(Events.ONBOARDING_COMPLETED);
+    const goToNotificationPermission = useCallback(async () => {
         // Record onboarding completion server-side for analytics
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -73,7 +69,8 @@ export default function OnboardingScreen() {
                 .eq('id', user.id)
                 .then(); // fire-and-forget — don't block navigation
         }
-        router.push('/paywall');
+        // Navigate to notification permission screen (which then goes to paywall)
+        router.push('/notification-permission');
     }, [router]);
 
     // Clear all timers
@@ -127,8 +124,8 @@ export default function OnboardingScreen() {
     // "Get Started" button on slide 3
     const handleGetStarted = useCallback(() => {
         clearTimers();
-        goToPaywall();
-    }, [clearTimers, goToPaywall]);
+        goToNotificationPermission();
+    }, [clearTimers, goToNotificationPermission]);
 
     // Render a single slide
     const renderSlide = useCallback(

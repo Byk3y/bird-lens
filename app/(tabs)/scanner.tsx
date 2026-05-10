@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   AppState,
   Dimensions,
   Linking,
@@ -23,6 +24,13 @@ import { useIsCameraActive } from '@/hooks/useIsCameraActive';
 import { useScannerGestures } from '@/hooks/useScannerGestures';
 import { useSubscriptionGating } from '@/hooks/useSubscriptionGating';
 import { useAuth } from '@/lib/auth';
+import {
+  hasSeenPostIdPrompt,
+  isPushTokenRegistered,
+  markPostIdPromptSeen,
+  registerPushToken,
+  requestNotificationPermission,
+} from '@/lib/notifications';
 
 // Components
 import { Paywall } from '@/components/Paywall';
@@ -54,7 +62,7 @@ export default function ScannerScreen() {
   const [pickedImage, setPickedImage] = useState<string | null>(null);
   const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
-  const { isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { isGated, remainingCredits, incrementCount } = useSubscriptionGating();
   const [isPaywallVisible, setIsPaywallVisible] = useState(false);
   const { showAlert } = useAlert();
@@ -161,6 +169,41 @@ export default function ScannerScreen() {
         recordingUri: recordingUri || null,
         location: lastLocation,
       });
+
+      // Post-first-ID notification fallback — show prompt if not already registered
+      (async () => {
+        try {
+          const alreadyRegistered = await isPushTokenRegistered();
+          if (alreadyRegistered) return;
+
+          const alreadyPrompted = await hasSeenPostIdPrompt();
+          if (alreadyPrompted) return;
+
+          await markPostIdPromptSeen();
+
+          // Small delay so it doesn't interrupt the result reveal
+          setTimeout(() => {
+            Alert.alert(
+              'Want birding alerts?',
+              'Get weekly tips from Owlbert when birds are most active.',
+              [
+                { text: 'Not now', style: 'cancel' },
+                {
+                  text: 'Enable',
+                  onPress: async () => {
+                    const granted = await requestNotificationPermission();
+                    if (granted && user?.id) {
+                      await registerPushToken(user.id);
+                    }
+                  },
+                },
+              ]
+            );
+          }, 2000);
+        } catch (e) {
+          console.warn('[scanner] Post-ID notification prompt failed:', e);
+        }
+      })();
     }
   }, [result, isProcessing, enrichedCandidates, heroImages, capturedImage, recordingUri, lastLocation]);
 

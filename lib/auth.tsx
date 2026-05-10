@@ -2,6 +2,7 @@ import { subscriptionService } from '@/services/SubscriptionService';
 import { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { analytics, Events } from './analytics';
+import { unregisterPushToken } from './notifications';
 import { supabase } from './supabase';
 
 interface AuthContextType {
@@ -169,6 +170,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const signOut = async () => {
+        // Deactivate push token before signing out
+        if (user?.id) {
+            await unregisterPushToken(user.id).catch(() => {});
+        }
         analytics.capture(Events.SIGNOUT_COMPLETED);
         analytics.reset();
         await supabase.auth.signOut();
@@ -194,6 +199,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const deleteAccount = async () => {
         try {
+            // Deactivate push token before deletion
+            if (user?.id) {
+                await unregisterPushToken(user.id).catch(() => {});
+            }
             const { data, error } = await supabase.functions.invoke('delete-user');
             if (error) throw error;
 

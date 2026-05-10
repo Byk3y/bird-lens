@@ -16,7 +16,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { analytics } from '@/lib/analytics';
 import { initAudioConfig } from '@/lib/audioConfig';
 import { AuthProvider, useAuth } from '@/lib/auth';
-import { cleanupLegacyReminders } from '@/lib/notifications';
+import { tryRegisterPushTokenSilently } from '@/lib/notifications';
 import { onboardingState } from '@/lib/onboardingState';
 import { asyncStoragePersister, queryClient } from '@/lib/queryClient';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -83,8 +83,6 @@ function RootLayoutNav() {
         // Silently pre-fetch offerings in the background so the Paywall opens instantly later
         subscriptionService.getOfferings().catch((err) => console.log('Background offering pre-fetch failed:', err));
 
-        // One-time cleanup: cancel any lingering trial reminder notifications from previous app versions
-        cleanupLegacyReminders().catch((err) => console.warn('Legacy reminder cleanup failed:', err));
 
         const completed = await onboardingState.isCompleted();
         setOnboardingCompleted(completed);
@@ -162,13 +160,14 @@ function AppContent({ onboardingCompleted }: { onboardingCompleted: boolean }) {
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
-          <AnalyticsIdentify />
+          <AnalyticsIdentify onboardingCompleted={onboardingCompleted} />
           <AlertProvider>
             <ThemeProvider value={DefaultTheme}>
               <Stack>
                 {/* Onboarding flow — only accessible when onboarding is NOT complete */}
                 <Stack.Protected guard={!onboardingCompleted}>
                   <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+                  <Stack.Screen name="notification-permission" options={{ headerShown: false, animation: 'slide_from_right' }} />
                 </Stack.Protected>
 
                 {/* Paywall — accessible in both states (shown after onboarding + from settings) */}
@@ -198,13 +197,18 @@ function AppContent({ onboardingCompleted }: { onboardingCompleted: boolean }) {
   );
 }
 
-function AnalyticsIdentify() {
+function AnalyticsIdentify({ onboardingCompleted }: { onboardingCompleted: boolean }) {
   const { user, isPro, isGuest } = useAuth();
 
   useEffect(() => {
     if (!user?.id) return;
     analytics.identify(user.id, { is_pro: isPro, is_guest: isGuest });
-  }, [user?.id, user?.is_anonymous, isPro, isGuest]);
+
+    // Silently register push token if permission is already granted AND onboarding is done
+    if (onboardingCompleted) {
+      tryRegisterPushTokenSilently(user.id).catch(() => {});
+    }
+  }, [user?.id, user?.is_anonymous, isPro, isGuest, onboardingCompleted]);
 
   return null;
 }

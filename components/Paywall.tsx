@@ -2,7 +2,7 @@ import { useAlert } from '@/components/common/AlertProvider';
 import { Links } from '@/constants/Links';
 import { analytics, Events } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { requestNotificationPermission, scheduleMorningActivation } from '@/lib/notifications';
+import { requestNotificationPermission, registerPushToken } from '@/lib/notifications';
 import { subscriptionService } from '@/services/SubscriptionService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -34,7 +34,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
     const [purchasing, setPurchasing] = useState(false);
     const [trialEligible, setTrialEligible] = useState(true);
     const { showAlert } = useAlert();
-    const { refreshSubscription } = useAuth();
+    const { user, refreshSubscription } = useAuth();
     const insets = useSafeAreaInsets();
     const { width: screenWidth } = useWindowDimensions();
     const isTablet = screenWidth >= 768 || (Platform.OS === 'ios' && Platform.isPad);
@@ -85,8 +85,8 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                     plan: pkg.identifier,
                     price: pkg.product.priceString,
                 });
-                if (reminderEnabled) {
-                    await scheduleMorningActivation();
+                if (reminderEnabled && user?.id) {
+                    await registerPushToken(user.id);
                 }
                 await refreshSubscription();
                 // Flag for the home screen to show the welcome alert after navigation
@@ -309,7 +309,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                             if (value) {
                                                 const granted = await requestNotificationPermission();
                                                 if (!granted) return;
-                                                await scheduleMorningActivation();
+                                                if (user?.id) await registerPushToken(user.id);
                                             }
                                             setReminderEnabled(value);
                                         }}
