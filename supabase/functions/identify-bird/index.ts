@@ -95,12 +95,13 @@ async function setCachedMedia(scientificName: string, name: string, mediaData: a
     }
 }
 
-async function setCachedIdentificationData(scientificName: string, metadata: any) {
+async function setCachedIdentificationData(scientificName: string, commonName: string, metadata: any) {
     try {
         const { error } = await supabase
             .from('species_meta')
             .upsert({
                 scientific_name: scientificName.trim(),
+                common_name: commonName.trim(),
                 identification_data: metadata,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'scientific_name' });
@@ -566,7 +567,7 @@ Example format: {"candidates": [{"name": "...", "scientific_name": "...", "confi
                             const meta = await generateBirdMetadata(topCandidate.scientific_name);
                             if (meta) {
                                 writeChunk(controller, { type: "metadata", index: 0, data: meta });
-                                setCachedIdentificationData(topCandidate.scientific_name, meta).catch(() => {});
+                                setCachedIdentificationData(topCandidate.scientific_name, topCandidate.name, meta).catch(() => {});
                             }
 
                             if (candidates.length > 1) {
