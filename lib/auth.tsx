@@ -69,14 +69,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (!session) {
                 handleAnonymousSignIn();
             } else {
-                // Link RevenueCat identity if session exists
-                subscriptionService.logIn(session.user.id);
-                // Initial subscription check
-                subscriptionService.isSubscribed().then((subscribed) => {
+                setIsLoading(false);
+                (async () => {
+                    const customerInfo = await subscriptionService.logIn(session.user.id);
+                    if (!isMounted) return;
+                    const subscribed = customerInfo
+                        ? subscriptionService.hasActiveProEntitlement(customerInfo)
+                        : await subscriptionService.isSubscribed();
+                    if (!isMounted) return;
                     setIsPro(subscribed);
                     setIsSubscriptionLoading(false);
-                });
-                setIsLoading(false);
+                })();
             }
         });
 
@@ -98,12 +101,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             } else if (session) {
                 setSession(session);
                 setUser(session.user);
-                subscriptionService.logIn(session.user.id);
-                subscriptionService.isSubscribed().then((subscribed) => {
+                setIsLoading(false);
+                (async () => {
+                    const customerInfo = await subscriptionService.logIn(session.user.id);
+                    if (!isMounted) return;
+                    const subscribed = customerInfo
+                        ? subscriptionService.hasActiveProEntitlement(customerInfo)
+                        : await subscriptionService.isSubscribed();
+                    if (!isMounted) return;
                     setIsPro(subscribed);
                     setIsSubscriptionLoading(false);
-                });
-                setIsLoading(false);
+                })();
             }
         });
 
