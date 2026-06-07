@@ -27,7 +27,7 @@ import { useRouter } from 'expo-router';
 
 export const AIEnhancerCard: React.FC = () => {
     const router = useRouter();
-    const { isPro } = useAuth();
+    const { isPro, isSubscriptionLoading } = useAuth();
     const [isPaywallVisible, setIsPaywallVisible] = useState(false);
     const containerWidth = width * 0.38;
     const sliderPos = useSharedValue(0.6); // Current position (0-1)
@@ -55,6 +55,8 @@ export const AIEnhancerCard: React.FC = () => {
     }));
 
     const handleStartPress = () => {
+        if (isSubscriptionLoading) return;
+
         if (!isPro) {
             setIsPaywallVisible(true);
             return;
@@ -110,7 +112,7 @@ export const AIEnhancerCard: React.FC = () => {
             </TouchableOpacity>
 
             {/* PRO Badge */}
-            {!isPro && (
+            {!isPro && !isSubscriptionLoading && (
                 <View style={styles.proBadge}>
                     <Text style={styles.proBadgeText}>PRO</Text>
                 </View>

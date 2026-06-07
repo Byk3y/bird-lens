@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true);
 
     const refreshSubscription = async (customerInfo?: unknown) => {
+        setIsSubscriptionLoading(true);
         const subscribed = customerInfo
             ? subscriptionService.hasActiveProEntitlement(customerInfo)
             : await subscriptionService.isSubscribed();
@@ -70,6 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 handleAnonymousSignIn();
             } else {
                 setIsLoading(false);
+                setIsSubscriptionLoading(true);
                 (async () => {
                     const customerInfo = await subscriptionService.logIn(session.user.id);
                     if (!isMounted) return;
@@ -102,6 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setSession(session);
                 setUser(session.user);
                 setIsLoading(false);
+                setIsSubscriptionLoading(true);
                 (async () => {
                     const customerInfo = await subscriptionService.logIn(session.user.id);
                     if (!isMounted) return;
