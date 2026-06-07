@@ -170,6 +170,12 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
 
     // Determine the active package based on selection
     const activePackage = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
+    const annualPrice = annualPackage?.product.price ?? 49.99;
+    const monthlyPrice = monthlyPackage?.product.price ?? 8.99;
+    const annualSavingsPercent = monthlyPrice > 0
+        ? Math.max(0, Math.round((1 - annualPrice / (monthlyPrice * 12)) * 100))
+        : 54;
+    const annualSubtitle = `Save ${annualSavingsPercent}%`;
 
     return (
         <View style={styles.container}>
@@ -255,7 +261,7 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
                                     >
                                         <View>
                                             <Text style={[styles.toggleCardTitle, selectedPlan === 'annual' && styles.toggleCardTitleSelected]}>Annual</Text>
-                                            {trialEligible && <Text style={[styles.toggleCardSub, selectedPlan === 'annual' && styles.toggleCardSubSelected]}>7 days free</Text>}
+                                            <Text style={[styles.toggleCardSub, selectedPlan === 'annual' && styles.toggleCardSubSelected]}>{annualSubtitle}</Text>
                                         </View>
                                         <View style={[styles.toggleRadio, selectedPlan === 'annual' && styles.toggleRadioSelected]}>
                                             {selectedPlan === 'annual' && <Check color="#fff" size={14} strokeWidth={3} />}
@@ -280,10 +286,10 @@ export const Paywall: React.FC<PaywallProps> = ({ onClose }) => {
 
                                 <Text style={styles.priceAfterTrial}>
                                     {selectedPlan === 'annual'
-                                        ? <>{trialEligible ? '7 days free, then just ' : 'Just '}<Text style={styles.priceAmount}>{annualPackage?.product.priceString ?? '$24.99'}</Text>/yr{'\n'}(~{annualPackage?.product.price
+                                        ? <>{trialEligible ? '7 days free, then just ' : 'Just '}<Text style={styles.priceAmount}>{annualPackage?.product.priceString ?? '$49.99'}</Text>/yr{'\n'}(~{annualPackage?.product.price
                                             ? new Intl.NumberFormat(undefined, { style: 'currency', currency: annualPackage.product.currencyCode }).format(annualPackage.product.price / 12)
-                                            : '$2.08'}/mo)</>
-                                        : <>{trialEligible ? '7 days free, then just ' : 'Just '}<Text style={styles.priceAmount}>{monthlyPackage?.product.priceString ?? '$4.99'}</Text>/mo</>}
+                                            : '$4.17'}/mo)</>
+                                        : <>{trialEligible ? '7 days free, then just ' : 'Just '}<Text style={styles.priceAmount}>{monthlyPackage?.product.priceString ?? '$8.99'}</Text>/mo</>}
                                 </Text>
                             </MotiView>
                         )}
